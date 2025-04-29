@@ -1,0 +1,24 @@
+<!-- src/app/auth/auth.component.html -->
+<div class="auth-form">
+  <h2>{{ isLogin ? 'Login' : 'Register' }}</h2>
+  
+  <form (submit)="onSubmit()">
+    <input [(ngModel)]="email" name="email" placeholder="Email" required />
+    <input [(ngModel)]="password" name="password" type="password" placeholder="Password" required />
+    
+    <button type="submit">{{ isLogin ? 'Login' : 'Register' }}</button>
+  </form>
+
+  <p>
+    {{ isLogin ? "Don't have an account?" : "Already have an account?" }}
+    <a href="#" (click)="toggleMode()">
+      {{ isLogin ? "Register here" : "Login here" }}
+    </a>
+  </p>
+
+  @if(error){
+  <p style="color:red;">{{ error }}</p>
+  }
+
+</div>
+
