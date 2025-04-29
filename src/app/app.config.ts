@@ -5,13 +5,14 @@ import { routes } from './app.routes';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 
+//replace the below firebaseConfig information from your firebase project
 const firebaseConfig = {
-  apiKey: "AIzaSyDCecKcchU7se3DItAr9d5saMxEyDLj588",
-  authDomain: "userinfo-a3f4c.firebaseapp.com",
-  projectId: "userinfo-a3f4c",
-  storageBucket: "userinfo-a3f4c.firebasestorage.app",
-  messagingSenderId: "527388958827",
-  appId: "1:527388958827:web:8ad81ab47a03e87e70d12e"
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
 };
 
 
