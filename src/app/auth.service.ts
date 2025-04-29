@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { setThrowInvalidWriteToSignalError } from '@angular/core/primitives/signals';
-import { Auth, createUserWithEmailAndPassword, sendPasswordResetEmail, signInWithEmailAndPassword, signOut } from '@angular/fire/auth';
+import { Auth, createUserWithEmailAndPassword, GoogleAuthProvider, sendPasswordResetEmail, signInWithEmailAndPassword, signInWithPopup, signOut } from '@angular/fire/auth';
 import { Router } from '@angular/router';
 
 @Injectable({
@@ -45,6 +45,15 @@ export class AuthService {
       this.router.navigate(['/verify-email']);
     }, err => {
       alert('Something went wrong');
+    })
+  }
+
+  signInWithGoogle() {
+    signInWithPopup(this.auth, new GoogleAuthProvider()).then(res => {
+      this.router.navigate(['/dashboard']);
+      localStorage.setItem('token', JSON.stringify(res.user))
+    }, err => {
+      alert(err.message);
     })
   }
 

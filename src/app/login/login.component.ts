@@ -32,5 +32,9 @@ export class LoginComponent {
 
   }
 
+  signInWithGoogle() {
+    this.authService.signInWithGoogle()
+  }
+
 
 }
