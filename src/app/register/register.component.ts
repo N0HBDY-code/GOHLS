@@ -1,21 +1,20 @@
 import { Component, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { AuthService } from '../auth.service';
+import { FormsModule } from '@angular/forms';
 
 @Component({
-  selector: 'app-login',
+  selector: 'app-register',
   imports: [FormsModule],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.css'
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.css'
 })
-export class LoginComponent {
-
-  private authService = inject(AuthService);
-
+export class RegisterComponent {
   email = '';
   password = '';
 
-  login() {
+  private authService = inject(AuthService)
+
+  register() {
     if (this.email == '') {
       alert('Please enter email');
       return;
@@ -26,11 +25,9 @@ export class LoginComponent {
       return;
     }
 
-    this.authService.login(this.email, this.password);
+    this.authService.register(this.email, this.password);
     this.email = '';
     this.password = '';
 
   }
-
-
 }

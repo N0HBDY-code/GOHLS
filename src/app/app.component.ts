@@ -10,10 +10,6 @@ import { ProductListComponent } from './product-list/product-list.component';
   styleUrl: './app.component.css'
 })
 export class AppComponent {
-  title = 'practice-authentication';
-  router = inject(Router)
 
-  ngOnInint(){
-    this.router.navigateByUrl('auth');
-  }
+
 }

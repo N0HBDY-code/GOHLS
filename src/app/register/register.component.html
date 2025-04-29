@@ -6,7 +6,7 @@
         <div class="card-body">
           <form>
             <div class="mb-3">
-              <h4 class="text-dark text-muted">Login</h4>
+              <h4 class="text-dark text-muted">Register</h4>
             </div>
             <div class="mb-3">
               <label for="exampleInputEmail1" class="form-label">Email</label>
@@ -28,21 +28,13 @@
                 [(ngModel)]="password"
               />
             </div>
-            <button type="button" class="btn btn-info" (click)="login()">
-              Submit
+            <button type="button" class="btn btn-info" (click)="register()">
+              Register
             </button>
             <div class="row">
               <div class="col-md-6">
-                <a href="/register" style="text-decoration: none"
-                  >Need Account? <span class="text-danger">Register</span>
-                </a>
-              </div>
-              <div class="col-md-6">
-                <a
-                  href="/forgot-password"
-                  class="text-dark"
-                  style="text-decoration: none"
-                  >Forgot Password ?
+                <a href="/login" style="text-decoration: none"
+                  >Have an Account? <span class="text-danger">Login</span>
                 </a>
               </div>
             </div>
