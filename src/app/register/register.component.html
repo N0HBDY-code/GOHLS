@@ -9,12 +9,28 @@
               <h4 class="text-dark text-muted">Register</h4>
             </div>
             <div class="mb-3">
+              <label for="firstname" class="form-label me-2">First Name</label>
+              <input
+                type="text"
+                class="form-control"
+                name="fname"
+                [(ngModel)]="user.fname"
+              />
+              <label for="firstname" class="form-label">Last Name</label>
+              <input
+                type="text"
+                class="form-control"
+                name="lname"
+                [(ngModel)]="user.lname"
+              />
+            </div>
+            <div class="mb-3">
               <label for="exampleInputEmail1" class="form-label">Email</label>
               <input
                 type="email"
                 class="form-control"
                 name="email"
-                [(ngModel)]="email"
+                [(ngModel)]="user.email"
               />
             </div>
             <div class="mb-3">
@@ -25,7 +41,7 @@
                 type="password"
                 class="form-control"
                 name="password"
-                [(ngModel)]="password"
+                [(ngModel)]="user.password"
               />
             </div>
             <button type="button" class="btn btn-info" (click)="register()">
