@@ -1,13 +1,45 @@
-<nav class="navbar bg-dark border-bottom border-body" data-bs-theme="dark">
-  <!-- Navbar content -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light px-3">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#">Navbar</a>
-    <button class="btn btn-outline-success" (click)="logout()">Logout</button>
+    <!-- Brand -->
+    <a class="navbar-brand fw-bold" routerLink="/dashboard">Sports Stats Now</a>
+
+    <!-- Toggler (hamburger icon) -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
+      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/dashboard">Dashboard</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/teams">Teams</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/games">Games</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/analytics">Analytics</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" routerLink="/reports">Reports</a>
+        </li>
+      </ul>
+
+      <!-- Logout button aligned right -->
+      <div class="d-flex">
+        <button class="btn btn-outline-danger" (click)="logout()">Logout</button>
+      </div>
+    </div>
   </div>
 </nav>
+
+<!-- User Info Card -->
 <div class="row">
   <div class="col"></div>
-
   <div class="col-md-4">
     <div class="text-center">
       <div class="card shadow mt-3">

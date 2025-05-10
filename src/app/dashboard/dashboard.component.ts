@@ -1,19 +1,37 @@
-import { Component, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { AuthService } from '../auth.service';
+import { User } from 'firebase/auth';
+import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-dashboard',
-  imports: [],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.css'
+  styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnInit, OnDestroy {
+  user: User | null = null;
+  private userSub!: Subscription;
 
-  private authService = inject(AuthService);
+  constructor(private authService: AuthService) {}
 
-  logout() {
-    this.authService.logout();
+  ngOnInit(): void {
+    this.userSub = this.authService.currentUser.subscribe(user => {
+      this.user = user;
+    });
   }
 
-  user = this.authService.getUser();
+  logout() {
+    this.authService.logout().then(() => {
+      // Navigate to login after logout completes
+      window.location.href = '/login'; // Hard reload to reset state
+      // OR use Angular router:
+      // this.router.navigate(['/login']);
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.userSub) {
+      this.userSub.unsubscribe();
+    }
+  }
 }

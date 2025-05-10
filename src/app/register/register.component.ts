@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
-import { AuthService, UserInfo } from '../auth.service';
 import { FormsModule } from '@angular/forms';
+import { AuthService, UserInfo } from '../auth.service';
 
 @Component({
   selector: 'app-register',
