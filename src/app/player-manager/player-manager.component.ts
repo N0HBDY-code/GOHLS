@@ -16,6 +16,7 @@ export class PlayerManagerComponent implements OnInit {
   private auth: Auth = inject(Auth);
 
   player: any = null;
+  teamName: string = '';
   loading = true;
 
   trainingType: string = '';
@@ -42,6 +43,18 @@ export class PlayerManagerComponent implements OnInit {
       this.setTrainingOptions(this.player.position);
       await this.checkSecondaryProgress();
       await this.checkExistingTraining();
+
+      if (this.player.teamId) {
+        const teamRef = doc(this.firestore, `teams/${this.player.teamId}`);
+        const teamSnap = await getDoc(teamRef);
+        if (teamSnap.exists()) {
+          const teamData = teamSnap.data();
+          const city = teamData['city'] || '';
+          const mascot = teamData['mascot'] || '';
+          this.teamName = `${city} ${mascot}`.trim();
+        }
+      }
+      
     }
     this.loading = false;
   }

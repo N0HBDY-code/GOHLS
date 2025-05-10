@@ -1,24 +1,19 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
+import { RosterComponent } from '../roster/roster.component';
 
 @Component({
   selector: 'app-team-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RosterComponent],
   templateUrl: './team-detail.component.html',
+  styleUrls: ['./team-detail.component.css']
 })
-export class TeamDetailComponent implements OnInit {
-  private firestore = inject(Firestore);
-  private route = inject(ActivatedRoute);
-  teamId!: string;
-  team: any;
+export class TeamDetailComponent {
+  teamId: string;
 
-  async ngOnInit() {
+  constructor(private route: ActivatedRoute) {
     this.teamId = this.route.snapshot.paramMap.get('id')!;
-    const docRef = doc(this.firestore, 'teams', this.teamId);
-    const snapshot = await getDoc(docRef);
-    this.team = snapshot.exists() ? snapshot.data() : null;
   }
 }

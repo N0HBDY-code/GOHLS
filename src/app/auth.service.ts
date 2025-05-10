@@ -3,21 +3,16 @@ import {
   Auth,
   signInWithEmailAndPassword,
   signOut,
-  onAuthStateChanged,
-  User,
   createUserWithEmailAndPassword,
   updateProfile,
+  onAuthStateChanged,
   sendPasswordResetEmail,
-  GoogleAuthProvider,
-  signInWithPopup
+  User
 } from '@angular/fire/auth';
-import {
-  Firestore,
-  doc,
-  setDoc,
-  getDoc
-} from '@angular/fire/firestore';
-import { BehaviorSubject } from 'rxjs';
+import { Firestore, doc, setDoc, getDoc } from '@angular/fire/firestore';
+import { BehaviorSubject, combineLatest } from 'rxjs';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { map } from 'rxjs/operators';
 
 export interface UserInfo {
   fname: string;
@@ -33,8 +28,18 @@ export class AuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   public currentUser = this.userSubject.asObservable();
 
-  private roleSubject = new BehaviorSubject<string>('viewer');
-  public currentRole = this.roleSubject.asObservable();
+  private rolesSubject = new BehaviorSubject<string[]>([]);
+  public currentRoles = this.rolesSubject.asObservable();
+
+  private viewAsRoleSubject = new BehaviorSubject<string | null>(null);
+  public viewAsRole$ = this.viewAsRoleSubject.asObservable();
+
+  public effectiveRoles = combineLatest([
+    this.currentRoles,
+    this.viewAsRole$
+  ]).pipe(
+    map(([roles, viewAs]) => viewAs ? [viewAs] : roles)
+  );
 
   constructor(private auth: Auth, private firestore: Firestore) {
     onAuthStateChanged(this.auth, async (user) => {
@@ -42,42 +47,46 @@ export class AuthService {
 
       if (user) {
         const snapshot = await getDoc(doc(this.firestore, 'users', user.uid));
-        const data = snapshot.data() as { role?: string };
-        this.roleSubject.next(data?.role || 'viewer');
+        const data = snapshot.data();
+        const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
+        this.rolesSubject.next(roles);
       } else {
-        this.roleSubject.next('viewer');
+        this.rolesSubject.next([]);
       }
     });
   }
 
-  register(userInfo: UserInfo) {
-    return createUserWithEmailAndPassword(this.auth, userInfo.email, userInfo.password)
-      .then(async (userCredential) => {
-        await updateProfile(userCredential.user, {
-          displayName: `${userInfo.fname} ${userInfo.lname}`
-        });
+  setViewAsRole(role: string | null) {
+    console.log('Switching view to:', role); // debug
+    this.viewAsRoleSubject.next(role);
+  }
 
-        await setDoc(doc(this.firestore, 'users', userCredential.user.uid), {
-          uid: userCredential.user.uid,
-          email: userInfo.email,
-          displayName: `${userInfo.fname} ${userInfo.lname}`,
-          role: 'viewer' // default role
-        });
+  async register(userInfo: UserInfo) {
+    const userCred = await createUserWithEmailAndPassword(this.auth, userInfo.email, userInfo.password);
+    await updateProfile(userCred.user, {
+      displayName: `${userInfo.fname} ${userInfo.lname}`
+    });
 
-        this.userSubject.next(userCredential.user);
-        this.roleSubject.next('viewer');
-        return userCredential.user;
-      });
+    await setDoc(doc(this.firestore, 'users', userCred.user.uid), {
+      uid: userCred.user.uid,
+      displayName: `${userInfo.fname} ${userInfo.lname}`,
+      email: userInfo.email,
+      roles: ['viewer'] // default role
+    });
+
+    this.userSubject.next(userCred.user);
+    this.rolesSubject.next(['viewer']);
+    return userCred.user;
   }
 
   login(email: string, password: string) {
     return signInWithEmailAndPassword(this.auth, email, password).then(async userCredential => {
       this.userSubject.next(userCredential.user);
 
-      const userDoc = doc(this.firestore, 'users', userCredential.user.uid);
-      const snapshot = await getDoc(userDoc);
-      const data = snapshot.data() as { role?: string };
-      this.roleSubject.next(data?.role || 'viewer');
+      const snapshot = await getDoc(doc(this.firestore, 'users', userCredential.user.uid));
+      const data = snapshot.data();
+      const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
+      this.rolesSubject.next(roles);
 
       return userCredential.user;
     });
@@ -89,7 +98,8 @@ export class AuthService {
 
   logout() {
     this.userSubject.next(null);
-    this.roleSubject.next('viewer');
+    this.rolesSubject.next([]);
+    this.viewAsRoleSubject.next(null);
     return signOut(this.auth);
   }
 
@@ -99,20 +109,22 @@ export class AuthService {
       const user = result.user;
       this.userSubject.next(user);
 
-      const userDocRef = doc(this.firestore, 'users', user.uid);
-      const docSnap = await getDoc(userDocRef);
+      const userDoc = doc(this.firestore, 'users', user.uid);
+      const snapshot = await getDoc(userDoc);
 
-      if (!docSnap.exists()) {
-        await setDoc(userDocRef, {
+      if (!snapshot.exists()) {
+        await setDoc(userDoc, {
           uid: user.uid,
-          email: user.email,
           displayName: user.displayName,
-          role: 'viewer'
+          email: user.email,
+          roles: ['viewer']
         });
+        this.rolesSubject.next(['viewer']);
+      } else {
+        const data = snapshot.data();
+        const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
+        this.rolesSubject.next(roles);
       }
-
-      const data = (await getDoc(userDocRef)).data() as { role?: string };
-      this.roleSubject.next(data?.role || 'viewer');
 
       return user;
     });

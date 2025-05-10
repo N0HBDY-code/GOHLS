@@ -92,7 +92,8 @@ export class PlayersComponent implements OnInit {
 
     await addDoc(collection(this.firestore, 'players'), {
       ...this.playerForm,
-      userId: user.uid
+      userId: user.uid,
+      teamId:'none'
     });
 
     this.hasPlayer = true;

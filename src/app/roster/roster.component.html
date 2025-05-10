@@ -3,64 +3,67 @@
       <h6 class="mb-0">Team Roster</h6>
     </div>
     <div class="card-body">
-      <!-- Add Player -->
-      <form (ngSubmit)="addPlayer()" class="row g-2 mb-3">
-        <div class="col-md-4">
-          <input class="form-control" [(ngModel)]="name" name="name" placeholder="Player Name" required>
-        </div>
-        <div class="col-md-4">
-          <input class="form-control" [(ngModel)]="position" name="position" placeholder="Position" required>
-        </div>
-        <div class="col-md-2">
-          <input class="form-control" type="number" [(ngModel)]="number" name="number" placeholder="Number" required>
+      <!-- Add Player from existing pool -->
+      <form (ngSubmit)="addPlayer()" class="row g-2 mb-3 align-items-end">
+        <div class="col-md-10">
+          <label class="form-label">Select Player</label>
+          <select class="form-select" [(ngModel)]="selectedPlayerId" name="selectedPlayerId" required>
+            <option value="" disabled>Select from global players...</option>
+            <option *ngFor="let player of availablePlayers" [value]="player.id">
+              #{{ player.number || '??' }} - {{ player.firstName || '' }} {{ player.lastName || 'Unnamed' }} ({{ player.position }})
+            </option>
+          </select>
         </div>
         <div class="col-md-2">
           <button class="btn btn-success w-100">Add</button>
         </div>
       </form>
   
-      <!-- Player List -->
-      <ul class="list-group">
-        <li class="list-group-item" *ngFor="let player of players">
-  
-          <!-- Edit mode -->
-          <div *ngIf="editModeId === player.id; else viewMode">
-            <div class="row g-2 align-items-center">
-              <div class="col-md-4">
-                <input class="form-control" [(ngModel)]="editName" name="editName">
-              </div>
-              <div class="col-md-4">
-                <input class="form-control" [(ngModel)]="editPosition" name="editPosition">
-              </div>
-              <div class="col-md-2">
-                <input type="number" class="form-control" [(ngModel)]="editNumber" name="editNumber">
-              </div>
-              <div class="col-md-2 d-flex gap-1">
-                <button class="btn btn-success btn-sm w-50" (click)="updatePlayer()">💾</button>
-                <button class="btn btn-secondary btn-sm w-50" (click)="cancelEdit()">✖</button>
-              </div>
-            </div>
-          </div>
-  
-          <!-- View mode -->
-          <ng-template #viewMode>
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                #{{ player.number }} — <strong>{{ player.name }}</strong> ({{ player.position }})
-              </div>
-              <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-primary" (click)="startEdit(player)">✏️</button>
+      <!-- Roster List -->
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Pos</th>
+              <th>Archetype</th>
+              <th>Height</th>
+              <th>Weight</th>
+              <th>Hand</th>
+              <th>Age</th>
+              <th>Rookie</th>
+              <th>Exp</th>
+              <th>NTC</th>
+              <th>OVR</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of players">
+              <td>{{ player.number }}</td>
+              <td>{{ player.firstName }} {{ player.lastName }}</td>
+              <td>{{ player.position }}</td>
+              <td>{{ player.archetype || '-' }}</td>
+              <td>{{ player.height || '-' }}</td>
+              <td>{{ player.weight || '-' }}</td>
+              <td>{{ player.handedness || '-' }}</td>
+              <td>{{ player.age || '-' }}</td>
+              <td>{{ player.rookie ? 'Yes' : 'No' }}</td>
+              <td>{{ player.expiration || '-' }}</td>
+              <td>{{ player.noTradeClause ? 'Yes' : 'No' }}</td>
+              <td>{{ player.overall ?? '-' }}</td>
+              <td>
                 <button class="btn btn-sm btn-outline-danger" (click)="deletePlayer(player.id!)">🗑</button>
-              </div>
-            </div>
-          </ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
   
-        </li>
-      </ul>
-  
-      <!-- Load More Players -->
+      <!-- Load More -->
       <div class="text-center mt-3" *ngIf="lastPlayerDoc">
-        <button class="btn btn-outline-secondary btn-sm" (click)="loadNextPlayers()">Load More Players</button>
+        <button class="btn btn-outline-secondary btn-sm" (click)="loadNextPlayers()">Load More</button>
       </div>
     </div>
   </div>
