@@ -9,7 +9,8 @@ import { GamesComponent } from './games/games.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { ReportsComponent } from './reports/reports.component';
 import { TeamsComponent } from './teams/teams.component';
-
+import { PlayersComponent } from './players/players.component';
+import { PlayerManagerComponent } from './player-manager/player-manager.component';
 export const routes: Routes = [
     {
         path: '',
@@ -58,6 +59,15 @@ export const routes: Routes = [
         path:'teams',
         component: TeamsComponent,
         title: 'Teams'
-    }
+    },{
+        path: 'teams/:id',
+        loadComponent: () => import('./team-detail/team-detail.component').then(m => m.TeamDetailComponent),
+        title: 'Team Details'
+      },
+      {
+        path:'player',
+        component: PlayersComponent,
+        title:'Player'
+      }
 
 ];

@@ -1,0 +1,69 @@
+<div class="container mt-4">
+    <div class="row">
+      <!-- Player Info Card -->
+      <div class="col-md-5">
+        <div class="card">
+          <div class="card-header fw-bold">Player Information</div>
+          <div class="card-body" *ngIf="player">
+            <p><strong>Name:</strong> {{ player.firstName }} {{ player.lastName }}</p>
+            <p><strong>Gamertag:</strong> {{ player.gamertag }}</p>
+            <p><strong>Position:</strong> {{ player.position }}</p>
+            <p><strong>Archetype:</strong> {{ player.archetype }}</p>
+            <p><strong>Jersey Number:</strong> {{ player.jerseyNumber }}</p>
+            <p><strong>Handedness:</strong> {{ player.handedness }}</p>
+            <p><strong>Height:</strong> {{ player.height }}</p>
+            <p><strong>Weight:</strong> {{ player.weight }}</p>
+            <p><strong>Fighting Tendencies:</strong> {{ player.fight }}</p>
+            <p><strong>Origin:</strong> {{ player.origin }}</p>
+            <p><strong>Hair:</strong> {{ player.hair }}</p>
+            <p><strong>Beard:</strong> {{ player.beard }}</p>
+            <p><strong>Stick Tape Color:</strong> {{ player.tape }}</p>
+            <p><strong>Ethnicity:</strong> {{ player.ethnicity }}</p>
+            <p><strong>Twitch:</strong> {{ player.twitch }}</p>
+            <p><strong>How You Found Us:</strong> {{ player.referral }}</p>
+            <p><strong>Invited By:</strong> {{ player.invitedBy }}</p>
+            <p><strong>Age:</strong> {{ player.age || 19 }}</p>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Training Submission -->
+      <div class="col-md-7">
+        <div class="card">
+          <div class="card-header fw-bold">Weekly Progression</div>
+          <div class="card-body">
+            <form (ngSubmit)="submitTraining()">
+              <div class="mb-3">
+                <label class="form-label">Select Training</label>
+                <select class="form-select" [(ngModel)]="tempTrainingType" name="training">
+                  <option *ngFor="let option of trainingOptions" [value]="option">{{ option }}</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary">Submit Training</button>
+            </form>
+  
+            <!-- Training Submission Display -->
+            <div *ngIf="trainingSubmitted" class="mt-3">
+              <p>
+                <strong>Submitted Training:</strong> {{ trainingType }}
+                <span
+                  class="badge"
+                  [ngClass]="{
+                    'bg-warning text-dark': trainingStatus === 'pending',
+                    'bg-success': trainingStatus === 'processed'
+                  }"
+                >
+                  {{ trainingStatus | titlecase }}
+                </span>
+              </p>
+  
+              <div *ngIf="trainingType === 'Learn Secondary Position'">
+                <p><strong>Progress toward secondary position:</strong> {{ secondaryProgress }}/3</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  

@@ -1,110 +1,81 @@
 import { Component } from '@angular/core';
-import { Firestore, collection, addDoc, doc, deleteDoc, updateDoc, query, getDocs, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot } from '@angular/fire/firestore';
-import { FormsModule } from '@angular/forms';
+import { Firestore, collection, addDoc, getDocs, doc, deleteDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
-import { Observable } from 'rxjs';
-import { RosterComponent } from '../roster/roster.component';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 interface Team {
   id?: string;
-  name: string;
-  sport: string;
   city: string;
+  mascot: string;
+  logoFile: File | null;
+  logoUrl?: string;
 }
 
 @Component({
   selector: 'app-teams',
   standalone: true,
-  imports: [CommonModule, FormsModule, RosterComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './teams.component.html',
   styleUrls: ['./teams.component.css']
 })
 export class TeamsComponent {
-  name = '';
-  sport = '';
   city = '';
-  editModeId: string | null = null;
-  selectedTeamId: string | null = null;
-
+  mascot = '';
+  logoFile: File | null = null;
   teams: Team[] = [];
-  lastTeamDoc: QueryDocumentSnapshot<DocumentData> | null = null;
-  pageSize = 5;
 
-  private teamsRef;
-
-  constructor(private firestore: Firestore) {
-    this.teamsRef = collection(this.firestore, 'teams');
-  }
-
-  async ngOnInit(): Promise<void> {
-    await this.loadTeams();
+  constructor(private firestore: Firestore, private router: Router) {
+    this.loadTeams();
   }
 
   async loadTeams() {
-    const q = query(this.teamsRef, orderBy('name'), limit(this.pageSize));
-    const snapshot = await getDocs(q);
+    const teamsRef = collection(this.firestore, 'teams');
+    const snapshot = await getDocs(teamsRef);
     this.teams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-    this.lastTeamDoc = snapshot.docs[snapshot.docs.length - 1] || null;
   }
 
-  async loadNextPage() {
-    if (!this.lastTeamDoc) return;
-    const q = query(this.teamsRef, orderBy('name'), startAfter(this.lastTeamDoc), limit(this.pageSize));
-    const snapshot = await getDocs(q);
-    const nextTeams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-    this.teams = [...this.teams, ...nextTeams];
-    this.lastTeamDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+  onFileSelected(event: any) {
+    this.logoFile = event.target.files[0] || null;
   }
 
   async addTeam() {
-    if (!this.name || !this.sport || !this.city) {
-      alert('Please fill in all fields');
+    if (!this.city || !this.mascot || !this.logoFile) {
+      alert('All fields are required.');
       return;
     }
 
-    const newTeam: Team = { name: this.name, sport: this.sport, city: this.city };
-    await addDoc(this.teamsRef, newTeam);
-    this.clearForm();
-    await this.loadTeams(); // refresh
+    // For simplicity, store as base64; for production, use Firebase Storage
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const newTeam: Team = {
+        city: this.city,
+        mascot: this.mascot,
+        logoFile: this.logoFile,
+        logoUrl: reader.result as string
+      };
+
+      await addDoc(collection(this.firestore, 'teams'), {
+        city: newTeam.city,
+        mascot: newTeam.mascot,
+        logoUrl: newTeam.logoUrl
+      });
+
+      this.city = '';
+      this.mascot = '';
+      this.logoFile = null;
+      await this.loadTeams();
+    };
+
+    reader.readAsDataURL(this.logoFile);
   }
 
-  startEdit(team: Team) {
-    this.editModeId = team.id!;
-    this.name = team.name;
-    this.sport = team.sport;
-    this.city = team.city;
-  }
-
-  async updateTeam() {
-    if (!this.editModeId) return;
-    const teamDoc = doc(this.firestore, `teams/${this.editModeId}`);
-    await updateDoc(teamDoc, {
-      name: this.name,
-      sport: this.sport,
-      city: this.city
-    });
-    this.clearForm();
-    await this.loadTeams();
-  }
+  viewTeam(teamId: string) {
+    this.router.navigate(['/teams', teamId]);
+  }  
 
   async deleteTeam(id: string) {
-    const teamDoc = doc(this.firestore, `teams/${id}`);
-    await deleteDoc(teamDoc);
+    await deleteDoc(doc(this.firestore, `teams/${id}`));
     await this.loadTeams();
-  }
-
-  cancelEdit() {
-    this.clearForm();
-  }
-
-  private clearForm() {
-    this.name = '';
-    this.sport = '';
-    this.city = '';
-    this.editModeId = null;
-  }
-
-  toggleRoster(teamId: string) {
-    this.selectedTeamId = this.selectedTeamId === teamId ? null : teamId;
   }
 }

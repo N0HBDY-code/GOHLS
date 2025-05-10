@@ -1,0 +1,6 @@
+<div class="container mt-4" *ngIf="team">
+    <h2>{{ team.city }} {{ team.mascot }}</h2>
+    <img *ngIf="team.logoUrl" [src]="team.logoUrl" class="img-fluid" alt="Logo" />
+    <!-- You can add more info here, like roster, stats, etc. -->
+  </div>
+  
