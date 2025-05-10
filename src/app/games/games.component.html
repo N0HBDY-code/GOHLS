@@ -1,0 +1,67 @@
+<div class="container mt-4">
+    <!-- Team Selector -->
+    <div class="mb-4">
+      <label for="teamSelect" class="form-label">Select Team</label>
+      <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
+        <option value="">-- Choose a Team --</option>
+        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+      </select>
+    </div>
+  
+    <!-- Game Creation -->
+    <form class="row g-2 mb-4" (ngSubmit)="createGame()">
+      <div class="col-md-5">
+        <input type="text" class="form-control" placeholder="Opponent" [(ngModel)]="opponent" name="opponent" required>
+      </div>
+      <div class="col-md-4">
+        <input type="date" class="form-control" [(ngModel)]="date" name="date" required>
+      </div>
+      <div class="col-md-3">
+        <button class="btn btn-success w-100">Create Game</button>
+      </div>
+      
+    </form>
+  
+    <!-- Game List -->
+    <h5>Games</h5>
+    <ul class="list-group mb-4">
+      <li class="list-group-item d-flex justify-content-between align-items-center"
+          *ngFor="let game of games">
+        <span>{{ game.date }} vs {{ game.opponent }}</span>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-outline-primary" (click)="selectGame(game.id!)">Enter Stats</button>
+          <button class="btn btn-sm btn-outline-danger" (click)="deleteGame(game.id!)">Delete</button>
+        </div>
+      </li>
+    </ul>
+  
+    <!-- Stat Entry Table -->
+    <div *ngIf="selectedGameId">
+      <h5>Enter Stats</h5>
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Player</th>
+            <th>#</th>
+            <th>Pos</th>
+            <th>Points</th>
+            <th>Assists</th>
+            <th>Rebounds</th>
+            <th>Save</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let player of players">
+            <td>{{ player.name }}</td>
+            <td>{{ player.number }}</td>
+            <td>{{ player.position }}</td>
+            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].points" name="pts{{player.id}}"></td>
+            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].assists" name="ast{{player.id}}"></td>
+            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].rebounds" name="reb{{player.id}}"></td>
+            <td><button class="btn btn-sm btn-success" (click)="saveStats(player.id)">Save</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  

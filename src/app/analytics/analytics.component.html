@@ -1,0 +1,25 @@
+<div class="container mt-4">
+    <h3>Team Analytics</h3>
+  
+    <div class="mb-3">
+      <label for="teamSelect" class="form-label">Select Team</label>
+      <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
+        <option value="">-- Choose a Team --</option>
+        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+      </select>
+    </div>
+  
+    <div *ngIf="selectedTeamId" class="card shadow p-4">
+      <h5 class="mb-3">Stats for {{ selectedTeamName }}</h5>
+      <ul class="list-group">
+        <li class="list-group-item">Games Played: <strong>{{ totalGames }}</strong></li>
+        <li class="list-group-item">Total Points: <strong>{{ totalPoints }}</strong></li>
+        <li class="list-group-item">Total Assists: <strong>{{ totalAssists }}</strong></li>
+        <li class="list-group-item">Total Rebounds: <strong>{{ totalRebounds }}</strong></li>
+        <li class="list-group-item">Avg Points/Game: <strong>{{ avgPoints }}</strong></li>
+        <li class="list-group-item">Avg Assists/Game: <strong>{{ avgAssists }}</strong></li>
+        <li class="list-group-item">Avg Rebounds/Game: <strong>{{ avgRebounds }}</strong></li>
+      </ul>
+    </div>
+  </div>
+  

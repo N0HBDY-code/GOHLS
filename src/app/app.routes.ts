@@ -4,6 +4,11 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { RegisterComponent } from './register/register.component';
 import { VerifyEmailComponent } from './verify-email/verify-email.component';
 import { ForgotPasswordComponent } from './forgot-password/forgot-password.component';
+import { Analytics } from '@angular/fire/analytics';
+import { GamesComponent } from './games/games.component';
+import { AnalyticsComponent } from './analytics/analytics.component';
+import { ReportsComponent } from './reports/reports.component';
+import { TeamsComponent } from './teams/teams.component';
 
 export const routes: Routes = [
     {
@@ -33,6 +38,26 @@ export const routes: Routes = [
     {
         path: 'forgot-password',
         component: ForgotPasswordComponent
+    },
+    {
+        path:'analytics',
+        component: AnalyticsComponent,
+        title: 'Analytics'
+    },
+    {
+        path:'games',
+        component: GamesComponent,
+        title: 'Games'
+    },
+    {
+        path:'reports',
+        component: ReportsComponent,
+        title: 'Reports'
+    },
+    {
+        path:'teams',
+        component: TeamsComponent,
+        title: 'Teams'
     }
 
 ];

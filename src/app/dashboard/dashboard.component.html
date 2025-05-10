@@ -1,55 +1,34 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light px-3">
-  <div class="container-fluid">
-    <!-- Brand -->
-    <a class="navbar-brand fw-bold" routerLink="/dashboard">Sports Stats Now</a>
 
-    <!-- Toggler (hamburger icon) -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
-      aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <!-- Collapsible content -->
-    <div class="collapse navbar-collapse" id="navbarSupportedContent">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/dashboard">Dashboard</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/teams">Teams</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/games">Games</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/analytics">Analytics</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link" routerLink="/reports">Reports</a>
-        </li>
-      </ul>
-
-      <!-- Logout button aligned right -->
-      <div class="d-flex">
-        <button class="btn btn-outline-danger" (click)="logout()">Logout</button>
-      </div>
-    </div>
-  </div>
-</nav>
-
-<!-- User Info Card -->
-<div class="row">
-  <div class="col"></div>
-  <div class="col-md-4">
-    <div class="text-center">
-      <div class="card shadow mt-3">
+<div class="container mt-5">
+  <div class="row justify-content-center mb-4">
+    <div class="col-md-6">
+      <div class="card bg-light shadow text-center">
         <div class="card-body">
-          <div>User ID: {{ user?.uid }}</div>
-          <div>User Name: {{ user?.displayName }}</div>
-          <div>Email: {{ user?.email }}</div>
+          <h4 class="card-title">Welcome to the Sports Dashboard</h4>
+          <p class="card-text">Live game data and user info will appear below.</p>
         </div>
       </div>
     </div>
   </div>
-  <div class="col"></div>
+
+  <div class="row mb-4 justify-content-center">
+    <div class="col-md-6">
+      <div class="card text-white bg-dark shadow text-center">
+        <div class="card-body">
+          <h4 class="card-title">Live Game Date</h4>
+          <p class="card-text fs-5">{{ today | date:'fullDate' }} - {{ today | date:'shortTime' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngFor="let game of games$ | async" class="mb-2">
+    <div class="card">
+      <div class="card-body">
+        <h5 class="card-title">{{ game.name || 'Untitled Game' }}</h5>
+        <p class="card-text">Date: {{ game.date?.toDate() | date }}</p>
+        <p class="card-text">Score: {{ game.totalPoints }}</p>
+      </div>
+    </div>
+  </div>
 </div>
