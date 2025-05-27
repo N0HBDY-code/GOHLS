@@ -42,6 +42,9 @@ interface Game {
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
   schedule: Game[] = [];
+  selectedTeamId: string = '';
+  opponent: string = '';
+  date: string = '';
 
   weeks = 10;
   daysPerWeek = 3;
@@ -61,6 +64,36 @@ export class GamesComponent implements OnInit {
       division: doc.data()['division'] || 'Unknown',
       logoUrl: doc.data()['logoUrl'] || ''
     }));
+  }
+
+  async onTeamSelect() {
+    if (!this.selectedTeamId) return;
+    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
+    const snapshot = await getDocs(gamesRef);
+    this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+  }
+
+  async createGame() {
+    if (!this.selectedTeamId || !this.opponent || !this.date) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    const gameData = {
+      opponent: this.opponent,
+      date: this.date,
+      createdAt: new Date()
+    };
+
+    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
+    await addDoc(gamesRef, gameData);
+
+    // Reset form
+    this.opponent = '';
+    this.date = '';
+
+    // Refresh games list
+    await this.onTeamSelect();
   }
 
   async generateSchedule() {
