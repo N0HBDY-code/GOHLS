@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Firestore, collection, addDoc, getDocs, doc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -10,6 +10,8 @@ interface Team {
   mascot: string;
   logoFile: File | null;
   logoUrl?: string;
+  conference: string;
+  division: string;
 }
 
 @Component({
@@ -23,7 +25,23 @@ export class TeamsComponent {
   city = '';
   mascot = '';
   logoFile: File | null = null;
+  selectedConference = '';
+  selectedDivision = '';
   teams: Team[] = [];
+
+  showEditTeamModal = false;
+  editTeamData?: Team;
+
+  conferences = [
+    {
+      name: 'Mr. Hockey Conference',
+      divisions: ['Europe Division', 'Great Lakes Division', 'Atlantic Division']
+    },
+    {
+      name: 'The Rocket Conference',
+      divisions: ['Northwest Division', 'Pacific Division', 'South Division']
+    }
+  ];
 
   constructor(private firestore: Firestore, private router: Router) {
     this.loadTeams();
@@ -39,43 +57,98 @@ export class TeamsComponent {
     this.logoFile = event.target.files[0] || null;
   }
 
+  onEditLogoSelected(event: any) {
+    if (this.editTeamData) {
+      this.editTeamData.logoFile = event.target.files[0] || null;
+    }
+  }
+
   async addTeam() {
-    if (!this.city || !this.mascot || !this.logoFile) {
+    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision) {
       alert('All fields are required.');
       return;
     }
 
-    // For simplicity, store as base64; for production, use Firebase Storage
     const reader = new FileReader();
     reader.onload = async () => {
       const newTeam: Team = {
         city: this.city,
         mascot: this.mascot,
         logoFile: this.logoFile,
-        logoUrl: reader.result as string
+        logoUrl: reader.result as string,
+        conference: this.selectedConference,
+        division: this.selectedDivision
       };
 
       await addDoc(collection(this.firestore, 'teams'), {
         city: newTeam.city,
         mascot: newTeam.mascot,
-        logoUrl: newTeam.logoUrl
+        logoUrl: newTeam.logoUrl,
+        conference: newTeam.conference,
+        division: newTeam.division,
+        name: `${newTeam.city} ${newTeam.mascot}`
       });
 
       this.city = '';
       this.mascot = '';
       this.logoFile = null;
+      this.selectedConference = '';
+      this.selectedDivision = '';
       await this.loadTeams();
     };
 
     reader.readAsDataURL(this.logoFile);
   }
 
-  viewTeam(teamId: string) {
-    this.router.navigate(['/teams', teamId]);
-  }  
-
   async deleteTeam(id: string) {
     await deleteDoc(doc(this.firestore, `teams/${id}`));
     await this.loadTeams();
+  }
+
+  viewTeam(teamId: string) {
+    this.router.navigate(['/teams', teamId]);
+  }
+
+  getTeamsByDivision(conference: string, division: string): Team[] {
+    return this.teams.filter(t => t.conference === conference && t.division === division);
+  }
+
+  openEditTeamModal(team: Team) {
+    this.editTeamData = { ...team, logoFile: null }; // reset logoFile
+    this.showEditTeamModal = true;
+  }
+
+  async saveTeamChanges() {
+    if (!this.editTeamData?.id) return;
+
+    const updates: any = {
+      city: this.editTeamData.city,
+      mascot: this.editTeamData.mascot,
+      conference: this.editTeamData.conference,
+      division: this.editTeamData.division,
+      name: `${this.editTeamData.city} ${this.editTeamData.mascot}`
+    };
+
+    if (this.editTeamData.logoFile) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        updates.logoUrl = reader.result as string;
+        await updateDoc(doc(this.firestore, `teams/${this.editTeamData!.id}`), updates);
+        this.showEditTeamModal = false;
+        this.editTeamData = undefined;
+        await this.loadTeams();
+      };
+      reader.readAsDataURL(this.editTeamData.logoFile);
+    } else {
+      await updateDoc(doc(this.firestore, `teams/${this.editTeamData.id}`), updates);
+      this.showEditTeamModal = false;
+      this.editTeamData = undefined;
+      await this.loadTeams();
+    }
+  }
+
+  getDivisionsForConference(confName: string): string[] {
+    const conf = this.conferences.find(c => c.name === confName);
+    return conf?.divisions ?? [];
   }
 }

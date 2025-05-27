@@ -15,25 +15,21 @@ import { FormsModule } from '@angular/forms';
 interface Team {
   id: string;
   name: string;
+  conference: string;
+  division: string;
+  logoUrl?: string;
 }
 
 interface Game {
   id?: string;
-  opponent: string;
+  teamAId: string;
+  teamBId: string;
   date: string;
-}
-
-interface Player {
-  id: string;
-  name: string;
-  number: number;
-  position: string;
-}
-
-interface PlayerStats {
-  points: number;
-  assists: number;
-  rebounds: number;
+  homeTeam: string;
+  awayTeam: string;
+  homeLogo?: string;
+  awayLogo?: string;
+  tags?: string[];
 }
 
 @Component({
@@ -45,144 +41,112 @@ interface PlayerStats {
 })
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
-  selectedTeamId = '';
-  games: Game[] = [];
-  selectedGameId: string | null = null;
+  schedule: Game[] = [];
 
-  opponent = '';
-  date = '';
-
-  players: Player[] = [];
-  playerStatsMap: Record<string, PlayerStats> = {};
-
-  score = '';
+  weeks = 10;
+  daysPerWeek = 3;
+  gamesPerDay = 3;
+  intraDivGames = 2;
+  intraConfGames = 1;
+  interConfGames = 1;
 
   constructor(private firestore: Firestore) {}
 
   async ngOnInit() {
-    await this.loadTeams();
-  }
-
-  async loadTeams() {
-    const teamsRef = collection(this.firestore, 'teams');
-    const snapshot = await getDocs(teamsRef);
+    const snapshot = await getDocs(collection(this.firestore, 'teams'));
     this.teams = snapshot.docs.map(doc => ({
       id: doc.id,
-      name: (doc.data() as any).name || 'Unnamed'
+      name: doc.data()['name'] || 'Unnamed',
+      conference: doc.data()['conference'] || 'Unknown',
+      division: doc.data()['division'] || 'Unknown',
+      logoUrl: doc.data()['logoUrl'] || ''
     }));
   }
 
-  async onTeamSelect() {
-    if (!this.selectedTeamId) return;
-    await this.loadGames();
-    await this.loadRoster();
-  }
+  async generateSchedule() {
+    const schedule: Game[] = [];
+    const allDates: string[] = [];
+    const today = new Date();
 
-  async loadGames() {
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const snapshot = await getDocs(gamesRef);
-    this.games = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Game[];
-  }
-
-  async loadRoster() {
-    const rosterRef = collection(this.firestore, `teams/${this.selectedTeamId}/roster`);
-    const snapshot = await getDocs(rosterRef);
-    this.players = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Player[];
-  }
-
-  async createGame() {
-    if (!this.opponent || !this.date || !this.selectedTeamId) {
-      alert('Missing team or inputs');
-      return;
+    for (let w = 0; w < this.weeks; w++) {
+      for (let d = 0; d < this.daysPerWeek; d++) {
+        const date = new Date(today);
+        date.setDate(today.getDate() + (w * 7) + d);
+        allDates.push(date.toISOString().split('T')[0]);
+      }
     }
 
-    const gameData = {
-      opponent: this.opponent,
-      date: new Date(this.date),
-      location: 'TBD',
-      score: '',
-      teamId: this.selectedTeamId
+    const matchups = new Set<string>();
+    const getKey = (a: string, b: string) => [a, b].sort().join('-');
+    const getRandomDate = (): string => {
+      let attempts = 0;
+      while (attempts++ < 100) {
+        const date = allDates[Math.floor(Math.random() * allDates.length)];
+        const count = schedule.filter(g => g.date === date).length;
+        if (count < this.gamesPerDay) return date;
+      }
+      return allDates[0];
     };
 
-    const teamGamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    await addDoc(teamGamesRef, gameData);
+    const canPlay = (team: string, date: string) => {
+      return !schedule.some(g => (g.homeTeam === team || g.awayTeam === team) && g.date === date);
+    };
 
-    const globalGamesRef = collection(this.firestore, 'games');
-    await addDoc(globalGamesRef, gameData);
+    const attemptSchedule = (groupA: Team[], groupB: Team[], gamesPer: number, isCross = false) => {
+      for (const teamA of groupA) {
+        const pool = isCross ? groupB : groupB.filter(t => t.id !== teamA.id);
+        for (const teamB of pool) {
+          const key = getKey(teamA.id, teamB.id);
+          if (matchups.has(key)) continue;
 
-    this.opponent = '';
-    this.date = '';
-    await this.loadGames();
-  }
+          for (let i = 0; i < gamesPer; i++) {
+            const date = getRandomDate();
+            if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
+              const home = Math.random() < 0.5 ? teamA : teamB;
+              const away = home.id === teamA.id ? teamB : teamA;
+              schedule.push({
+                teamAId: teamA.id,
+                teamBId: teamB.id,
+                date,
+                homeTeam: home.name,
+                awayTeam: away.name,
+                homeLogo: home.logoUrl,
+                awayLogo: away.logoUrl,
+                tags: teamA.division === teamB.division && teamA.conference === teamB.conference ? ['rivalry'] : []
+              });
+            }
+          }
+          matchups.add(key);
+        }
+      }
+    };
 
-  async selectGame(gameId: string) {
-    if (this.selectedGameId === gameId) {
-      this.selectedGameId = null;
-      return;
+    const conferences = [...new Set(this.teams.map(t => t.conference))];
+
+    for (const conf of conferences) {
+      const confTeams = this.teams.filter(t => t.conference === conf);
+      const divisions = [...new Set(confTeams.map(t => t.division))];
+      for (const div of divisions) {
+        const divTeams = confTeams.filter(t => t.division === div);
+        attemptSchedule(divTeams, divTeams, this.intraDivGames);
+      }
+      for (let i = 0; i < divisions.length; i++) {
+        for (let j = i + 1; j < divisions.length; j++) {
+          const divA = confTeams.filter(t => t.division === divisions[i]);
+          const divB = confTeams.filter(t => t.division === divisions[j]);
+          attemptSchedule(divA, divB, this.intraConfGames);
+        }
+      }
     }
 
-    this.selectedGameId = gameId;
-    this.playerStatsMap = {};
-
-    for (const player of this.players) {
-      const statDoc = doc(this.firestore, `teams/${this.selectedTeamId}/games/${gameId}/stats/${player.id}`);
-      const snap = await getDoc(statDoc);
-      this.playerStatsMap[player.id] = snap.exists()
-        ? (snap.data() as PlayerStats)
-        : { points: 0, assists: 0, rebounds: 0 };
-    }
-  }
-
-  async saveStats(playerId: string) {
-    if (!this.selectedGameId || !this.selectedTeamId) return;
-
-    const stats = this.playerStatsMap[playerId];
-    const statDoc = doc(this.firestore, `teams/${this.selectedTeamId}/games/${this.selectedGameId}/stats/${playerId}`);
-    await setDoc(statDoc, stats);
-
-    let teamScore = 0;
-    for (const stat of Object.values(this.playerStatsMap)) {
-      teamScore += stat.points;
+    for (let i = 0; i < conferences.length; i++) {
+      for (let j = i + 1; j < conferences.length; j++) {
+        const confA = this.teams.filter(t => t.conference === conferences[i]);
+        const confB = this.teams.filter(t => t.conference === conferences[j]);
+        attemptSchedule(confA, confB, this.interConfGames, true);
+      }
     }
 
-    const opponentScore = 32;
-    this.score = `${teamScore}-${opponentScore}`;
-
-    const teamGameDoc = doc(this.firestore, `teams/${this.selectedTeamId}/games/${this.selectedGameId}`);
-    await setDoc(teamGameDoc, { score: this.score }, { merge: true });
-
-    const globalGamesRef = collection(this.firestore, 'games');
-    const snapshot = await getDocs(globalGamesRef);
-    const matching = snapshot.docs.find(doc =>
-      doc.data()['teamId'] === this.selectedTeamId &&
-      doc.data()['date']?.toDate?.().toDateString?.() === new Date(this.date).toDateString()
-    );
-
-    if (matching) {
-      await setDoc(matching.ref, { score: this.score }, { merge: true });
-    }
-  }
-
-  async deleteGame(gameId: string) {
-    const confirmDelete = confirm('Are you sure you want to delete this game and its stats?');
-    if (!confirmDelete || !this.selectedTeamId) return;
-
-    const statsRef = collection(this.firestore, `teams/${this.selectedTeamId}/games/${gameId}/stats`);
-    const statDocs = await getDocs(statsRef);
-    for (const statDocSnap of statDocs.docs) {
-      await deleteDoc(statDocSnap.ref);
-    }
-
-    const gameDoc = doc(this.firestore, `teams/${this.selectedTeamId}/games/${gameId}`);
-    await deleteDoc(gameDoc);
-
-    if (this.selectedGameId === gameId) this.selectedGameId = null;
-    await this.loadGames();
+    this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
   }
 }

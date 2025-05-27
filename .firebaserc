@@ -1,0 +1,9 @@
+{
+  "projects": {
+    "default": "gohls-3033e",
+    "GOHLS": "gohls-3033e",
+    "gohls": "gohls-3033e"
+  },
+  "targets": {},
+  "etags": {}
+}

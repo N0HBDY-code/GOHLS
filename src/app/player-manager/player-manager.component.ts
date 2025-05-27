@@ -3,7 +3,7 @@ import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getD
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-
+import { serverTimestamp } from '@angular/fire/firestore';
 @Component({
   selector: 'app-player-manager',
   standalone: true,
@@ -106,34 +106,44 @@ export class PlayerManagerComponent implements OnInit {
   }
 
   async submitTraining() {
-    if (!this.tempTrainingType || !this.player?.id) return;
-
+    if (!this.tempTrainingType || !this.player?.id || !this.player?.teamId) return;
+  
     const trainingData = {
       training: this.tempTrainingType,
       timestamp: new Date(),
       status: 'pending'
     };
-
-    const trainingCollection = collection(this.firestore, `players/${this.player.id}/progressions`);
-
+  
+    const playerProgressionRef = collection(this.firestore, `players/${this.player.id}/progressions`);
+    const teamProgressionRef = collection(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression`);
+  
     if (this.existingTrainingId) {
+      // Update existing training
       const trainingDoc = doc(this.firestore, `players/${this.player.id}/progressions/${this.existingTrainingId}`);
       await updateDoc(trainingDoc, trainingData);
+      
+      const teamDoc = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression/${this.existingTrainingId}`);
+      await setDoc(teamDoc, trainingData); // overwrite or create in team view
     } else {
-      const docRef = await addDoc(trainingCollection, trainingData);
+      // Add new training
+      const docRef = await addDoc(playerProgressionRef, trainingData);
       this.existingTrainingId = docRef.id;
+  
+      const teamDoc = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression/${docRef.id}`);
+      await setDoc(teamDoc, trainingData);
     }
-
+  
     this.trainingType = this.tempTrainingType;
     this.trainingStatus = 'pending';
-
+  
     if (this.trainingType === 'Learn Secondary Position') {
       this.secondaryProgress++;
       if (this.secondaryProgress >= 3) {
         alert('You have successfully learned your secondary position!');
       }
     }
-
+  
     this.trainingSubmitted = true;
   }
+  
 }

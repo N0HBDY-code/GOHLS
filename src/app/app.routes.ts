@@ -58,8 +58,8 @@ export const routes: Routes = [
         title: 'Reports'
     },
     {
-        path:'teams',
-        component: TeamsComponent,
+        path: 'teams',
+        loadComponent: () => import('./teams/teams.component').then(m => m.TeamsComponent),
         title: 'Teams'
     },
     {
@@ -86,10 +86,4 @@ export const routes: Routes = [
         title: 'Progression Tracker',
         canActivate: [RoleGuard(['developer', 'commissioner', 'progression tracker'])]
       }
-      
-      
-      
-          
-      
-
 ];

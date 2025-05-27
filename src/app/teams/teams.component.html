@@ -1,36 +1,118 @@
 <div class="container mt-4">
-    <h2 class="text-center mb-4">Add Team</h2>
-  
-    <form (ngSubmit)="addTeam()" class="mb-5">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <input type="text" class="form-control" [(ngModel)]="city" name="city" placeholder="City" required />
-        </div>
-        <div class="col-md-4">
-          <input type="text" class="form-control" [(ngModel)]="mascot" name="mascot" placeholder="Mascot" required />
-        </div>
-        <div class="col-md-4">
-          <input type="file" class="form-control" (change)="onFileSelected($event)" required />
-        </div>
-      </div>
-      <div class="text-center mt-3">
-        <button type="submit" class="btn btn-primary">Add Team</button>
-      </div>
-    </form>
-  
-    <h3 class="text-center mb-4">Teams</h3>
-    <div class="row">
-      <div class="col-md-4 mb-4" *ngFor="let team of teams">
-        <div class="card h-100 shadow-sm" (click)="viewTeam(team.id!)" style="cursor: pointer;">
-          <img *ngIf="team.logoUrl" [src]="team.logoUrl" class="card-img-top" alt="Team Logo" />
-          <div class="card-body">
-            <h5 class="card-title text-center">{{ team.city }} {{ team.mascot }}</h5>
+  <!-- Add Team Form -->
+  <div class="card mt-5">
+    <div class="card-header">
+      <h5 class="mb-0">Add New Team</h5>
+    </div>
+    <div class="card-body">
+      <form (ngSubmit)="addTeam()">
+        <div class="row">
+          <div class="col-md-6 mb-3">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" [(ngModel)]="city" name="city" required />
           </div>
-          <div class="card-footer text-center">
-            <button class="btn btn-sm btn-danger" (click)="deleteTeam(team.id!); $event.stopPropagation();">Delete</button>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Mascot</label>
+            <input type="text" class="form-control" [(ngModel)]="mascot" name="mascot" required />
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Conference</label>
+            <select class="form-select" [(ngModel)]="selectedConference" name="selectedConference" required>
+              <option value="">-- Select Conference --</option>
+              <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+            </select>
+          </div>
+          <div class="col-md-6 mb-3" *ngIf="selectedConference">
+            <label class="form-label">Division</label>
+            <select class="form-select" [(ngModel)]="selectedDivision" name="selectedDivision" required>
+              <option value="">-- Select Division --</option>
+              <ng-container *ngFor="let conf of conferences">
+                <ng-container *ngIf="conf.name === selectedConference">
+                  <option *ngFor="let div of conf.divisions" [value]="div">{{ div }}</option>
+                </ng-container>
+              </ng-container>
+            </select>
+          </div>
+          <div class="col-md-12 mb-3">
+            <label class="form-label">Team Logo</label>
+            <input type="file" class="form-control" (change)="onFileSelected($event)" required />
+          </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Team</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Display Teams by Conference & Division -->
+  <h2 class="mb-4">Teams by Conference & Division</h2>
+  <div *ngFor="let conf of conferences" class="mb-5">
+    <h4 class="text-primary">{{ conf.name }}</h4>
+    <div *ngFor="let div of conf.divisions" class="mb-3 ps-3">
+      <h5>{{ div }}</h5>
+      <div class="row mt-2">
+        <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivision(conf.name, div)">
+          <div class="card h-100 text-center" style="cursor: pointer;" (click)="viewTeam(team.id!)">
+            <img *ngIf="team.logoUrl"
+              [src]="team.logoUrl"
+              class="card-img-top object-fit-contain"
+              alt="Team Logo"
+              style="height: 120px; width: auto; margin: auto;" />
+            <div class="card-body">
+              <h6 class="card-title">{{ team.city }} {{ team.mascot }}</h6>
+              <small>{{ team.division }}</small>
+            </div>
+          </div>
+          <div class="text-center mt-2">
+            <button class="btn btn-sm btn-outline-secondary me-2" (click)="openEditTeamModal(team); $event.stopPropagation();">Edit</button>
+            <button class="btn btn-sm btn-outline-danger" (click)="deleteTeam(team.id!); $event.stopPropagation();">Delete</button>
           </div>
         </div>
       </div>
     </div>
   </div>
-  
+
+  <!-- Edit Team Modal -->
+  <!-- Edit Team Modal -->
+<div class="modal fade show" tabindex="-1" *ngIf="editTeamData as team" style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit Team</h5>
+        <button type="button" class="btn-close" (click)="editTeamData = undefined"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label">City</label>
+          <input type="text" class="form-control" [(ngModel)]="team.city" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Mascot</label>
+          <input type="text" class="form-control" [(ngModel)]="team.mascot" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Conference</label>
+          <select class="form-select" [(ngModel)]="team.conference">
+            <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Division</label>
+          <select class="form-select" [(ngModel)]="team.division">
+            <option *ngFor="let div of getDivisionsForConference(team.conference)" [value]="div">{{ div }}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Update Logo</label>
+          <input type="file" class="form-control" (change)="onEditLogoSelected($event)" />
+          <small class="form-text text-muted">Leave empty to keep the current logo.</small>
+        </div>        
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="editTeamData = undefined">Cancel</button>
+        <button class="btn btn-primary" (click)="saveTeamChanges()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>

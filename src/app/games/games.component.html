@@ -1,67 +1,102 @@
 <div class="container mt-4">
-    <!-- Team Selector -->
-    <div class="mb-4">
-      <label for="teamSelect" class="form-label">Select Team</label>
-      <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
-        <option value="">-- Choose a Team --</option>
-        <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-      </select>
+  <!-- Team Selector -->
+  <div class="mb-4">
+    <label for="teamSelect" class="form-label">Select Team</label>
+    <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
+      <option value="">-- Choose a Team --</option>
+      <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+    </select>
+  </div>
+
+  <!-- Game Creation -->
+  <form class="row g-2 mb-4" (ngSubmit)="createGame()">
+    <div class="col-md-5">
+      <input type="text" class="form-control" placeholder="Opponent" [(ngModel)]="opponent" name="opponent" required>
+    </div>
+    <div class="col-md-4">
+      <input type="date" class="form-control" [(ngModel)]="date" name="date" required>
+    </div>
+    <div class="col-md-3">
+      <button class="btn btn-success w-100">Create Game</button>
+    </div>
+  </form>
+
+  <div class="container mt-4">
+    <!-- Schedule Generator -->
+    <div class="card mb-4">
+      <div class="card-header">
+        <h5 class="mb-0">Generate Season Schedule</h5>
+      </div>
+      <div class="card-body">
+        <form (ngSubmit)="generateSchedule()">
+          <div class="row g-3">
+            <div class="col-md-2">
+              <label class="form-label">Weeks</label>
+              <input type="number" class="form-control" [(ngModel)]="weeks" name="weeks" required />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Days/Week</label>
+              <input type="number" class="form-control" [(ngModel)]="daysPerWeek" name="daysPerWeek" required />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Games/Day</label>
+              <input type="number" class="form-control" [(ngModel)]="gamesPerDay" name="gamesPerDay" required />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Vs Division</label>
+              <input type="number" class="form-control" [(ngModel)]="intraDivGames" name="intraDivGames" required />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Vs Conference</label>
+              <input type="number" class="form-control" [(ngModel)]="intraConfGames" name="intraConfGames" required />
+            </div>
+            <div class="col-md-2">
+              <label class="form-label">Vs Other Conf.</label>
+              <input type="number" class="form-control" [(ngModel)]="interConfGames" name="interConfGames" required />
+            </div>
+          </div>
+          <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Generate Schedule</button>
+          </div>
+        </form>
+      </div>
     </div>
   
-    <!-- Game Creation -->
-    <form class="row g-2 mb-4" (ngSubmit)="createGame()">
-      <div class="col-md-5">
-        <input type="text" class="form-control" placeholder="Opponent" [(ngModel)]="opponent" name="opponent" required>
-      </div>
-      <div class="col-md-4">
-        <input type="date" class="form-control" [(ngModel)]="date" name="date" required>
-      </div>
-      <div class="col-md-3">
-        <button class="btn btn-success w-100">Create Game</button>
-      </div>
-      
-    </form>
-  
-    <!-- Game List -->
-    <h5>Games</h5>
-    <ul class="list-group mb-4">
-      <li class="list-group-item d-flex justify-content-between align-items-center"
-          *ngFor="let game of games">
-        <span>{{ game.date }} vs {{ game.opponent }}</span>
-        <div class="btn-group">
-          <button class="btn btn-sm btn-outline-primary" (click)="selectGame(game.id!)">Enter Stats</button>
-          <button class="btn btn-sm btn-outline-danger" (click)="deleteGame(game.id!)">Delete</button>
-        </div>
-      </li>
-    </ul>
-  
-    <!-- Stat Entry Table -->
-    <div *ngIf="selectedGameId">
-      <h5>Enter Stats</h5>
-      <table class="table table-bordered">
-        <thead>
-          <tr>
-            <th>Player</th>
-            <th>#</th>
-            <th>Pos</th>
-            <th>Points</th>
-            <th>Assists</th>
-            <th>Rebounds</th>
-            <th>Save</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let player of players">
-            <td>{{ player.name }}</td>
-            <td>{{ player.number }}</td>
-            <td>{{ player.position }}</td>
-            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].points" name="pts{{player.id}}"></td>
-            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].assists" name="ast{{player.id}}"></td>
-            <td><input type="number" class="form-control" [(ngModel)]="playerStatsMap[player.id].rebounds" name="reb{{player.id}}"></td>
-            <td><button class="btn btn-sm btn-success" (click)="saveStats(player.id)">Save</button></td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Schedule Display -->
+    <div *ngIf="schedule.length > 0">
+      <h5 class="mb-3">Generated Schedule</h5>
+      <ul class="list-group">
+        <li class="list-group-item d-flex align-items-center justify-content-between" *ngFor="let game of schedule">
+          <div class="d-flex align-items-center">
+            <strong class="me-3">{{ game.date }}</strong>
+            <img [src]="game.homeLogo" alt="Home Logo" width="40" height="40" class="me-2" />
+            <span class="me-2">{{ game.homeTeam }}</span>
+            <span class="mx-2">vs</span>
+            <span class="me-2">{{ game.awayTeam }}</span>
+            <img [src]="game.awayLogo" alt="Away Logo" width="40" height="40" class="ms-2" />
+          </div>
+          <span *ngIf="game.tags?.includes('rivalry')" class="badge bg-danger">Rivalry</span>
+        </li>
+      </ul>
     </div>
   </div>
   
+
+  <!-- Schedule Display -->
+  <div *ngIf="schedule.length > 0">
+    <h5 class="mb-3">Generated Schedule</h5>
+    <ul class="list-group">
+      <li class="list-group-item d-flex align-items-center justify-content-between" *ngFor="let game of schedule">
+        <div class="d-flex align-items-center">
+          <strong class="me-3">{{ game.date }}</strong>
+          <img [src]="game.homeLogo" alt="Home Logo" width="40" height="40" class="me-2" />
+          <span class="me-2">{{ game.homeTeam }}</span>
+          <span class="mx-2">vs</span>
+          <span class="me-2">{{ game.awayTeam }}</span>
+          <img [src]="game.awayLogo" alt="Away Logo" width="40" height="40" class="ms-2" />
+        </div>
+        <span *ngIf="game.tags?.includes('rivalry')" class="badge bg-danger">Rivalry</span>
+      </li>
+    </ul>
+  </div>
+</div>
