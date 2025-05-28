@@ -180,119 +180,72 @@ export class GamesComponent implements OnInit {
       return;
     }
 
-    const getRandomDate = (): Date => {
-      let attempts = 0;
-      while (attempts++ < 100) {
-        const date = availableDates[Math.floor(Math.random() * availableDates.length)];
-        const dateStr = date.toISOString().split('T')[0];
-        const count = schedule.filter(g => g.date === dateStr).length;
-        if (count < 3) return date; // Max 3 games per day
-      }
-      return availableDates[0];
-    };
-
-    const canPlay = (team: string, date: Date) => {
-      const dateStr = date.toISOString().split('T')[0];
-      return !schedule.some(g => (g.homeTeam === team || g.awayTeam === team) && g.date === dateStr);
-    };
-
-    const addGame = (teamA: Team, teamB: Team, tag: string): boolean => {
-      const date = getRandomDate();
-      if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
-        const dateStr = date.toISOString().split('T')[0];
-        const home = Math.random() < 0.5 ? teamA : teamB;
-        const away = home.id === teamA.id ? teamB : teamA;
-        
-        schedule.push({
-          teamAId: teamA.id,
-          teamBId: teamB.id,
-          date: dateStr,
-          homeTeam: home.name,
-          awayTeam: away.name,
-          homeLogo: home.logoUrl,
-          awayLogo: away.logoUrl,
-          season: this.season,
-          tags: [tag]
-        });
-        return true;
-      }
-      return false;
-    };
-
-    // For each team
-    for (const teamA of this.teams) {
-      // Get division opponents
-      const divisionOpponents = this.teams.filter(t => 
-        t.id !== teamA.id && t.division === teamA.division);
-      
-      // Calculate games per division opponent
-      const gamesPerDivOpponent = Math.floor(this.divisionGames / divisionOpponents.length);
-      
-      // Schedule division games
-      for (const opponent of divisionOpponents) {
-        for (let i = 0; i < gamesPerDivOpponent; i++) {
-          let attempts = 0;
-          while (attempts < 10 && !addGame(teamA, opponent, 'division')) {
-            attempts++;
-          }
-        }
-      }
-
-      // Get conference opponents (excluding division)
-      const conferenceOpponents = this.teams.filter(t => 
-        t.id !== teamA.id && 
-        t.conference === teamA.conference && 
-        t.division !== teamA.division);
-      
-      // Calculate games per conference opponent
-      const gamesPerConfOpponent = Math.floor(this.conferenceGames / conferenceOpponents.length);
-      
-      // Schedule conference games
-      for (const opponent of conferenceOpponents) {
-        for (let i = 0; i < gamesPerConfOpponent; i++) {
-          let attempts = 0;
-          while (attempts < 10 && !addGame(teamA, opponent, 'conference')) {
-            attempts++;
-          }
-        }
-      }
-
-      // Get other conference opponents
-      const otherConfOpponents = this.teams.filter(t => 
-        t.conference !== teamA.conference);
-      
-      // Calculate games per other conference opponent
-      const gamesPerOtherConfOpponent = Math.floor(this.otherConferenceGames / otherConfOpponents.length);
-      
-      // Schedule other conference games
-      for (const opponent of otherConfOpponents) {
-        for (let i = 0; i < gamesPerOtherConfOpponent; i++) {
-          let attempts = 0;
-          while (attempts < 10 && !addGame(teamA, opponent, 'interconference')) {
-            attempts++;
-          }
-        }
-      }
-    }
-
     try {
-      // Save schedule to Firestore
-      for (const game of schedule) {
-        // Save game for team A
-        const teamAGamesRef = collection(this.firestore, `teams/${game.teamAId}/games`);
-        await addDoc(teamAGamesRef, {
-          ...game,
-          season: this.season,
-          timestamp: new Date()
-        });
+      // Process teams in chunks to avoid Firestore write limits
+      const chunkSize = 5; // Process 5 teams at a time
+      for (let i = 0; i < this.teams.length; i += chunkSize) {
+        const teamChunk = this.teams.slice(i, i + chunkSize);
+        
+        for (const teamA of teamChunk) {
+          // Get division opponents
+          const divisionOpponents = this.teams.filter(t => 
+            t.id !== teamA.id && t.division === teamA.division);
+          
+          // Calculate games per division opponent
+          const gamesPerDivOpponent = Math.floor(this.divisionGames / divisionOpponents.length);
+          
+          // Schedule division games
+          for (const opponent of divisionOpponents) {
+            for (let i = 0; i < gamesPerDivOpponent; i++) {
+              const date = this.getAvailableDate(availableDates, schedule, teamA.name, opponent.name);
+              if (date) {
+                const game = this.createGame(teamA, opponent, date, 'division');
+                schedule.push(game);
+                
+                // Save game immediately
+                await this.saveGame(game);
+              }
+            }
+          }
 
-        // Save game for team B
-        const teamBGamesRef = collection(this.firestore, `teams/${game.teamBId}/games`);
-        await addDoc(teamBGamesRef, {
-          ...game,
-          season: this.season,
-          timestamp: new Date()
-        });
+          // Similar process for conference and other conference games
+          const conferenceOpponents = this.teams.filter(t => 
+            t.id !== teamA.id && 
+            t.conference === teamA.conference && 
+            t.division !== teamA.division);
+          
+          const gamesPerConfOpponent = Math.floor(this.conferenceGames / conferenceOpponents.length);
+          
+          for (const opponent of conferenceOpponents) {
+            for (let i = 0; i < gamesPerConfOpponent; i++) {
+              const date = this.getAvailableDate(availableDates, schedule, teamA.name, opponent.name);
+              if (date) {
+                const game = this.createGame(teamA, opponent, date, 'conference');
+                schedule.push(game);
+                await this.saveGame(game);
+              }
+            }
+          }
+
+          const otherConfOpponents = this.teams.filter(t => 
+            t.conference !== teamA.conference);
+          
+          const gamesPerOtherConfOpponent = Math.floor(this.otherConferenceGames / otherConfOpponents.length);
+          
+          for (const opponent of otherConfOpponents) {
+            for (let i = 0; i < gamesPerOtherConfOpponent; i++) {
+              const date = this.getAvailableDate(availableDates, schedule, teamA.name, opponent.name);
+              if (date) {
+                const game = this.createGame(teamA, opponent, date, 'interconference');
+                schedule.push(game);
+                await this.saveGame(game);
+              }
+            }
+          }
+        }
+        
+        // Add a small delay between chunks to avoid overwhelming Firestore
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
@@ -301,9 +254,62 @@ export class GamesComponent implements OnInit {
       alert('Schedule generated successfully!');
       await this.onTeamSelect(); // Refresh the view
     } catch (error) {
-      console.error('Error saving schedule:', error);
-      alert('Error saving schedule. Please try again.');
+      console.error('Error generating schedule:', error);
+      alert('Error generating schedule. Please try again.');
     }
+  }
+
+  private getAvailableDate(availableDates: Date[], schedule: Game[], teamA: string, teamB: string): Date | null {
+    let attempts = 0;
+    while (attempts < 100) {
+      const date = availableDates[Math.floor(Math.random() * availableDates.length)];
+      const dateStr = date.toISOString().split('T')[0];
+      const gamesOnDate = schedule.filter(g => g.date === dateStr);
+      
+      if (gamesOnDate.length < 3 && // Max 3 games per day
+          !schedule.some(g => 
+            g.date === dateStr && 
+            (g.homeTeam === teamA || g.awayTeam === teamA || g.homeTeam === teamB || g.awayTeam === teamB)
+          )) {
+        return date;
+      }
+      attempts++;
+    }
+    return null;
+  }
+
+  private createGame(teamA: Team, teamB: Team, date: Date, tag: string): Game {
+    const isTeamAHome = Math.random() < 0.5;
+    const home = isTeamAHome ? teamA : teamB;
+    const away = isTeamAHome ? teamB : teamA;
+    
+    return {
+      teamAId: teamA.id,
+      teamBId: teamB.id,
+      date: date.toISOString().split('T')[0],
+      homeTeam: home.name,
+      awayTeam: away.name,
+      homeLogo: home.logoUrl,
+      awayLogo: away.logoUrl,
+      season: this.season,
+      tags: [tag]
+    };
+  }
+
+  private async saveGame(game: Game) {
+    // Save game for team A
+    const teamAGamesRef = collection(this.firestore, `teams/${game.teamAId}/games`);
+    await addDoc(teamAGamesRef, {
+      ...game,
+      timestamp: new Date()
+    });
+
+    // Save game for team B
+    const teamBGamesRef = collection(this.firestore, `teams/${game.teamBId}/games`);
+    await addDoc(teamBGamesRef, {
+      ...game,
+      timestamp: new Date()
+    });
   }
 
   validateScheduleParams(): boolean {
