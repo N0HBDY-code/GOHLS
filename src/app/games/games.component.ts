@@ -3,11 +3,7 @@ import {
   Firestore,
   collection,
   getDocs,
-  addDoc,
   doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
   query,
   where,
   writeBatch
@@ -88,7 +84,7 @@ export class GamesComponent implements OnInit {
 
   generateCalendar() {
     this.calendarDays = [];
-    if (this.schedule.length === 0 || !this.seasonStartDate || !this.seasonEndDate) return;
+    if (!this.seasonStartDate || !this.seasonEndDate) return;
 
     const startDate = new Date(this.seasonStartDate);
     const endDate = new Date(this.seasonEndDate);
@@ -206,27 +202,34 @@ export class GamesComponent implements OnInit {
       }
     }
 
-    // Save schedule to Firestore in batches
-    const batchSize = 500; // Firestore limit is 500 operations per batch
-    for (let i = 0; i < schedule.length; i += batchSize) {
-      const batch = writeBatch(this.firestore);
-      const chunk = schedule.slice(i, i + batchSize);
-      
-      for (const game of chunk) {
-        // Save game for team A
-        const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
-        batch.set(teamARef, game);
+    try {
+      // Save schedule to Firestore in batches
+      const batchSize = 500; // Firestore limit is 500 operations per batch
+      for (let i = 0; i < schedule.length; i += batchSize) {
+        const batch = writeBatch(this.firestore);
+        const chunk = schedule.slice(i, i + batchSize);
+        
+        for (const game of chunk) {
+          // Save game for team A
+          const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
+          batch.set(teamARef, game);
 
-        // Save game for team B
-        const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
-        batch.set(teamBRef, game);
+          // Save game for team B
+          const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
+          batch.set(teamBRef, game);
+        }
+
+        await batch.commit();
       }
 
-      await batch.commit();
+      this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
+      this.generateCalendar();
+      
+      alert('Schedule generated successfully!');
+    } catch (error) {
+      console.error('Error saving schedule:', error);
+      alert('Error saving schedule. Please try again.');
     }
-
-    this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
-    this.generateCalendar();
   }
 
   validateScheduleParams(): boolean {
