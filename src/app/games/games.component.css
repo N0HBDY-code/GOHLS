@@ -1,0 +1,12 @@
+.calendar-day {
+  min-height: 100px;
+}
+
+.game-item {
+  font-size: 0.8rem;
+  margin-bottom: 0.25rem;
+}
+
+.btn-group .btn {
+  flex: 1;
+}
