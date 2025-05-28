@@ -52,8 +52,6 @@ export class GamesComponent implements OnInit {
   schedule: Game[] = [];
   calendarDays: CalendarDay[] = [];
   selectedTeamId: string = '';
-  opponent: string = '';
-  date: string = '';
 
   // Schedule Generation Parameters
   season: number = 1;
@@ -80,32 +78,15 @@ export class GamesComponent implements OnInit {
 
   async onTeamSelect() {
     if (!this.selectedTeamId) return;
+    
+    // Ensure we have a valid team ID before constructing the path
+    if (this.selectedTeamId.trim() === '') return;
+    
     const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
     const q = query(gamesRef, where('season', '==', this.season));
     const snapshot = await getDocs(q);
     this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
     this.generateCalendar();
-  }
-
-  async createGame() {
-    if (!this.selectedTeamId || !this.opponent || !this.date) {
-      alert('Please fill in all required fields');
-      return;
-    }
-
-    const gameData = {
-      opponent: this.opponent,
-      date: this.date,
-      season: this.season,
-      createdAt: new Date()
-    };
-
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    await addDoc(gamesRef, gameData);
-
-    this.opponent = '';
-    this.date = '';
-    await this.onTeamSelect();
   }
 
   generateCalendar() {
@@ -146,6 +127,11 @@ export class GamesComponent implements OnInit {
       if (this.gameDays[d.getDay()]) {
         availableDates.push(new Date(d));
       }
+    }
+
+    if (availableDates.length === 0) {
+      alert('No available dates found. Please select at least one game day.');
+      return;
     }
 
     const matchups = new Set<string>();
@@ -226,8 +212,10 @@ export class GamesComponent implements OnInit {
     // Save schedule to Firestore
     const batch = [];
     for (const game of schedule) {
-      const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-      batch.push(addDoc(gamesRef, game));
+      if (this.selectedTeamId) {
+        const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
+        batch.push(addDoc(gamesRef, game));
+      }
     }
     await Promise.all(batch);
 
@@ -248,6 +236,11 @@ export class GamesComponent implements OnInit {
 
     if (this.divisionGames + this.conferenceGames + this.otherConferenceGames !== this.totalGames) {
       alert('Game distribution must equal total games');
+      return false;
+    }
+
+    if (!this.selectedTeamId) {
+      alert('Please select a team first');
       return false;
     }
 
