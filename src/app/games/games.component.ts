@@ -204,7 +204,7 @@ export class GamesComponent implements OnInit {
 
     try {
       // Save schedule to Firestore in batches
-      const batchSize = 500; // Firestore limit is 500 operations per batch
+      const batchSize = 400; // Firestore limit is 500 operations per batch
       for (let i = 0; i < schedule.length; i += batchSize) {
         const batch = writeBatch(this.firestore);
         const chunk = schedule.slice(i, i + batchSize);
