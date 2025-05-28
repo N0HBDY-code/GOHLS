@@ -79,11 +79,17 @@
 
   <!-- Calendar View -->
   <div class="card" *ngIf="calendarDays.length > 0">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
       <h5 class="mb-0">Season {{ selectedSeason }} Calendar</h5>
+      <div class="legend d-flex gap-3">
+        <span><i class="bi bi-circle-fill text-primary"></i> Division</span>
+        <span><i class="bi bi-circle-fill text-success"></i> Conference</span>
+        <span><i class="bi bi-circle-fill text-info"></i> Inter-Conference</span>
+      </div>
     </div>
     <div class="card-body">
-      <div class="row row-cols-7 text-center border-bottom py-2">
+      <!-- Calendar Header -->
+      <div class="row g-0 text-center border-bottom py-2 fw-bold">
         <div class="col">Sun</div>
         <div class="col">Mon</div>
         <div class="col">Tue</div>
@@ -93,22 +99,27 @@
         <div class="col">Sat</div>
       </div>
 
-      <div class="row row-cols-7">
-        <ng-container *ngFor="let day of calendarDays">
-          <div class="col border p-2" [class.bg-light]="!isGameDay(day.date)">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <small class="text-muted">{{ getDayName(day.date) }}</small>
-              <small class="text-muted">{{ day.date | date:'d' }}</small>
+      <!-- Calendar Grid -->
+      <div class="calendar-grid">
+        <div class="row g-0">
+          <ng-container *ngFor="let day of calendarDays; let i = index">
+            <!-- Add a new row every 7 days -->
+            <div *ngIf="i % 7 === 0 && i !== 0" class="w-100"></div>
+            
+            <div class="col border p-2" [class.bg-light]="!isGameDay(day.date)">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <small class="text-muted">{{ day.date | date:'d' }}</small>
+              </div>
+              <div *ngFor="let game of day.games" class="game-item">
+                <span [class.text-primary]="game.tags?.includes('division')"
+                      [class.text-success]="game.tags?.includes('conference')"
+                      [class.text-info]="game.tags?.includes('interconference')">
+                  {{ game.homeTeam }} vs {{ game.awayTeam }}
+                </span>
+              </div>
             </div>
-            <div *ngFor="let game of day.games" class="small mb-1">
-              <span [class.text-primary]="game.tags?.includes('division')"
-                    [class.text-success]="game.tags?.includes('conference')"
-                    [class.text-info]="game.tags?.includes('interconference')">
-                {{ game.homeTeam }} vs {{ game.awayTeam }}
-              </span>
-            </div>
-          </div>
-        </ng-container>
+          </ng-container>
+        </div>
       </div>
     </div>
   </div>
