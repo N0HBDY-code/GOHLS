@@ -167,6 +167,7 @@ export class GamesComponent implements OnInit {
     const startDate = new Date(this.seasonStartDate);
     const endDate = new Date(this.seasonEndDate);
     
+    // Get available dates based on selected game days
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       if (this.gameDays[d.getDay()]) {
         availableDates.push(new Date(d));
@@ -177,9 +178,6 @@ export class GamesComponent implements OnInit {
       alert('No available dates found. Please select at least one game day.');
       return;
     }
-
-    const matchups = new Set<string>();
-    const getKey = (a: string, b: string) => [a, b].sort().join('-');
 
     const getRandomDate = (): Date => {
       let attempts = 0;
@@ -197,75 +195,96 @@ export class GamesComponent implements OnInit {
       return !schedule.some(g => (g.homeTeam === team || g.awayTeam === team) && g.date === dateStr);
     };
 
-    const scheduleGames = (teamA: Team, teamB: Team, count: number) => {
-      const key = getKey(teamA.id, teamB.id);
-      if (matchups.has(key)) return;
-
-      for (let i = 0; i < count; i++) {
-        const date = getRandomDate();
-        if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
-          const dateStr = date.toISOString().split('T')[0];
-          const home = Math.random() < 0.5 ? teamA : teamB;
-          const away = home.id === teamA.id ? teamB : teamA;
-          
-          schedule.push({
-            teamAId: teamA.id,
-            teamBId: teamB.id,
-            date: dateStr,
-            homeTeam: home.name,
-            awayTeam: away.name,
-            homeLogo: home.logoUrl,
-            awayLogo: away.logoUrl,
-            season: this.season,
-            tags: teamA.division === teamB.division ? ['division'] :
-                  teamA.conference === teamB.conference ? ['conference'] : ['interconference']
-          });
-        }
+    const addGame = (teamA: Team, teamB: Team, tag: string): boolean => {
+      const date = getRandomDate();
+      if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
+        const dateStr = date.toISOString().split('T')[0];
+        const home = Math.random() < 0.5 ? teamA : teamB;
+        const away = home.id === teamA.id ? teamB : teamA;
+        
+        schedule.push({
+          teamAId: teamA.id,
+          teamBId: teamB.id,
+          date: dateStr,
+          homeTeam: home.name,
+          awayTeam: away.name,
+          homeLogo: home.logoUrl,
+          awayLogo: away.logoUrl,
+          season: this.season,
+          tags: [tag]
+        });
+        return true;
       }
-      matchups.add(key);
+      return false;
     };
 
-    // Schedule games for all teams
+    // For each team
     for (const teamA of this.teams) {
-      const sameDiv = this.teams.filter(t => 
+      // Get division opponents
+      const divisionOpponents = this.teams.filter(t => 
         t.id !== teamA.id && t.division === teamA.division);
-      const sameConf = this.teams.filter(t => 
-        t.id !== teamA.id && t.conference === teamA.conference && t.division !== teamA.division);
-      const otherConf = this.teams.filter(t => 
+      
+      // Calculate games per division opponent
+      const gamesPerDivOpponent = Math.floor(this.divisionGames / divisionOpponents.length);
+      
+      // Schedule division games
+      for (const opponent of divisionOpponents) {
+        for (let i = 0; i < gamesPerDivOpponent; i++) {
+          let attempts = 0;
+          while (attempts < 10 && !addGame(teamA, opponent, 'division')) {
+            attempts++;
+          }
+        }
+      }
+
+      // Get conference opponents (excluding division)
+      const conferenceOpponents = this.teams.filter(t => 
+        t.id !== teamA.id && 
+        t.conference === teamA.conference && 
+        t.division !== teamA.division);
+      
+      // Calculate games per conference opponent
+      const gamesPerConfOpponent = Math.floor(this.conferenceGames / conferenceOpponents.length);
+      
+      // Schedule conference games
+      for (const opponent of conferenceOpponents) {
+        for (let i = 0; i < gamesPerConfOpponent; i++) {
+          let attempts = 0;
+          while (attempts < 10 && !addGame(teamA, opponent, 'conference')) {
+            attempts++;
+          }
+        }
+      }
+
+      // Get other conference opponents
+      const otherConfOpponents = this.teams.filter(t => 
         t.conference !== teamA.conference);
-
-      // Division games
-      for (const teamB of sameDiv) {
-        scheduleGames(teamA, teamB, 
-          Math.floor(this.divisionGames / (sameDiv.length * 2)));
-      }
-
-      // Conference games (non-division)
-      for (const teamB of sameConf) {
-        scheduleGames(teamA, teamB,
-          Math.floor(this.conferenceGames / (sameConf.length * 2)));
-      }
-
-      // Other conference games
-      for (const teamB of otherConf) {
-        scheduleGames(teamA, teamB,
-          Math.floor(this.otherConferenceGames / (otherConf.length * 2)));
+      
+      // Calculate games per other conference opponent
+      const gamesPerOtherConfOpponent = Math.floor(this.otherConferenceGames / otherConfOpponents.length);
+      
+      // Schedule other conference games
+      for (const opponent of otherConfOpponents) {
+        for (let i = 0; i < gamesPerOtherConfOpponent; i++) {
+          let attempts = 0;
+          while (attempts < 10 && !addGame(teamA, opponent, 'interconference')) {
+            attempts++;
+          }
+        }
       }
     }
 
     try {
       // Save schedule to Firestore in batches
-      const batchSize = 400; // Firestore limit is 500 operations per batch
+      const batchSize = 400;
       for (let i = 0; i < schedule.length; i += batchSize) {
         const batch = writeBatch(this.firestore);
         const chunk = schedule.slice(i, i + batchSize);
         
         for (const game of chunk) {
-          // Save game for team A
           const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
           batch.set(teamARef, { ...game, season: this.season });
 
-          // Save game for team B
           const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
           batch.set(teamBRef, { ...game, season: this.season });
         }
@@ -277,8 +296,6 @@ export class GamesComponent implements OnInit {
       this.generateCalendar();
       
       alert('Schedule generated successfully!');
-      
-      // Refresh available seasons
       await this.onTeamSelect();
     } catch (error) {
       console.error('Error saving schedule:', error);
