@@ -212,11 +212,11 @@ export class GamesComponent implements OnInit {
         for (const game of chunk) {
           // Save game for team A
           const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
-          batch.set(teamARef, game);
+          batch.set(teamARef, { ...game, season: this.season });
 
           // Save game for team B
           const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
-          batch.set(teamBRef, game);
+          batch.set(teamBRef, { ...game, season: this.season });
         }
 
         await batch.commit();
