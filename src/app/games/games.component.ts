@@ -9,7 +9,8 @@ import {
   getDoc,
   deleteDoc,
   query,
-  where
+  where,
+  writeBatch
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -205,18 +206,24 @@ export class GamesComponent implements OnInit {
       }
     }
 
-    // Save schedule to Firestore for each team
-    const batch = [];
-    for (const game of schedule) {
-      // Save game for team A
-      const teamARef = collection(this.firestore, `teams/${game.teamAId}/games`);
-      batch.push(addDoc(teamARef, game));
+    // Save schedule to Firestore in batches
+    const batchSize = 500; // Firestore limit is 500 operations per batch
+    for (let i = 0; i < schedule.length; i += batchSize) {
+      const batch = writeBatch(this.firestore);
+      const chunk = schedule.slice(i, i + batchSize);
+      
+      for (const game of chunk) {
+        // Save game for team A
+        const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
+        batch.set(teamARef, game);
 
-      // Save game for team B
-      const teamBRef = collection(this.firestore, `teams/${game.teamBId}/games`);
-      batch.push(addDoc(teamBRef, game));
+        // Save game for team B
+        const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
+        batch.set(teamBRef, game);
+      }
+
+      await batch.commit();
     }
-    await Promise.all(batch);
 
     this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
     this.generateCalendar();
