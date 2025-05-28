@@ -49,6 +49,8 @@ export class GamesComponent implements OnInit {
   schedule: Game[] = [];
   calendarDays: CalendarDay[] = [];
   selectedTeamId: string = '';
+  availableSeasons: number[] = [];
+  selectedSeason: number = 1;
 
   // Schedule Generation Parameters
   season: number = 1;
@@ -75,11 +77,38 @@ export class GamesComponent implements OnInit {
 
   async onTeamSelect() {
     if (!this.selectedTeamId) return;
+    
+    // First, get all available seasons for this team
     const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const q = query(gamesRef, where('season', '==', this.season));
+    const snapshot = await getDocs(gamesRef);
+    const seasons = new Set(snapshot.docs.map(doc => doc.data()['season']));
+    this.availableSeasons = Array.from(seasons).sort((a, b) => a - b);
+    
+    if (this.availableSeasons.length > 0) {
+      this.selectedSeason = this.availableSeasons[0];
+      await this.loadSeasonGames();
+    }
+  }
+
+  async loadSeasonGames() {
+    if (!this.selectedTeamId || !this.selectedSeason) return;
+    
+    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
+    const q = query(gamesRef, where('season', '==', this.selectedSeason));
     const snapshot = await getDocs(q);
     this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
-    this.generateCalendar();
+    
+    if (this.schedule.length > 0) {
+      // Set date range based on first and last game
+      const dates = this.schedule.map(g => new Date(g.date));
+      const startDate = new Date(Math.min(...dates.map(d => d.getTime())));
+      const endDate = new Date(Math.max(...dates.map(d => d.getTime())));
+      
+      this.seasonStartDate = startDate.toISOString().split('T')[0];
+      this.seasonEndDate = endDate.toISOString().split('T')[0];
+      
+      this.generateCalendar();
+    }
   }
 
   generateCalendar() {
@@ -112,7 +141,6 @@ export class GamesComponent implements OnInit {
     const schedule: Game[] = [];
     const availableDates: Date[] = [];
     
-    // Generate available dates based on selected game days
     const startDate = new Date(this.seasonStartDate);
     const endDate = new Date(this.seasonEndDate);
     
@@ -226,6 +254,9 @@ export class GamesComponent implements OnInit {
       this.generateCalendar();
       
       alert('Schedule generated successfully!');
+      
+      // Refresh available seasons
+      await this.onTeamSelect();
     } catch (error) {
       console.error('Error saving schedule:', error);
       alert('Error saving schedule. Please try again.');

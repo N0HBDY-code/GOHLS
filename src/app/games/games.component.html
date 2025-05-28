@@ -1,251 +1,115 @@
-import { Component, OnInit } from '@angular/core';
-import {
-  Firestore,
-  collection,
-  getDocs,
-  addDoc,
-  doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
-  query,
-  where
-} from '@angular/fire/firestore';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+<div class="container mt-4">
+  <!-- Team Selector -->
+  <div class="mb-4">
+    <label for="teamSelect" class="form-label">Select Team</label>
+    <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
+      <option value="">-- Choose a Team --</option>
+      <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+    </select>
+  </div>
 
-interface Team {
-  id: string;
-  name: string;
-  conference: string;
-  division: string;
-  logoUrl?: string;
-}
+  <!-- Season Selector -->
+  <div class="mb-4" *ngIf="availableSeasons.length > 0">
+    <label for="seasonSelect" class="form-label">Select Season</label>
+    <select id="seasonSelect" class="form-select" [(ngModel)]="selectedSeason" (change)="loadSeasonGames()">
+      <option *ngFor="let season of availableSeasons" [value]="season">Season {{ season }}</option>
+    </select>
+  </div>
 
-interface Game {
-  id?: string;
-  teamAId: string;
-  teamBId: string;
-  date: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeLogo?: string;
-  awayLogo?: string;
-  tags?: string[];
-  season: number;
-}
+  <!-- Schedule Generator -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">Generate Season Schedule</h5>
+    </div>
+    <div class="card-body">
+      <form (ngSubmit)="generateSchedule()">
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Season Number</label>
+            <input type="number" class="form-control" [(ngModel)]="season" name="season" required min="1" />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Season Start Date</label>
+            <input type="date" class="form-control" [(ngModel)]="seasonStartDate" name="startDate" required />
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Season End Date</label>
+            <input type="date" class="form-control" [(ngModel)]="seasonEndDate" name="endDate" required />
+          </div>
+        </div>
 
-interface CalendarDay {
-  date: Date;
-  games: Game[];
-}
+        <div class="mt-3">
+          <label class="form-label">Game Days</label>
+          <div class="btn-group w-100">
+            <button type="button" class="btn" 
+                    *ngFor="let day of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; let i = index"
+                    [class.btn-primary]="gameDays[i]"
+                    [class.btn-outline-primary]="!gameDays[i]"
+                    (click)="gameDays[i] = !gameDays[i]">
+              {{ day }}
+            </button>
+          </div>
+        </div>
 
-@Component({
-  selector: 'app-games',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  templateUrl: './games.component.html',
-  styleUrl: './games.component.css'
-})
-export class GamesComponent implements OnInit {
-  teams: Team[] = [];
-  schedule: Game[] = [];
-  calendarDays: CalendarDay[] = [];
-  selectedTeamId: string = '';
+        <div class="row g-3 mt-2">
+          <div class="col-md-3">
+            <label class="form-label">Total Games</label>
+            <input type="number" class="form-control" [(ngModel)]="totalGames" name="totalGames" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Division Games</label>
+            <input type="number" class="form-control" [(ngModel)]="divisionGames" name="divisionGames" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Conference Games</label>
+            <input type="number" class="form-control" [(ngModel)]="conferenceGames" name="conferenceGames" required />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Other Conf. Games</label>
+            <input type="number" class="form-control" [(ngModel)]="otherConferenceGames" name="otherConfGames" required />
+          </div>
+        </div>
 
-  // Schedule Generation Parameters
-  season: number = 1;
-  seasonStartDate: string = '';
-  seasonEndDate: string = '';
-  gameDays: boolean[] = [false, false, false, false, false, false, false]; // Sun-Sat
-  totalGames: number = 82;
-  divisionGames: number = 32;
-  conferenceGames: number = 30;
-  otherConferenceGames: number = 20;
+        <div class="mt-3">
+          <button type="submit" class="btn btn-primary">Generate Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
-  constructor(private firestore: Firestore) {}
+  <!-- Calendar View -->
+  <div class="card" *ngIf="calendarDays.length > 0">
+    <div class="card-header">
+      <h5 class="mb-0">Season {{ selectedSeason }} Calendar</h5>
+    </div>
+    <div class="card-body">
+      <div class="row row-cols-7 text-center border-bottom py-2">
+        <div class="col">Sun</div>
+        <div class="col">Mon</div>
+        <div class="col">Tue</div>
+        <div class="col">Wed</div>
+        <div class="col">Thu</div>
+        <div class="col">Fri</div>
+        <div class="col">Sat</div>
+      </div>
 
-  async ngOnInit() {
-    const snapshot = await getDocs(collection(this.firestore, 'teams'));
-    this.teams = snapshot.docs.map(doc => ({
-      id: doc.id,
-      name: doc.data()['name'] || 'Unnamed',
-      conference: doc.data()['conference'] || 'Unknown',
-      division: doc.data()['division'] || 'Unknown',
-      logoUrl: doc.data()['logoUrl'] || ''
-    }));
-  }
-
-  async onTeamSelect() {
-    if (!this.selectedTeamId) return;
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const q = query(gamesRef, where('season', '==', this.season));
-    const snapshot = await getDocs(q);
-    this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
-    this.generateCalendar();
-  }
-
-  generateCalendar() {
-    this.calendarDays = [];
-    if (this.schedule.length === 0 || !this.seasonStartDate || !this.seasonEndDate) return;
-
-    const startDate = new Date(this.seasonStartDate);
-    const endDate = new Date(this.seasonEndDate);
-
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      const dayGames = this.schedule.filter(game => {
-        const gameDate = new Date(game.date);
-        return gameDate.toDateString() === d.toDateString();
-      });
-
-      this.calendarDays.push({
-        date: new Date(d),
-        games: dayGames
-      });
-    }
-  }
-
-  isGameDay(date: Date): boolean {
-    return this.gameDays[date.getDay()];
-  }
-
-  async generateSchedule() {
-    if (!this.validateScheduleParams()) return;
-
-    const schedule: Game[] = [];
-    const availableDates: Date[] = [];
-    
-    // Generate available dates based on selected game days
-    const startDate = new Date(this.seasonStartDate);
-    const endDate = new Date(this.seasonEndDate);
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      if (this.gameDays[d.getDay()]) {
-        availableDates.push(new Date(d));
-      }
-    }
-
-    if (availableDates.length === 0) {
-      alert('No available dates found. Please select at least one game day.');
-      return;
-    }
-
-    const matchups = new Set<string>();
-    const getKey = (a: string, b: string) => [a, b].sort().join('-');
-
-    const getRandomDate = (): Date => {
-      let attempts = 0;
-      while (attempts++ < 100) {
-        const date = availableDates[Math.floor(Math.random() * availableDates.length)];
-        const dateStr = date.toISOString().split('T')[0];
-        const count = schedule.filter(g => g.date === dateStr).length;
-        if (count < 3) return date; // Max 3 games per day
-      }
-      return availableDates[0];
-    };
-
-    const canPlay = (team: string, date: Date) => {
-      const dateStr = date.toISOString().split('T')[0];
-      return !schedule.some(g => (g.homeTeam === team || g.awayTeam === team) && g.date === dateStr);
-    };
-
-    const scheduleGames = (teamA: Team, teamB: Team, count: number) => {
-      const key = getKey(teamA.id, teamB.id);
-      if (matchups.has(key)) return;
-
-      for (let i = 0; i < count; i++) {
-        const date = getRandomDate();
-        if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
-          const dateStr = date.toISOString().split('T')[0];
-          const home = Math.random() < 0.5 ? teamA : teamB;
-          const away = home.id === teamA.id ? teamB : teamA;
-          
-          schedule.push({
-            teamAId: teamA.id,
-            teamBId: teamB.id,
-            date: dateStr,
-            homeTeam: home.name,
-            awayTeam: away.name,
-            homeLogo: home.logoUrl,
-            awayLogo: away.logoUrl,
-            season: this.season,
-            tags: teamA.division === teamB.division ? ['division'] :
-                  teamA.conference === teamB.conference ? ['conference'] : ['interconference']
-          });
-        }
-      }
-      matchups.add(key);
-    };
-
-    // Schedule games for all teams
-    for (const teamA of this.teams) {
-      const sameDiv = this.teams.filter(t => 
-        t.id !== teamA.id && t.division === teamA.division);
-      const sameConf = this.teams.filter(t => 
-        t.id !== teamA.id && t.conference === teamA.conference && t.division !== teamA.division);
-      const otherConf = this.teams.filter(t => 
-        t.conference !== teamA.conference);
-
-      // Division games
-      for (const teamB of sameDiv) {
-        scheduleGames(teamA, teamB, 
-          Math.floor(this.divisionGames / (sameDiv.length * 2)));
-      }
-
-      // Conference games (non-division)
-      for (const teamB of sameConf) {
-        scheduleGames(teamA, teamB,
-          Math.floor(this.conferenceGames / (sameConf.length * 2)));
-      }
-
-      // Other conference games
-      for (const teamB of otherConf) {
-        scheduleGames(teamA, teamB,
-          Math.floor(this.otherConferenceGames / (otherConf.length * 2)));
-      }
-    }
-
-    // Save schedule to Firestore for each team
-    const batch = [];
-    for (const game of schedule) {
-      // Save game for team A
-      const teamARef = collection(this.firestore, `teams/${game.teamAId}/games`);
-      batch.push(addDoc(teamARef, game));
-
-      // Save game for team B
-      const teamBRef = collection(this.firestore, `teams/${game.teamBId}/games`);
-      batch.push(addDoc(teamBRef, game));
-    }
-    await Promise.all(batch);
-
-    this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
-    this.generateCalendar();
-  }
-
-  validateScheduleParams(): boolean {
-    if (!this.seasonStartDate || !this.seasonEndDate) {
-      alert('Please select season start and end dates');
-      return false;
-    }
-
-    if (!this.gameDays.some(day => day)) {
-      alert('Please select at least one game day');
-      return false;
-    }
-
-    if (this.divisionGames + this.conferenceGames + this.otherConferenceGames !== this.totalGames) {
-      alert('Game distribution must equal total games');
-      return false;
-    }
-
-    return true;
-  }
-
-  getDayName(date: Date): string {
-    return date.toLocaleDateString('en-US', { weekday: 'short' });
-  }
-
-  getMonthName(date: Date): string {
-    return date.toLocaleDateString('en-US', { month: 'long' });
-  }
-}
+      <div class="row row-cols-7">
+        <ng-container *ngFor="let day of calendarDays">
+          <div class="col border p-2" [class.bg-light]="!isGameDay(day.date)">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <small class="text-muted">{{ getDayName(day.date) }}</small>
+              <small class="text-muted">{{ day.date | date:'d' }}</small>
+            </div>
+            <div *ngFor="let game of day.games" class="small mb-1">
+              <span [class.text-primary]="game.tags?.includes('division')"
+                    [class.text-success]="game.tags?.includes('conference')"
+                    [class.text-info]="game.tags?.includes('interconference')">
+                {{ game.homeTeam }} vs {{ game.awayTeam }}
+              </span>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+</div>
