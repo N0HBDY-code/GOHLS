@@ -78,10 +78,6 @@ export class GamesComponent implements OnInit {
 
   async onTeamSelect() {
     if (!this.selectedTeamId) return;
-    
-    // Ensure we have a valid team ID before constructing the path
-    if (this.selectedTeamId.trim() === '') return;
-    
     const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
     const q = query(gamesRef, where('season', '==', this.season));
     const snapshot = await getDocs(q);
@@ -181,41 +177,44 @@ export class GamesComponent implements OnInit {
       matchups.add(key);
     };
 
-    // Schedule division games
-    const divisionTeams = this.teams.filter(t => t.division === this.teams[0].division);
-    for (let i = 0; i < divisionTeams.length; i++) {
-      for (let j = i + 1; j < divisionTeams.length; j++) {
-        scheduleGames(divisionTeams[i], divisionTeams[j], 
-          Math.floor(this.divisionGames / (divisionTeams.length * (divisionTeams.length - 1) / 2)));
-      }
-    }
+    // Schedule games for all teams
+    for (const teamA of this.teams) {
+      const sameDiv = this.teams.filter(t => 
+        t.id !== teamA.id && t.division === teamA.division);
+      const sameConf = this.teams.filter(t => 
+        t.id !== teamA.id && t.conference === teamA.conference && t.division !== teamA.division);
+      const otherConf = this.teams.filter(t => 
+        t.conference !== teamA.conference);
 
-    // Schedule conference games
-    const conferenceTeams = this.teams.filter(t => 
-      t.conference === this.teams[0].conference && t.division !== this.teams[0].division);
-    for (const teamA of divisionTeams) {
-      for (const teamB of conferenceTeams) {
+      // Division games
+      for (const teamB of sameDiv) {
+        scheduleGames(teamA, teamB, 
+          Math.floor(this.divisionGames / (sameDiv.length * 2)));
+      }
+
+      // Conference games (non-division)
+      for (const teamB of sameConf) {
         scheduleGames(teamA, teamB,
-          Math.floor(this.conferenceGames / (divisionTeams.length * conferenceTeams.length)));
+          Math.floor(this.conferenceGames / (sameConf.length * 2)));
       }
-    }
 
-    // Schedule other conference games
-    const otherConfTeams = this.teams.filter(t => t.conference !== this.teams[0].conference);
-    for (const teamA of divisionTeams) {
-      for (const teamB of otherConfTeams) {
+      // Other conference games
+      for (const teamB of otherConf) {
         scheduleGames(teamA, teamB,
-          Math.floor(this.otherConferenceGames / (divisionTeams.length * otherConfTeams.length)));
+          Math.floor(this.otherConferenceGames / (otherConf.length * 2)));
       }
     }
 
-    // Save schedule to Firestore
+    // Save schedule to Firestore for each team
     const batch = [];
     for (const game of schedule) {
-      if (this.selectedTeamId) {
-        const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-        batch.push(addDoc(gamesRef, game));
-      }
+      // Save game for team A
+      const teamARef = collection(this.firestore, `teams/${game.teamAId}/games`);
+      batch.push(addDoc(teamARef, game));
+
+      // Save game for team B
+      const teamBRef = collection(this.firestore, `teams/${game.teamBId}/games`);
+      batch.push(addDoc(teamBRef, game));
     }
     await Promise.all(batch);
 
@@ -236,11 +235,6 @@ export class GamesComponent implements OnInit {
 
     if (this.divisionGames + this.conferenceGames + this.otherConferenceGames !== this.totalGames) {
       alert('Game distribution must equal total games');
-      return false;
-    }
-
-    if (!this.selectedTeamId) {
-      alert('Please select a team first');
       return false;
     }
 
