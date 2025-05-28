@@ -7,7 +7,9 @@ import {
   doc,
   setDoc,
   getDoc,
-  deleteDoc
+  deleteDoc,
+  query,
+  where
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +32,7 @@ interface Game {
   homeLogo?: string;
   awayLogo?: string;
   tags?: string[];
+  season: number;
 }
 
 interface CalendarDay {
@@ -53,8 +56,9 @@ export class GamesComponent implements OnInit {
   date: string = '';
 
   // Schedule Generation Parameters
-  seasonStartDate: Date = new Date();
-  seasonEndDate: Date = new Date();
+  season: number = 1;
+  seasonStartDate: string = '';
+  seasonEndDate: string = '';
   gameDays: boolean[] = [false, false, false, false, false, false, false]; // Sun-Sat
   totalGames: number = 82;
   divisionGames: number = 32;
@@ -77,7 +81,8 @@ export class GamesComponent implements OnInit {
   async onTeamSelect() {
     if (!this.selectedTeamId) return;
     const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const snapshot = await getDocs(gamesRef);
+    const q = query(gamesRef, where('season', '==', this.season));
+    const snapshot = await getDocs(q);
     this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
     this.generateCalendar();
   }
@@ -91,6 +96,7 @@ export class GamesComponent implements OnInit {
     const gameData = {
       opponent: this.opponent,
       date: this.date,
+      season: this.season,
       createdAt: new Date()
     };
 
@@ -104,7 +110,7 @@ export class GamesComponent implements OnInit {
 
   generateCalendar() {
     this.calendarDays = [];
-    if (this.schedule.length === 0) return;
+    if (this.schedule.length === 0 || !this.seasonStartDate || !this.seasonEndDate) return;
 
     const startDate = new Date(this.seasonStartDate);
     const endDate = new Date(this.seasonEndDate);
@@ -133,7 +139,10 @@ export class GamesComponent implements OnInit {
     const availableDates: Date[] = [];
     
     // Generate available dates based on selected game days
-    for (let d = new Date(this.seasonStartDate); d <= this.seasonEndDate; d.setDate(d.getDate() + 1)) {
+    const startDate = new Date(this.seasonStartDate);
+    const endDate = new Date(this.seasonEndDate);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       if (this.gameDays[d.getDay()]) {
         availableDates.push(new Date(d));
       }
@@ -177,6 +186,7 @@ export class GamesComponent implements OnInit {
             awayTeam: away.name,
             homeLogo: home.logoUrl,
             awayLogo: away.logoUrl,
+            season: this.season,
             tags: teamA.division === teamB.division ? ['division'] :
                   teamA.conference === teamB.conference ? ['conference'] : ['interconference']
           });
@@ -212,6 +222,14 @@ export class GamesComponent implements OnInit {
           Math.floor(this.otherConferenceGames / (divisionTeams.length * otherConfTeams.length)));
       }
     }
+
+    // Save schedule to Firestore
+    const batch = [];
+    for (const game of schedule) {
+      const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
+      batch.push(addDoc(gamesRef, game));
+    }
+    await Promise.all(batch);
 
     this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
     this.generateCalendar();

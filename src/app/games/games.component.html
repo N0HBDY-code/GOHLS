@@ -16,11 +16,15 @@
     <div class="card-body">
       <form (ngSubmit)="generateSchedule()">
         <div class="row g-3">
-          <div class="col-md-6">
+          <div class="col-md-4">
+            <label class="form-label">Season Number</label>
+            <input type="number" class="form-control" [(ngModel)]="season" name="season" required min="1" />
+          </div>
+          <div class="col-md-4">
             <label class="form-label">Season Start Date</label>
             <input type="date" class="form-control" [(ngModel)]="seasonStartDate" name="startDate" required />
           </div>
-          <div class="col-md-6">
+          <div class="col-md-4">
             <label class="form-label">Season End Date</label>
             <input type="date" class="form-control" [(ngModel)]="seasonEndDate" name="endDate" required />
           </div>
@@ -68,7 +72,7 @@
   <!-- Calendar View -->
   <div class="card" *ngIf="calendarDays.length > 0">
     <div class="card-header">
-      <h5 class="mb-0">Season Calendar</h5>
+      <h5 class="mb-0">Season {{ season }} Calendar</h5>
     </div>
     <div class="card-body">
       <div class="row row-cols-7 text-center border-bottom py-2">
