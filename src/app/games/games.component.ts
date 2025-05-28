@@ -6,7 +6,8 @@ import {
   doc,
   query,
   where,
-  writeBatch
+  writeBatch,
+  addDoc
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -275,28 +276,30 @@ export class GamesComponent implements OnInit {
     }
 
     try {
-      // Save schedule to Firestore in batches
-      const batchSize = 400;
-      for (let i = 0; i < schedule.length; i += batchSize) {
-        const batch = writeBatch(this.firestore);
-        const chunk = schedule.slice(i, i + batchSize);
-        
-        for (const game of chunk) {
-          const teamARef = doc(collection(this.firestore, `teams/${game.teamAId}/games`));
-          batch.set(teamARef, { ...game, season: this.season });
+      // Save schedule to Firestore
+      for (const game of schedule) {
+        // Save game for team A
+        const teamAGamesRef = collection(this.firestore, `teams/${game.teamAId}/games`);
+        await addDoc(teamAGamesRef, {
+          ...game,
+          season: this.season,
+          timestamp: new Date()
+        });
 
-          const teamBRef = doc(collection(this.firestore, `teams/${game.teamBId}/games`));
-          batch.set(teamBRef, { ...game, season: this.season });
-        }
-
-        await batch.commit();
+        // Save game for team B
+        const teamBGamesRef = collection(this.firestore, `teams/${game.teamBId}/games`);
+        await addDoc(teamBGamesRef, {
+          ...game,
+          season: this.season,
+          timestamp: new Date()
+        });
       }
 
       this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
       this.generateCalendar();
       
       alert('Schedule generated successfully!');
-      await this.onTeamSelect();
+      await this.onTeamSelect(); // Refresh the view
     } catch (error) {
       console.error('Error saving schedule:', error);
       alert('Error saving schedule. Please try again.');
