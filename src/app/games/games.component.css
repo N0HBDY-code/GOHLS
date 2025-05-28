@@ -48,3 +48,10 @@
 .legend i {
   font-size: 0.75rem;
 }
+
+/* Calendar navigation */
+.btn-group .btn:disabled {
+  opacity: 1;
+  font-weight: bold;
+  min-width: 150px;
+}

@@ -35,6 +35,7 @@ interface Game {
 interface CalendarDay {
   date: Date;
   games: Game[];
+  isCurrentMonth: boolean;
 }
 
 @Component({
@@ -51,6 +52,7 @@ export class GamesComponent implements OnInit {
   selectedTeamId: string = '';
   availableSeasons: number[] = [];
   selectedSeason: number = 1;
+  currentMonth: Date = new Date();
 
   // Schedule Generation Parameters
   season: number = 1;
@@ -107,18 +109,28 @@ export class GamesComponent implements OnInit {
       this.seasonStartDate = startDate.toISOString().split('T')[0];
       this.seasonEndDate = endDate.toISOString().split('T')[0];
       
+      // Set current month to first month of season
+      this.currentMonth = startDate;
       this.generateCalendar();
     }
   }
 
   generateCalendar() {
     this.calendarDays = [];
-    if (!this.seasonStartDate || !this.seasonEndDate) return;
+    if (!this.currentMonth) return;
 
-    const startDate = new Date(this.seasonStartDate);
-    const endDate = new Date(this.seasonEndDate);
+    const firstDayOfMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
+    const lastDayOfMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0);
 
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    // Get the first day to display (last days of previous month if month doesn't start on Sunday)
+    const firstDay = new Date(firstDayOfMonth);
+    firstDay.setDate(firstDay.getDate() - firstDay.getDay());
+
+    // Get the last day to display (first days of next month if month doesn't end on Saturday)
+    const lastDay = new Date(lastDayOfMonth);
+    lastDay.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
+
+    for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
       const dayGames = this.schedule.filter(game => {
         const gameDate = new Date(game.date);
         return gameDate.toDateString() === d.toDateString();
@@ -126,9 +138,20 @@ export class GamesComponent implements OnInit {
 
       this.calendarDays.push({
         date: new Date(d),
-        games: dayGames
+        games: dayGames,
+        isCurrentMonth: d.getMonth() === this.currentMonth.getMonth()
       });
     }
+  }
+
+  previousMonth() {
+    this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() - 1);
+    this.generateCalendar();
+  }
+
+  nextMonth() {
+    this.currentMonth = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1);
+    this.generateCalendar();
   }
 
   isGameDay(date: Date): boolean {
