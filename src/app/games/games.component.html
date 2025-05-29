@@ -86,13 +86,20 @@
     <div class="card-body">
       <!-- Week Selection -->
       <div class="btn-group mb-4">
-        <button *ngFor="let week of weeklySchedule"
+        <button *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]"
                 class="btn"
-                [class.btn-primary]="selectedWeek === week.weekNumber"
-                [class.btn-outline-primary]="selectedWeek !== week.weekNumber"
-                (click)="selectedWeek = week.weekNumber">
-          Week {{ week.weekNumber }}
+                [class.btn-primary]="selectedWeek === i"
+                [class.btn-outline-primary]="selectedWeek !== i"
+                (click)="onWeekChange(i)">
+          Week {{ i }}
         </button>
+      </div>
+
+      <!-- Loading Indicator -->
+      <div *ngIf="loading" class="text-center my-4">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
       </div>
 
       <!-- Games Display -->
@@ -141,13 +148,10 @@
         </div>
       </ng-container>
 
-      <!-- Load More Button -->
-      <div class="text-center mt-4" *ngIf="hasMoreGames">
-        <button class="btn btn-outline-primary" 
-                (click)="loadGames(true)"
-                [disabled]="loading">
-          {{ loading ? 'Loading...' : 'Load More Games' }}
-        </button>
+      <!-- No Games Message -->
+      <div *ngIf="!loading && (!getWeekSchedule(selectedWeek) || getDays(getWeekSchedule(selectedWeek)!).length === 0)"
+           class="text-center text-muted my-4">
+        No games scheduled for Week {{ selectedWeek }}
       </div>
     </div>
   </div>

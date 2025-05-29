@@ -13,9 +13,7 @@ import {
   setDoc,
   updateDoc,
   orderBy,
-  limit,
-  startAfter,
-  QueryDocumentSnapshot
+  limit
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -65,9 +63,7 @@ export class GamesComponent implements OnInit {
   tempSeason = 1;
   selectedWeek = 1;
   loading = false;
-  lastGameDoc: QueryDocumentSnapshot | null = null;
-  gamesPerPage = 10;
-  hasMoreGames = true;
+  loadedWeeks = new Set<number>();
   gamesCache = new Map<string, Game>();
 
   newGame = {
@@ -84,7 +80,7 @@ export class GamesComponent implements OnInit {
   async ngOnInit() {
     await this.loadTeams();
     await this.loadCurrentSeason();
-    await this.loadGames();
+    await this.loadWeek(this.selectedWeek);
   }
 
   formatDay(day: string | number): string {
@@ -107,11 +103,13 @@ export class GamesComponent implements OnInit {
     this.currentSeason = this.tempSeason;
     this.newGame.season = this.currentSeason;
     this.editingSeason = false;
-    await this.loadGames();
+    this.loadedWeeks.clear();
+    this.weeklySchedule = [];
+    await this.loadWeek(this.selectedWeek);
   }
 
   async loadTeams() {
-    if (this.teams.length > 0) return; // Use cached teams if available
+    if (this.teams.length > 0) return;
     
     const snapshot = await getDocs(collection(this.firestore, 'teams'));
     this.teams = snapshot.docs.map(doc => ({
@@ -123,25 +121,20 @@ export class GamesComponent implements OnInit {
     }));
   }
 
-  async loadGames(loadMore = false) {
-    if (this.loading || (!loadMore && this.weeklySchedule.length > 0)) return;
+  async loadWeek(weekNumber: number) {
+    if (this.loading || this.loadedWeeks.has(weekNumber)) return;
     
     this.loading = true;
     try {
       const gamesQuery = query(
         collection(this.firestore, 'games'),
         where('season', '==', this.currentSeason),
-        orderBy('week'),
-        orderBy('day'),
-        ...(this.lastGameDoc ? [startAfter(this.lastGameDoc)] : []),
-        limit(this.gamesPerPage)
+        where('week', '==', weekNumber),
+        orderBy('day')
       );
 
       const snapshot = await getDocs(gamesQuery);
-      this.hasMoreGames = !snapshot.empty;
-      this.lastGameDoc = snapshot.docs[snapshot.docs.length - 1] || null;
-
-      const newGames = await Promise.all(
+      const weekGames = await Promise.all(
         snapshot.docs.map(async doc => {
           const gameData = doc.data();
           const cacheKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
@@ -169,47 +162,73 @@ export class GamesComponent implements OnInit {
         })
       );
 
-      this.updateWeeklySchedule(newGames, loadMore);
+      this.updateWeekSchedule(weekGames, weekNumber);
+      this.loadedWeeks.add(weekNumber);
+
+      // Preload next week
+      if (weekNumber < 52) {
+        this.preloadWeek(weekNumber + 1);
+      }
     } finally {
       this.loading = false;
     }
   }
 
-  private updateWeeklySchedule(newGames: Game[], append: boolean) {
-    const weekMap = new Map<number, WeekSchedule>();
-    
-    // If appending, start with existing schedule
-    if (append) {
-      this.weeklySchedule.forEach(week => {
-        weekMap.set(week.weekNumber, {
-          weekNumber: week.weekNumber,
-          games: { ...week.games }
-        });
-      });
-    }
+  private async preloadWeek(weekNumber: number) {
+    if (this.loadedWeeks.has(weekNumber)) return;
 
-    // Add new games to the schedule
-    newGames.forEach(game => {
-      if (!weekMap.has(game.week)) {
-        weekMap.set(game.week, {
-          weekNumber: game.week,
-          games: {}
-        });
-      }
-      
-      const weekSchedule = weekMap.get(game.week)!;
+    const gamesQuery = query(
+      collection(this.firestore, 'games'),
+      where('season', '==', this.currentSeason),
+      where('week', '==', weekNumber),
+      orderBy('day')
+    );
+
+    getDocs(gamesQuery).then(snapshot => {
+      const weekGames = snapshot.docs.map(doc => {
+        const gameData = doc.data();
+        const homeTeam = this.teams.find(t => t.id === gameData['homeTeamId']);
+        const awayTeam = this.teams.find(t => t.id === gameData['awayTeamId']);
+        
+        return {
+          id: doc.id,
+          ...gameData,
+          day: this.formatDay(gameData['day']),
+          homeTeam: homeTeam?.name || 'Unknown Team',
+          awayTeam: awayTeam?.name || 'Unknown Team',
+          homeLogo: homeTeam?.logoUrl,
+          awayLogo: awayTeam?.logoUrl,
+          tags: gameData['tags'] || []
+        } as Game;
+      });
+
+      this.updateWeekSchedule(weekGames, weekNumber);
+      this.loadedWeeks.add(weekNumber);
+    });
+  }
+
+  private updateWeekSchedule(games: Game[], weekNumber: number) {
+    const weekSchedule = this.weeklySchedule.find(w => w.weekNumber === weekNumber) || {
+      weekNumber,
+      games: {}
+    };
+
+    games.forEach(game => {
       if (!weekSchedule.games[game.day]) {
         weekSchedule.games[game.day] = [];
       }
       weekSchedule.games[game.day].push(game);
     });
 
-    this.weeklySchedule = Array.from(weekMap.values())
-      .sort((a, b) => a.weekNumber - b.weekNumber);
-
-    if (this.weeklySchedule.length > 0 && !append) {
-      this.selectedWeek = this.weeklySchedule[0].weekNumber;
+    if (!this.weeklySchedule.some(w => w.weekNumber === weekNumber)) {
+      this.weeklySchedule.push(weekSchedule);
+      this.weeklySchedule.sort((a, b) => a.weekNumber - b.weekNumber);
     }
+  }
+
+  async onWeekChange(weekNumber: number) {
+    this.selectedWeek = weekNumber;
+    await this.loadWeek(weekNumber);
   }
 
   getTeamName(teamId: string): string {
@@ -243,6 +262,7 @@ export class GamesComponent implements OnInit {
       tags
     };
 
+    await addDoc(collection(this.firestore, 'games'), gameData);
     await addDoc(collection(this.firestore, `teams/${this.newGame.homeTeamId}/games`), gameData);
     await addDoc(collection(this.firestore, `teams/${this.newGame.awayTeamId}/games`), gameData);
 
@@ -255,7 +275,9 @@ export class GamesComponent implements OnInit {
       isRival: false
     };
 
-    await this.loadGames();
+    // Reload the current week
+    this.loadedWeeks.delete(this.selectedWeek);
+    await this.loadWeek(this.selectedWeek);
   }
 
   async toggleRival(game: Game) {
@@ -274,18 +296,24 @@ export class GamesComponent implements OnInit {
         }
       }
     } else {
-      tags.length = 0; // Clear existing tags
+      tags.length = 0;
       tags.push('rival');
     }
 
-    // Update both teams' game records
-    const homeGameRef = doc(this.firestore, `teams/${game.homeTeamId}/games/${game.id}`);
-    const awayGameRef = doc(this.firestore, `teams/${game.awayTeamId}/games/${game.id}`);
+    const gameRef = doc(this.firestore, `games/${game.id}`);
+    await updateDoc(gameRef, { tags });
     
-    await updateDoc(homeGameRef, { tags });
-    await updateDoc(awayGameRef, { tags });
-    
-    await this.loadGames();
+    // Update cache and UI
+    const cacheKey = `${game.week}-${game.day}-${game.homeTeamId}-${game.awayTeamId}`;
+    if (this.gamesCache.has(cacheKey)) {
+      const cachedGame = this.gamesCache.get(cacheKey)!;
+      cachedGame.tags = tags;
+      this.gamesCache.set(cacheKey, cachedGame);
+    }
+
+    // Reload the current week
+    this.loadedWeeks.delete(this.selectedWeek);
+    await this.loadWeek(this.selectedWeek);
   }
 
   async clearAllGames() {
@@ -295,20 +323,16 @@ export class GamesComponent implements OnInit {
 
     this.isClearing = true;
     try {
-      for (const team of this.teams) {
-        const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
-        const snapshot = await getDocs(gamesRef);
-        
-        for (const doc of snapshot.docs) {
-          await deleteDoc(doc.ref);
-        }
+      const gamesRef = collection(this.firestore, 'games');
+      const snapshot = await getDocs(gamesRef);
+      
+      for (const doc of snapshot.docs) {
+        await deleteDoc(doc.ref);
       }
       
       this.weeklySchedule = [];
       this.gamesCache.clear();
-      this.lastGameDoc = null;
-      this.hasMoreGames = true;
-      await this.loadGames();
+      this.loadedWeeks.clear();
       
       alert('All games have been cleared successfully!');
     } catch (error) {
