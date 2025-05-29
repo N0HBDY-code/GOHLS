@@ -149,6 +149,13 @@ export class TeamsComponent {
 
   async deleteTeam(id: string) {
     if (!this.canManageTeams) return;
+
+    const team = this.teams.find(t => t.id === id);
+    if (!team) return;
+
+    const confirmMessage = `Are you sure you want to delete ${team.city} ${team.mascot}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+
     await deleteDoc(doc(this.firestore, `teams/${id}`));
     await this.loadTeams();
   }
@@ -242,6 +249,9 @@ export class TeamsComponent {
       alert('Cannot delete conference with existing teams');
       return;
     }
+
+    const confirmMessage = `Are you sure you want to delete the ${conferenceName}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
     
     this.conferences = this.conferences.filter(c => c.name !== conferenceName);
   }
@@ -253,6 +263,9 @@ export class TeamsComponent {
       alert('Cannot delete division with existing teams');
       return;
     }
+
+    const confirmMessage = `Are you sure you want to delete the ${divisionName} from ${conferenceName}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
     
     const conference = this.conferences.find(c => c.name === conferenceName);
     if (conference) {
