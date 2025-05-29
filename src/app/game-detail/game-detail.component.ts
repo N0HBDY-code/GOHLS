@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -39,6 +39,10 @@ export class GameDetailComponent implements OnInit {
       if (gameSnap.exists()) {
         this.game = { id: gameSnap.id, ...gameSnap.data() };
         
+        // Load existing scores if they exist
+        this.awayScore = this.game.awayScore || 0;
+        this.homeScore = this.game.homeScore || 0;
+        
         // Get home team details
         const homeTeamRef = doc(this.firestore, `teams/${this.game.homeTeamId}`);
         const homeTeamSnap = await getDoc(homeTeamRef);
@@ -59,5 +63,21 @@ export class GameDetailComponent implements OnInit {
       }
     }
     this.loading = false;
+  }
+
+  async saveScores() {
+    if (!this.game) return;
+
+    // Update scores in both team's game records
+    const homeGameRef = doc(this.firestore, `teams/${this.game.homeTeamId}/games/${this.gameId}`);
+    const awayGameRef = doc(this.firestore, `teams/${this.game.awayTeamId}/games/${this.gameId}`);
+
+    const scoreData = {
+      homeScore: this.homeScore,
+      awayScore: this.awayScore
+    };
+
+    await updateDoc(homeGameRef, scoreData);
+    await updateDoc(awayGameRef, scoreData);
   }
 }
