@@ -150,6 +150,9 @@ export class GamesComponent implements OnInit {
   }
 
   onViewModeChange() {
+    if (this.viewMode === 'all') {
+      this.selectedTeamId = '';
+    }
     this.filterGames();
   }
 
