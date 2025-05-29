@@ -60,7 +60,7 @@ export class GamesComponent implements OnInit {
   editingSeason = false;
   tempSeason = 1;
   selectedWeek = 1;
-  uniqueDays: string[] = [];
+  uniqueDays: string[] = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'];
 
   newGame = {
     homeTeamId: '',
@@ -143,8 +143,6 @@ export class GamesComponent implements OnInit {
       }
       return a.day.localeCompare(b.day);
     });
-
-    this.uniqueDays = [...new Set(this.games.map(g => g.day))].sort();
 
     const weekMap = new Map<number, WeekSchedule>();
     
