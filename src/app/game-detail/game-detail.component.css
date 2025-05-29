@@ -16,6 +16,23 @@
   font-weight: 500;
 }
 
+.edit-button {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 5px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.edit-button:hover {
+  background: #444;
+}
+
 .team-section {
   display: flex;
   align-items: center;

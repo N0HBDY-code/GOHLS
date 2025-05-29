@@ -24,6 +24,7 @@ export class GameDetailComponent implements OnInit {
   awayScore: number = 0;
   homeScore: number = 0;
   canEditScores = false;
+  isEditing = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -89,5 +90,13 @@ export class GameDetailComponent implements OnInit {
 
     await updateDoc(homeGameRef, scoreData);
     await updateDoc(awayGameRef, scoreData);
+    
+    this.isEditing = false;
+  }
+
+  toggleEdit() {
+    if (this.canEditScores) {
+      this.isEditing = !this.isEditing;
+    }
   }
 }

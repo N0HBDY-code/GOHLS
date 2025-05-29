@@ -9,6 +9,13 @@
     <div class="card-body">
       <!-- Scoreboard -->
       <div class="scoreboard">
+        <!-- Edit Button -->
+        <button *ngIf="canEditScores" 
+                class="edit-button" 
+                (click)="toggleEdit()">
+          {{ isEditing ? 'Save' : 'Edit' }}
+        </button>
+
         <!-- Game Info -->
         <div class="game-info">Week {{ game.week }} - {{ game.day }}</div>
         
@@ -21,21 +28,19 @@
 
           <!-- Score -->
           <div class="d-flex align-items-center">
-            <input *ngIf="canEditScores" 
+            <input *ngIf="isEditing" 
                    type="number" 
                    class="score-input" 
                    [(ngModel)]="awayScore" 
-                   min="0" 
-                   (change)="saveScores()">
-            <span *ngIf="!canEditScores" class="score-display">{{ awayScore }}</span>
+                   min="0">
+            <span *ngIf="!isEditing" class="score-display">{{ awayScore }}</span>
             <span class="score-divider">-</span>
-            <input *ngIf="canEditScores" 
+            <input *ngIf="isEditing" 
                    type="number" 
                    class="score-input" 
                    [(ngModel)]="homeScore" 
-                   min="0" 
-                   (change)="saveScores()">
-            <span *ngIf="!canEditScores" class="score-display">{{ homeScore }}</span>
+                   min="0">
+            <span *ngIf="!isEditing" class="score-display">{{ homeScore }}</span>
           </div>
 
           <!-- Home Team -->
