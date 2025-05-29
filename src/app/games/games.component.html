@@ -74,41 +74,56 @@
     </div>
   </div>
 
-  <!-- Games List -->
+  <!-- Schedule Display -->
   <div class="card">
     <div class="card-header">
-      <h5 class="mb-0">Schedule - Season {{ currentSeason }}</h5>
+      <h5 class="mb-0">Season {{ currentSeason }} Schedule</h5>
     </div>
     <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th>Week</th>
-              <th>Day</th>
-              <th>Home Team</th>
-              <th>Away Team</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let game of games">
-              <td>Week {{ game.week }}</td>
-              <td>{{ game.day }}</td>
-              <td>{{ game.homeTeam }}</td>
-              <td>{{ game.awayTeam }}</td>
-              <td>
-                <span [ngClass]="{
-                  'badge bg-primary': game.tags?.includes('division'),
-                  'badge bg-success': game.tags?.includes('conference'),
-                  'badge bg-info': game.tags?.includes('interconference')
-                }">
-                  {{ game.tags?.[0] }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Week Selector -->
+      <div class="mb-4">
+        <div class="btn-group">
+          <button *ngFor="let week of weeklySchedule"
+                  class="btn"
+                  [class.btn-primary]="selectedWeek === week.weekNumber"
+                  [class.btn-outline-primary]="selectedWeek !== week.weekNumber"
+                  (click)="selectedWeek = week.weekNumber">
+            Week {{ week.weekNumber }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Weekly Schedule -->
+      <div *ngIf="getWeekSchedule(selectedWeek) as weekSchedule">
+        <div class="table-responsive">
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th *ngFor="let day of uniqueDays">{{ day }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td *ngFor="let day of uniqueDays" class="align-top">
+                  <div *ngFor="let game of getGamesForDay(weekSchedule, day)" class="mb-2">
+                    <div class="small">
+                      <span [ngClass]="{
+                        'badge bg-primary': game.tags?.includes('division'),
+                        'badge bg-success': game.tags?.includes('conference'),
+                        'badge bg-info': game.tags?.includes('interconference')
+                      }" class="mb-1 d-inline-block">
+                        {{ game.tags?.[0] }}
+                      </span>
+                      <div>{{ game.homeTeam }}</div>
+                      <div>vs</div>
+                      <div>{{ game.awayTeam }}</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </div>

@@ -33,6 +33,13 @@ interface Game {
   tags?: string[];
 }
 
+interface WeekSchedule {
+  weekNumber: number;
+  games: {
+    [day: string]: Game[];
+  };
+}
+
 @Component({
   selector: 'app-games',
   standalone: true,
@@ -43,10 +50,13 @@ interface Game {
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
   games: Game[] = [];
+  weeklySchedule: WeekSchedule[] = [];
   isClearing = false;
   currentSeason = 1;
   editingSeason = false;
   tempSeason = 1;
+  selectedWeek = 1;
+  uniqueDays: string[] = [];
 
   newGame = {
     homeTeamId: '',
@@ -121,6 +131,34 @@ export class GamesComponent implements OnInit {
       }
       return a.day.localeCompare(b.day);
     });
+
+    // Get unique days
+    this.uniqueDays = [...new Set(this.games.map(g => g.day))].sort();
+
+    // Organize games by week
+    const weekMap = new Map<number, WeekSchedule>();
+    
+    this.games.forEach(game => {
+      if (!weekMap.has(game.week)) {
+        weekMap.set(game.week, {
+          weekNumber: game.week,
+          games: {}
+        });
+      }
+      
+      const weekSchedule = weekMap.get(game.week)!;
+      if (!weekSchedule.games[game.day]) {
+        weekSchedule.games[game.day] = [];
+      }
+      weekSchedule.games[game.day].push(game);
+    });
+
+    this.weeklySchedule = Array.from(weekMap.values())
+      .sort((a, b) => a.weekNumber - b.weekNumber);
+
+    if (this.weeklySchedule.length > 0) {
+      this.selectedWeek = this.weeklySchedule[0].weekNumber;
+    }
   }
 
   getTeamName(teamId: string): string {
@@ -161,7 +199,7 @@ export class GamesComponent implements OnInit {
     this.newGame = {
       homeTeamId: '',
       awayTeamId: '',
-      week: 1,
+      week: this.newGame.week,
       day: '',
       season: this.currentSeason
     };
@@ -186,6 +224,7 @@ export class GamesComponent implements OnInit {
       }
       
       this.games = [];
+      this.weeklySchedule = [];
       await this.loadGames();
       
       alert('All games have been cleared successfully!');
@@ -195,5 +234,13 @@ export class GamesComponent implements OnInit {
     } finally {
       this.isClearing = false;
     }
+  }
+
+  getWeekSchedule(weekNumber: number): WeekSchedule | undefined {
+    return this.weeklySchedule.find(w => w.weekNumber === weekNumber);
+  }
+
+  getGamesForDay(weekSchedule: WeekSchedule, day: string): Game[] {
+    return weekSchedule.games[day] || [];
   }
 }
