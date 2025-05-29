@@ -1,12 +1,14 @@
 .card {
   transition: all 0.3s ease;
   border: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: #1a1a1a;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
   transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .card-header {
@@ -18,40 +20,47 @@
 
 .card-body {
   padding: 1.5rem;
+  background: #1a1a1a;
 }
 
 .form-label {
   font-weight: 500;
-  color: #37474f;
+  color: #ffffff;
   margin-bottom: 0.5rem;
 }
 
 .form-control {
   border-radius: 8px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #333;
   padding: 0.75rem;
   transition: all 0.2s ease;
+  background: #2a2a2a;
+  color: white;
 }
 
 .form-control:focus {
-  border-color: #1a237e;
-  box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.25);
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  background: #333;
 }
 
 .form-select {
   border-radius: 8px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid #333;
   padding: 0.75rem;
   cursor: pointer;
+  background: #2a2a2a;
+  color: white;
 }
 
 .form-select:focus {
-  border-color: #1a237e;
-  box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.25);
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+  background: #333;
 }
 
 .btn-primary {
-  background: linear-gradient(45deg, #1a237e, #283593);
+  background: #0d6efd;
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 8px;
@@ -60,13 +69,13 @@
 }
 
 .btn-primary:hover {
-  background: linear-gradient(45deg, #283593, #3949ab);
+  background: #0b5ed7;
   transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(26, 35, 126, 0.3);
+  box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
 }
 
 .text-primary {
-  color: #1a237e !important;
+  color: #0d6efd !important;
 }
 
 h4.text-primary {
@@ -74,11 +83,12 @@ h4.text-primary {
   font-weight: 700;
   margin: 2rem 0 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 3px solid #1a237e;
+  border-bottom: 3px solid #0d6efd;
+  color: white !important;
 }
 
 h5 {
-  color: #37474f;
+  color: #ffffff;
   font-weight: 600;
   margin: 1.5rem 0 1rem;
 }
@@ -87,7 +97,7 @@ h5 {
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: white;
+  background: #1a1a1a;
 }
 
 .team-logo-container {
@@ -95,7 +105,7 @@ h5 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f5;
+  background: #2a2a2a;
   padding: 1rem;
 }
 
@@ -113,12 +123,12 @@ h5 {
 .team-name {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1a237e;
+  color: white;
   margin-bottom: 0.5rem;
 }
 
 .team-division {
-  color: #666;
+  color: #999;
   font-size: 0.9rem;
 }
 
@@ -136,17 +146,21 @@ h5 {
   font-weight: 500;
   border-radius: 6px;
   transition: all 0.2s ease;
+  color: white;
 }
 
 .btn-outline-secondary:hover,
 .btn-outline-danger:hover {
   transform: translateY(-2px);
+  color: white;
 }
 
 .modal-content {
   border-radius: 12px;
   border: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  background: #1a1a1a;
+  color: white;
 }
 
 .modal-header {
@@ -159,24 +173,27 @@ h5 {
 
 .modal-body {
   padding: 2rem;
+  background: #1a1a1a;
 }
 
 .modal-footer {
   border-top: none;
   padding: 1.5rem;
+  background: #1a1a1a;
 }
 
 .btn-close {
   color: white;
   opacity: 1;
+  filter: invert(1) grayscale(100%) brightness(200%);
 }
 
 .division-section {
-  background: white;
+  background: #1a1a1a;
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .conference-section {
