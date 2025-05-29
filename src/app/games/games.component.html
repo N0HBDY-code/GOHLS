@@ -115,7 +115,8 @@
                 <td *ngFor="let day of getDays(weekSchedule)" class="align-top">
                   <div *ngFor="let game of getGamesForDay(weekSchedule, day)" 
                        class="game-card"
-                       (click)="toggleRival(game)">
+                       (click)="viewGame(game)"
+                       style="cursor: pointer;">
                     <span *ngIf="game.tags.length > 0" 
                           [ngClass]="{
                             'badge': true,
