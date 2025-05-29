@@ -86,12 +86,12 @@
     <div class="card-body">
       <!-- Week Selection -->
       <div class="btn-group mb-4">
-        <button *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]"
+        <button *ngFor="let week of activeWeeks"
                 class="btn"
-                [class.btn-primary]="selectedWeek === i"
-                [class.btn-outline-primary]="selectedWeek !== i"
-                (click)="onWeekChange(i)">
-          Week {{ i }}
+                [class.btn-primary]="selectedWeek === week"
+                [class.btn-outline-primary]="selectedWeek !== week"
+                (click)="onWeekChange(week)">
+          Week {{ week }}
         </button>
       </div>
 

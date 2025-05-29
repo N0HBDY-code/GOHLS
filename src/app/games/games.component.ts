@@ -12,8 +12,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  orderBy,
-  limit
+  orderBy
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -63,7 +62,7 @@ export class GamesComponent implements OnInit {
   tempSeason = 1;
   selectedWeek = 1;
   loading = false;
-  loadedWeeks = new Set<number>();
+  activeWeeks: number[] = [];
   gamesCache = new Map<string, Game>();
 
   newGame = {
@@ -80,7 +79,11 @@ export class GamesComponent implements OnInit {
   async ngOnInit() {
     await this.loadTeams();
     await this.loadCurrentSeason();
-    await this.loadWeek(this.selectedWeek);
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
+    }
   }
 
   formatDay(day: string | number): string {
@@ -97,15 +100,34 @@ export class GamesComponent implements OnInit {
     }
   }
 
+  async loadActiveWeeks() {
+    const gamesQuery = query(
+      collection(this.firestore, 'games'),
+      where('season', '==', this.currentSeason),
+      orderBy('week')
+    );
+    
+    const snapshot = await getDocs(gamesQuery);
+    const weeks = new Set<number>();
+    snapshot.docs.forEach(doc => {
+      weeks.add(doc.data()['week']);
+    });
+    
+    this.activeWeeks = Array.from(weeks).sort((a, b) => a - b);
+  }
+
   async saveSeason() {
     const seasonDoc = doc(this.firestore, 'settings/season');
     await setDoc(seasonDoc, { currentSeason: this.tempSeason });
     this.currentSeason = this.tempSeason;
     this.newGame.season = this.currentSeason;
     this.editingSeason = false;
-    this.loadedWeeks.clear();
     this.weeklySchedule = [];
-    await this.loadWeek(this.selectedWeek);
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
+    }
   }
 
   async loadTeams() {
@@ -122,7 +144,7 @@ export class GamesComponent implements OnInit {
   }
 
   async loadWeek(weekNumber: number) {
-    if (this.loading || this.loadedWeeks.has(weekNumber)) return;
+    if (this.loading) return;
     
     this.loading = true;
     try {
@@ -163,48 +185,9 @@ export class GamesComponent implements OnInit {
       );
 
       this.updateWeekSchedule(weekGames, weekNumber);
-      this.loadedWeeks.add(weekNumber);
-
-      // Preload next week
-      if (weekNumber < 52) {
-        this.preloadWeek(weekNumber + 1);
-      }
     } finally {
       this.loading = false;
     }
-  }
-
-  private async preloadWeek(weekNumber: number) {
-    if (this.loadedWeeks.has(weekNumber)) return;
-
-    const gamesQuery = query(
-      collection(this.firestore, 'games'),
-      where('season', '==', this.currentSeason),
-      where('week', '==', weekNumber),
-      orderBy('day')
-    );
-
-    getDocs(gamesQuery).then(snapshot => {
-      const weekGames = snapshot.docs.map(doc => {
-        const gameData = doc.data();
-        const homeTeam = this.teams.find(t => t.id === gameData['homeTeamId']);
-        const awayTeam = this.teams.find(t => t.id === gameData['awayTeamId']);
-        
-        return {
-          id: doc.id,
-          ...gameData,
-          day: this.formatDay(gameData['day']),
-          homeTeam: homeTeam?.name || 'Unknown Team',
-          awayTeam: awayTeam?.name || 'Unknown Team',
-          homeLogo: homeTeam?.logoUrl,
-          awayLogo: awayTeam?.logoUrl,
-          tags: gameData['tags'] || []
-        } as Game;
-      });
-
-      this.updateWeekSchedule(weekGames, weekNumber);
-      this.loadedWeeks.add(weekNumber);
-    });
   }
 
   private updateWeekSchedule(games: Game[], weekNumber: number) {
@@ -275,8 +258,7 @@ export class GamesComponent implements OnInit {
       isRival: false
     };
 
-    // Reload the current week
-    this.loadedWeeks.delete(this.selectedWeek);
+    await this.loadActiveWeeks();
     await this.loadWeek(this.selectedWeek);
   }
 
@@ -303,7 +285,6 @@ export class GamesComponent implements OnInit {
     const gameRef = doc(this.firestore, `games/${game.id}`);
     await updateDoc(gameRef, { tags });
     
-    // Update cache and UI
     const cacheKey = `${game.week}-${game.day}-${game.homeTeamId}-${game.awayTeamId}`;
     if (this.gamesCache.has(cacheKey)) {
       const cachedGame = this.gamesCache.get(cacheKey)!;
@@ -311,8 +292,6 @@ export class GamesComponent implements OnInit {
       this.gamesCache.set(cacheKey, cachedGame);
     }
 
-    // Reload the current week
-    this.loadedWeeks.delete(this.selectedWeek);
     await this.loadWeek(this.selectedWeek);
   }
 
@@ -332,7 +311,7 @@ export class GamesComponent implements OnInit {
       
       this.weeklySchedule = [];
       this.gamesCache.clear();
-      this.loadedWeeks.clear();
+      this.activeWeeks = [];
       
       alert('All games have been cleared successfully!');
     } catch (error) {
