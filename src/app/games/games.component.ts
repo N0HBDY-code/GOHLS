@@ -61,6 +61,7 @@ export class GamesComponent implements OnInit {
   gamesCache = new Map<string, Game>();
   canManageGames = false;
   canManageSeason = false;
+  isDeveloper = false;
 
   newGame: {
     homeTeamId: string;
@@ -93,6 +94,7 @@ export class GamesComponent implements OnInit {
       this.canManageSeason = roles.some(role => 
         ['developer', 'commissioner'].includes(role)
       );
+      this.isDeveloper = roles.includes('developer');
     });
 
     const teamsRef = collection(this.firestore, 'teams');
@@ -241,7 +243,7 @@ export class GamesComponent implements OnInit {
   }
 
   async clearAllGames() {
-    if (!this.canManageGames) return;
+    if (!this.isDeveloper) return;
 
     if (!confirm('Are you sure you want to clear all games? This cannot be undone.')) {
       return;
