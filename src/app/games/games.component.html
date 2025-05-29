@@ -1,4 +1,15 @@
 <div class="container mt-4">
+  <!-- Add Clear Games Button at the top -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <button class="btn btn-danger" 
+              (click)="clearAllGames()" 
+              [disabled]="isClearing">
+        {{ isClearing ? 'Clearing Games...' : 'Clear All Games' }}
+      </button>
+    </div>
+  </div>
+
   <!-- View Mode and Filters -->
   <div class="card mb-4">
     <div class="card-body">
