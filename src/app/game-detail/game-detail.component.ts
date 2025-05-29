@@ -5,6 +5,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../auth.service';
 
+type GamePeriod = '1st' | '2nd' | '3rd' | 'OT' | 'Final';
+
 @Component({
   selector: 'app-game-detail',
   standalone: true,
@@ -25,6 +27,8 @@ export class GameDetailComponent implements OnInit {
   homeScore: number = 0;
   canEditScores = false;
   isEditing = false;
+  currentPeriod: GamePeriod = '1st';
+  periods: GamePeriod[] = ['1st', '2nd', '3rd', 'OT', 'Final'];
 
   constructor(
     private route: ActivatedRoute,
@@ -54,9 +58,10 @@ export class GameDetailComponent implements OnInit {
       if (gameSnap.exists()) {
         this.game = { id: gameSnap.id, ...gameSnap.data() };
         
-        // Load existing scores if they exist
+        // Load existing scores and period if they exist
         this.awayScore = this.game.awayScore || 0;
         this.homeScore = this.game.homeScore || 0;
+        this.currentPeriod = this.game.period || '1st';
         
         // Get home team details
         const homeTeamRef = doc(this.firestore, `teams/${this.game.homeTeamId}`);
@@ -89,7 +94,8 @@ export class GameDetailComponent implements OnInit {
 
     const scoreData = {
       homeScore: this.homeScore,
-      awayScore: this.awayScore
+      awayScore: this.awayScore,
+      period: this.currentPeriod
     };
 
     await Promise.all([
@@ -110,5 +116,12 @@ export class GameDetailComponent implements OnInit {
     } else {
       this.isEditing = true;
     }
+  }
+
+  async updatePeriod(period: GamePeriod) {
+    if (!this.canEditScores) return;
+    
+    this.currentPeriod = period;
+    await this.saveScores();
   }
 }

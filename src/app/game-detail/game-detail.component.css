@@ -16,6 +16,51 @@
   font-weight: 500;
 }
 
+.period-indicator {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.period-label {
+  color: #999;
+  font-weight: 500;
+}
+
+.period-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.period-button {
+  background: #333;
+  border: none;
+  color: #999;
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.period-button:hover {
+  background: #444;
+  color: white;
+}
+
+.period-button.active {
+  background: #666;
+  color: white;
+}
+
+.period-display {
+  color: white;
+  font-weight: 500;
+}
+
 .edit-button {
   position: absolute;
   top: 1rem;

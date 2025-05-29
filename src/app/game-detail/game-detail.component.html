@@ -18,6 +18,20 @@
 
         <!-- Game Info -->
         <div class="game-info">Week {{ game.week }} - {{ game.day }}</div>
+
+        <!-- Period Indicator -->
+        <div class="period-indicator">
+          <span class="period-label">Period:</span>
+          <div class="period-buttons" *ngIf="canEditScores">
+            <button *ngFor="let period of periods"
+                    [class.active]="currentPeriod === period"
+                    (click)="updatePeriod(period)"
+                    class="period-button">
+              {{ period }}
+            </button>
+          </div>
+          <span *ngIf="!canEditScores" class="period-display">{{ currentPeriod }}</span>
+        </div>
         
         <div class="d-flex justify-content-center align-items-center">
           <!-- Away Team -->
