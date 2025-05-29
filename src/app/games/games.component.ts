@@ -63,14 +63,14 @@ export class GamesComponent implements OnInit {
     homeTeamId: string;
     awayTeamId: string;
     week: number;
-    day: number; // Changed from string to number
+    day: number;
     season: number;
     isRival: boolean;
   } = {
     homeTeamId: '',
     awayTeamId: '',
     week: 1,
-    day: 1, // Changed from '' to 1
+    day: 1,
     season: 1,
     isRival: false
   };
@@ -190,7 +190,24 @@ export class GamesComponent implements OnInit {
       tags
     };
 
-    await addDoc(collection(this.firestore, 'games'), gameData);
+    const gameRef = await addDoc(collection(this.firestore, 'games'), gameData);
+    const gameId = gameRef.id;
+
+    // Create game entries for both teams
+    await Promise.all([
+      setDoc(doc(this.firestore, `teams/${homeTeam.id}/games/${gameId}`), {
+        ...gameData,
+        isHome: true,
+        opponent: awayTeam.name,
+        opponentId: awayTeam.id
+      }),
+      setDoc(doc(this.firestore, `teams/${awayTeam.id}/games/${gameId}`), {
+        ...gameData,
+        isHome: false,
+        opponent: homeTeam.name,
+        opponentId: homeTeam.id
+      })
+    ]);
 
     this.newGame = {
       homeTeamId: '',
@@ -242,7 +259,7 @@ export class GamesComponent implements OnInit {
   }
 
   viewGame(game: Game) {
-    if (!game.id) return;
+    if (!game.id || !game.homeTeamId) return;
     this.router.navigate(['/games', game.homeTeamId, game.id]);
   }
 }
