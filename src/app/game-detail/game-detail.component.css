@@ -22,8 +22,11 @@
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem;
+  text-align: center;
+  width: auto;
 }
 
 .period-label {
@@ -34,6 +37,7 @@
 .period-buttons {
   display: flex;
   gap: 0.5rem;
+  justify-content: center;
 }
 
 .period-button {
