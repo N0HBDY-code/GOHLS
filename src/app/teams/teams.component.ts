@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { Firestore, collection, addDoc, deleteDoc, doc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
