@@ -7,7 +7,9 @@ import {
   doc,
   query,
   where,
-  deleteDoc
+  deleteDoc,
+  getDoc,
+  setDoc
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -42,6 +44,9 @@ export class GamesComponent implements OnInit {
   teams: Team[] = [];
   games: Game[] = [];
   isClearing = false;
+  currentSeason = 1;
+  editingSeason = false;
+  tempSeason = 1;
 
   newGame = {
     homeTeamId: '',
@@ -55,6 +60,25 @@ export class GamesComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadTeams();
+    await this.loadCurrentSeason();
+    await this.loadGames();
+  }
+
+  async loadCurrentSeason() {
+    const seasonDoc = doc(this.firestore, 'settings/season');
+    const seasonSnap = await getDoc(seasonDoc);
+    if (seasonSnap.exists()) {
+      this.currentSeason = seasonSnap.data()['currentSeason'] || 1;
+      this.newGame.season = this.currentSeason;
+    }
+  }
+
+  async saveSeason() {
+    const seasonDoc = doc(this.firestore, 'settings/season');
+    await setDoc(seasonDoc, { currentSeason: this.tempSeason });
+    this.currentSeason = this.tempSeason;
+    this.newGame.season = this.currentSeason;
+    this.editingSeason = false;
     await this.loadGames();
   }
 
@@ -73,7 +97,8 @@ export class GamesComponent implements OnInit {
     
     for (const team of this.teams) {
       const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
-      const snapshot = await getDocs(gamesRef);
+      const q = query(gamesRef, where('season', '==', this.currentSeason));
+      const snapshot = await getDocs(q);
       
       snapshot.docs.forEach(doc => {
         const gameData = doc.data();
@@ -124,6 +149,7 @@ export class GamesComponent implements OnInit {
 
     const gameData = {
       ...this.newGame,
+      season: this.currentSeason,
       tags
     };
 
@@ -137,7 +163,7 @@ export class GamesComponent implements OnInit {
       awayTeamId: '',
       week: 1,
       day: '',
-      season: 1
+      season: this.currentSeason
     };
 
     await this.loadGames();
