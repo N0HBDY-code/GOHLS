@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, NgZone } from '@angular/core';
-import { Firestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, updateDoc, query, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, updateDoc, query, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot, setDoc } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -113,8 +113,19 @@ export class RosterComponent implements OnInit {
       const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
-        ...data,
-        number: data.jerseyNumber
+        firstName: data['firstName'] || '',
+        lastName: data['lastName'] || '',
+        position: data['position'] || '',
+        number: data['jerseyNumber'] || 0,
+        teamId: data['teamId'] || '',
+        archetype: data['archetype'],
+        height: data['height'],
+        weight: data['weight'],
+        handedness: data['handedness'],
+        age: data['age'],
+        rookie: data['rookie'],
+        expiration: data['expiration'],
+        noTradeClause: data['noTradeClause']
       };
 
       // Load attributes
@@ -168,8 +179,11 @@ export class RosterComponent implements OnInit {
         const data = doc.data() as any;
         return {
           id: doc.id,
-          ...data,
-          number: data.jerseyNumber
+          firstName: data['firstName'] || '',
+          lastName: data['lastName'] || '',
+          position: data['position'] || '',
+          number: data['jerseyNumber'] || 0,
+          teamId: data['teamId'] || ''
         } as Player;
       });
   }
@@ -183,8 +197,11 @@ export class RosterComponent implements OnInit {
       const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
-        ...data,
-        number: data.jerseyNumber
+        firstName: data['firstName'] || '',
+        lastName: data['lastName'] || '',
+        position: data['position'] || '',
+        number: data['jerseyNumber'] || 0,
+        teamId: data['teamId'] || ''
       };
 
       if (data['teamId']) {
