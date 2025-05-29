@@ -125,9 +125,7 @@
       <div class="row mt-2">
         <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivision(conf.name, div)">
           <div class="team-card" 
-               [style.background]="team.primaryColor || '#ffffff'"
-               [style.--team-secondary-color]="team.secondaryColor || 'rgba(255, 255, 255, 0.15)'"
-               [style.--team-primary-color]="team.primaryColor || '#000000'"
+               [style.border-color]="team.primaryColor || '#000000'"
                (click)="viewTeam(team.id!)">
             <div class="team-logo-container">
               <img *ngIf="team.logoUrl"
