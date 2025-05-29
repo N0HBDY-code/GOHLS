@@ -33,6 +33,18 @@
               </ng-container>
             </select>
           </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Primary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="primaryColor" name="primaryColor" required />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Secondary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="secondaryColor" name="secondaryColor" required />
+          </div>
+          <div class="col-md-4 mb-3">
+            <label class="form-label">Tertiary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="tertiaryColor" name="tertiaryColor" required />
+          </div>
           <div class="col-md-12 mb-3">
             <label class="form-label">Team Logo</label>
             <input type="file" class="form-control" (change)="onFileSelected($event)" required />
@@ -99,6 +111,18 @@
             <select class="form-select" [(ngModel)]="team.division">
               <option *ngFor="let div of getDivisionsForConference(team.conference)" [value]="div">{{ div }}</option>
             </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Primary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="team.primaryColor" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Secondary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="team.secondaryColor" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tertiary Color</label>
+            <input type="color" class="form-control form-control-color w-100" [(ngModel)]="team.tertiaryColor" />
           </div>
           <div class="mb-3">
             <label class="form-label">Update Logo</label>
