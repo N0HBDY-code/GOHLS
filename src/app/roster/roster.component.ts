@@ -20,11 +20,7 @@ interface Player {
   teamId: string;
   teamName?: string;
   attributes?: Record<string, number>;
-  salary?: number;
-  contractYears?: number;
-  capHit?: number;
-  signingBonus?: number;
-  performanceBonus?: number;
+  overall?: number;
 }
 
 @Component({
@@ -42,8 +38,6 @@ export class RosterComponent implements OnInit {
   selectedPlayerId: string = '';
   lastPlayerDoc: QueryDocumentSnapshot<DocumentData> | null = null;
   playerPageSize = 5;
-  currentView: 'general' | 'attributes' | 'finances' = 'general';
-  teamCapSpace: number = 82500000; // Example cap space
 
   skaterAttributes = [
     'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
@@ -70,39 +64,9 @@ export class RosterComponent implements OnInit {
   calculateOverall(player: Player): number {
     if (!player.attributes) return 0;
     
-    if (player.position === 'G') {
-      // Goalie overall calculation
-      const attrs = this.goalieAttributes.map(attr => player.attributes?.[attr] || 0);
-      return Math.round(attrs.reduce((a, b) => a + b, 0) / attrs.length);
-    } else {
-      // Skater overall calculation
-      const attrs = this.skaterAttributes.map(attr => player.attributes?.[attr] || 0);
-      return Math.round(attrs.reduce((a, b) => a + b, 0) / attrs.length);
-    }
-  }
-
-  formatCurrency(amount: number = 0): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'decimal',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  }
-
-  get hasSkaters(): boolean {
-    return this.players.some(p => p.position !== 'G');
-  }
-
-  get hasGoalies(): boolean {
-    return this.players.some(p => p.position === 'G');
-  }
-
-  getSkaters(): Player[] {
-    return this.players.filter(p => p.position !== 'G');
-  }
-
-  getGoalies(): Player[] {
-    return this.players.filter(p => p.position === 'G');
+    const attributes = player.position === 'G' ? this.goalieAttributes : this.skaterAttributes;
+    const values = attributes.map(attr => player.attributes?.[attr] || 0);
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   }
 
   async loadPlayers() {
@@ -132,17 +96,7 @@ export class RosterComponent implements OnInit {
       const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
       if (attributesSnap.exists()) {
         player.attributes = attributesSnap.data() as Record<string, number>;
-      }
-
-      // Load contract info
-      const contractSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/contract`));
-      if (contractSnap.exists()) {
-        const contractData = contractSnap.data();
-        player.salary = contractData['salary'];
-        player.contractYears = contractData['years'];
-        player.capHit = contractData['capHit'];
-        player.signingBonus = contractData['signingBonus'];
-        player.performanceBonus = contractData['performanceBonus'];
+        player.overall = this.calculateOverall(player);
       }
 
       if (data['teamId']) {
@@ -203,6 +157,13 @@ export class RosterComponent implements OnInit {
         number: data['jerseyNumber'] || 0,
         teamId: data['teamId'] || ''
       };
+
+      // Load attributes
+      const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
+      if (attributesSnap.exists()) {
+        player.attributes = attributesSnap.data() as Record<string, number>;
+        player.overall = this.calculateOverall(player);
+      }
 
       if (data['teamId']) {
         const teamSnap = await getDoc(doc(this.firestore, `teams/${data['teamId']}`));
