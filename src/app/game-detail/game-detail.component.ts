@@ -43,6 +43,10 @@ export class GameDetailComponent implements OnInit {
       );
     });
 
+    await this.loadGameData();
+  }
+
+  async loadGameData() {
     if (this.gameId && this.teamId) {
       const gameRef = doc(this.firestore, `teams/${this.teamId}/games/${this.gameId}`);
       const gameSnap = await getDoc(gameRef);
@@ -88,15 +92,23 @@ export class GameDetailComponent implements OnInit {
       awayScore: this.awayScore
     };
 
-    await updateDoc(homeGameRef, scoreData);
-    await updateDoc(awayGameRef, scoreData);
-    
+    await Promise.all([
+      updateDoc(homeGameRef, scoreData),
+      updateDoc(awayGameRef, scoreData)
+    ]);
+
+    // Reload game data to confirm changes
+    await this.loadGameData();
     this.isEditing = false;
   }
 
   toggleEdit() {
-    if (this.canEditScores) {
-      this.isEditing = !this.isEditing;
+    if (!this.canEditScores) return;
+    
+    if (this.isEditing) {
+      this.saveScores();
+    } else {
+      this.isEditing = true;
     }
   }
 }
