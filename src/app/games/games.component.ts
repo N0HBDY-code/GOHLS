@@ -78,8 +78,9 @@ export class GamesComponent implements OnInit {
     await this.loadGames();
   }
 
-  formatDay(day: string): string {
-    return day.startsWith('D') ? day : `D${day}`;
+  formatDay(day: string | number): string {
+    const dayStr = day.toString();
+    return dayStr.startsWith('D') ? dayStr : `D${dayStr}`;
   }
 
   async loadCurrentSeason() {
