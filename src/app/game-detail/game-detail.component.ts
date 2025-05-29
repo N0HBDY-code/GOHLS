@@ -3,6 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-game-detail',
@@ -22,16 +23,25 @@ export class GameDetailComponent implements OnInit {
   homeTeamName: string = '';
   awayScore: number = 0;
   homeScore: number = 0;
+  canEditScores = false;
 
   constructor(
     private route: ActivatedRoute,
-    private firestore: Firestore
+    private firestore: Firestore,
+    private authService: AuthService
   ) {
     this.gameId = this.route.snapshot.paramMap.get('gameId') || '';
     this.teamId = this.route.snapshot.paramMap.get('teamId') || '';
   }
 
   async ngOnInit() {
+    // Check user roles
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canEditScores = roles.some(role => 
+        ['developer', 'commissioner', 'stats monkey', 'gm'].includes(role)
+      );
+    });
+
     if (this.gameId && this.teamId) {
       const gameRef = doc(this.firestore, `teams/${this.teamId}/games/${this.gameId}`);
       const gameSnap = await getDoc(gameRef);
@@ -66,7 +76,7 @@ export class GameDetailComponent implements OnInit {
   }
 
   async saveScores() {
-    if (!this.game) return;
+    if (!this.game || !this.canEditScores) return;
 
     // Update scores in both team's game records
     const homeGameRef = doc(this.firestore, `teams/${this.game.homeTeamId}/games/${this.gameId}`);

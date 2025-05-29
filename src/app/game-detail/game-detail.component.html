@@ -21,17 +21,21 @@
 
           <!-- Score -->
           <div class="d-flex align-items-center">
-            <input type="number" 
+            <input *ngIf="canEditScores" 
+                   type="number" 
                    class="score-input" 
                    [(ngModel)]="awayScore" 
                    min="0" 
                    (change)="saveScores()">
+            <span *ngIf="!canEditScores" class="score-display">{{ awayScore }}</span>
             <span class="score-divider">-</span>
-            <input type="number" 
+            <input *ngIf="canEditScores" 
+                   type="number" 
                    class="score-input" 
                    [(ngModel)]="homeScore" 
                    min="0" 
                    (change)="saveScores()">
+            <span *ngIf="!canEditScores" class="score-display">{{ homeScore }}</span>
           </div>
 
           <!-- Home Team -->
