@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
-import { Firestore, doc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, updateDoc, collection, getDocs } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from '../auth.service';
@@ -17,6 +17,26 @@ interface GameStats {
   powerplays: { successful: number; total: number };
   powerplayMinutes: number;
   shorthandedGoals: number;
+}
+
+interface PlayerStats {
+  id: string;
+  number: number;
+  name: string;
+  position: string;
+  goals: number;
+  assists: number;
+  points: number;
+  plusMinus: number;
+  shots: number;
+  shotPercentage: number;
+  pim: number;
+  hits: number;
+  ppg: number;
+  shg: number;
+  fot: number;
+  fow: number;
+  foPercentage: number;
 }
 
 @Component({
@@ -41,6 +61,7 @@ export class GameDetailComponent implements OnInit {
   isEditing = false;
   currentPeriod: GamePeriod = '1st';
   periods: GamePeriod[] = ['1st', '2nd', '3rd', 'OT', 'Final'];
+  selectedTeamView: 'home' | 'away' = 'home';
 
   homeStats: GameStats = {
     totalShots: 0,
@@ -65,6 +86,9 @@ export class GameDetailComponent implements OnInit {
     powerplayMinutes: 0,
     shorthandedGoals: 0
   };
+
+  homePlayerStats: PlayerStats[] = [];
+  awayPlayerStats: PlayerStats[] = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -97,7 +121,6 @@ export class GameDetailComponent implements OnInit {
         this.homeScore = this.game.homeScore || 0;
         this.currentPeriod = this.game.period || '1st';
         
-        // Load stats if they exist
         if (this.game.homeStats) {
           this.homeStats = { ...this.homeStats, ...this.game.homeStats };
         }
@@ -105,6 +128,7 @@ export class GameDetailComponent implements OnInit {
           this.awayStats = { ...this.awayStats, ...this.game.awayStats };
         }
         
+        // Load team data
         const homeTeamRef = doc(this.firestore, `teams/${this.game.homeTeamId}`);
         const homeTeamSnap = await getDoc(homeTeamRef);
         if (homeTeamSnap.exists()) {
@@ -120,9 +144,76 @@ export class GameDetailComponent implements OnInit {
           this.awayTeamLogo = awayTeamData['logoUrl'] || '';
           this.awayTeamName = awayTeamData['mascot'] || '';
         }
+
+        // Load player stats
+        await this.loadPlayerStats();
       }
     }
     this.loading = false;
+  }
+
+  async loadPlayerStats() {
+    // Load home team roster
+    const homeRosterRef = collection(this.firestore, `teams/${this.game.homeTeamId}/roster`);
+    const homeRosterSnap = await getDocs(homeRosterRef);
+    
+    this.homePlayerStats = homeRosterSnap.docs.map(doc => {
+      const data = doc.data();
+      const gameStats = this.game.homePlayerStats?.[doc.id] || {};
+      const fow = gameStats.fow || 0;
+      const fot = gameStats.fot || 0;
+      
+      return {
+        id: doc.id,
+        number: data.jerseyNumber || 0,
+        name: `${data.firstName} ${data.lastName}`,
+        position: data.position || '',
+        goals: gameStats.goals || 0,
+        assists: gameStats.assists || 0,
+        points: (gameStats.goals || 0) + (gameStats.assists || 0),
+        plusMinus: gameStats.plusMinus || 0,
+        shots: gameStats.shots || 0,
+        shotPercentage: gameStats.shots ? ((gameStats.goals || 0) / gameStats.shots) * 100 : 0,
+        pim: gameStats.pim || 0,
+        hits: gameStats.hits || 0,
+        ppg: gameStats.ppg || 0,
+        shg: gameStats.shg || 0,
+        fot: fot,
+        fow: fow,
+        foPercentage: fot > 0 ? (fow / fot) * 100 : 0
+      };
+    }).sort((a, b) => a.number - b.number);
+
+    // Load away team roster
+    const awayRosterRef = collection(this.firestore, `teams/${this.game.awayTeamId}/roster`);
+    const awayRosterSnap = await getDocs(awayRosterRef);
+    
+    this.awayPlayerStats = awayRosterSnap.docs.map(doc => {
+      const data = doc.data();
+      const gameStats = this.game.awayPlayerStats?.[doc.id] || {};
+      const fow = gameStats.fow || 0;
+      const fot = gameStats.fot || 0;
+      
+      return {
+        id: doc.id,
+        number: data.jerseyNumber || 0,
+        name: `${data.firstName} ${data.lastName}`,
+        position: data.position || '',
+        goals: gameStats.goals || 0,
+        assists: gameStats.assists || 0,
+        points: (gameStats.goals || 0) + (gameStats.assists || 0),
+        plusMinus: gameStats.plusMinus || 0,
+        shots: gameStats.shots || 0,
+        shotPercentage: gameStats.shots ? ((gameStats.goals || 0) / gameStats.shots) * 100 : 0,
+        pim: gameStats.pim || 0,
+        hits: gameStats.hits || 0,
+        ppg: gameStats.ppg || 0,
+        shg: gameStats.shg || 0,
+        fot: fot,
+        fow: fow,
+        foPercentage: fot > 0 ? (fow / fot) * 100 : 0
+      };
+    }).sort((a, b) => a.number - b.number);
   }
 
   async saveGameData() {
@@ -133,7 +224,9 @@ export class GameDetailComponent implements OnInit {
       awayScore: this.awayScore,
       period: this.currentPeriod,
       homeStats: this.homeStats,
-      awayStats: this.awayStats
+      awayStats: this.awayStats,
+      homePlayerStats: this.createPlayerStatsMap(this.homePlayerStats),
+      awayPlayerStats: this.createPlayerStatsMap(this.awayPlayerStats)
     };
 
     const homeGameRef = doc(this.firestore, `teams/${this.game.homeTeamId}/games/${this.gameId}`);
@@ -146,6 +239,27 @@ export class GameDetailComponent implements OnInit {
 
     await this.loadGameData();
     this.isEditing = false;
+  }
+
+  createPlayerStatsMap(playerStats: PlayerStats[]): Record<string, any> {
+    const statsMap: Record<string, any> = {};
+    
+    playerStats.forEach(player => {
+      statsMap[player.id] = {
+        goals: player.goals,
+        assists: player.assists,
+        plusMinus: player.plusMinus,
+        shots: player.shots,
+        pim: player.pim,
+        hits: player.hits,
+        ppg: player.ppg,
+        shg: player.shg,
+        fot: player.fot,
+        fow: player.fow
+      };
+    });
+
+    return statsMap;
   }
 
   toggleEdit() {
@@ -171,5 +285,17 @@ export class GameDetailComponent implements OnInit {
 
   formatPowerplays(successful: number, total: number): string {
     return `${successful}/${total}`;
+  }
+
+  formatPercentage(value: number): string {
+    return `${value.toFixed(1)}%`;
+  }
+
+  getDisplayPlayerStats(): PlayerStats[] {
+    return this.selectedTeamView === 'home' ? this.homePlayerStats : this.awayPlayerStats;
+  }
+
+  getDisplayTeamName(): string {
+    return this.selectedTeamView === 'home' ? this.homeTeamName : this.awayTeamName;
   }
 }
