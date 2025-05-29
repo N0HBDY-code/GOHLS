@@ -1,61 +1,67 @@
 <div class="container mt-4">
-  <!-- Add Team Form -->
-  <div class="card mt-5" *ngIf="canManageTeams">
-    <div class="card-header">
-      <h5 class="mb-0">Add New Team</h5>
-    </div>
-    <div class="card-body">
-      <form (ngSubmit)="addTeam()">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">City</label>
-            <input type="text" class="form-control" [(ngModel)]="city" name="city" required />
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Mascot</label>
-            <input type="text" class="form-control" [(ngModel)]="mascot" name="mascot" required />
-          </div>
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Conference</label>
-            <select class="form-select" [(ngModel)]="selectedConference" name="selectedConference" required>
-              <option value="">-- Select Conference --</option>
-              <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
-            </select>
-          </div>
-          <div class="col-md-6 mb-3" *ngIf="selectedConference">
-            <label class="form-label">Division</label>
-            <select class="form-select" [(ngModel)]="selectedDivision" name="selectedDivision" required>
-              <option value="">-- Select Division --</option>
-              <ng-container *ngFor="let conf of conferences">
-                <ng-container *ngIf="conf.name === selectedConference">
-                  <option *ngFor="let div of conf.divisions" [value]="div">{{ div }}</option>
+  <!-- Add Team Button/Form -->
+  <div *ngIf="canManageTeams" class="mb-4">
+    <button class="btn btn-primary" (click)="showAddTeamForm = !showAddTeamForm">
+      {{ showAddTeamForm ? 'Hide Form' : 'Add New Team' }}
+    </button>
+    
+    <div class="card mt-3" *ngIf="showAddTeamForm" [@slideInOut]>
+      <div class="card-header">
+        <h5 class="mb-0">Add New Team</h5>
+      </div>
+      <div class="card-body">
+        <form (ngSubmit)="addTeam()">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">City</label>
+              <input type="text" class="form-control" [(ngModel)]="city" name="city" required />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Mascot</label>
+              <input type="text" class="form-control" [(ngModel)]="mascot" name="mascot" required />
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Conference</label>
+              <select class="form-select" [(ngModel)]="selectedConference" name="selectedConference" required>
+                <option value="">-- Select Conference --</option>
+                <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3" *ngIf="selectedConference">
+              <label class="form-label">Division</label>
+              <select class="form-select" [(ngModel)]="selectedDivision" name="selectedDivision" required>
+                <option value="">-- Select Division --</option>
+                <ng-container *ngFor="let conf of conferences">
+                  <ng-container *ngIf="conf.name === selectedConference">
+                    <option *ngFor="let div of conf.divisions" [value]="div">{{ div }}</option>
+                  </ng-container>
                 </ng-container>
-              </ng-container>
-            </select>
-          </div>
-          <div class="col-md-12 mb-3">
-            <div class="row">
-              <div class="col-md-4">
-                <label class="form-label">Primary Color</label>
-                <input type="color" class="form-control form-control-color w-100" [(ngModel)]="primaryColor" name="primaryColor" required />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Secondary Color</label>
-                <input type="color" class="form-control form-control-color w-100" [(ngModel)]="secondaryColor" name="secondaryColor" required />
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">Tertiary Color</label>
-                <input type="color" class="form-control form-control-color w-100" [(ngModel)]="tertiaryColor" name="tertiaryColor" required />
+              </select>
+            </div>
+            <div class="col-md-12 mb-3">
+              <div class="row">
+                <div class="col-md-4">
+                  <label class="form-label">Primary Color</label>
+                  <input type="color" class="form-control form-control-color w-100" [(ngModel)]="primaryColor" name="primaryColor" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Secondary Color</label>
+                  <input type="color" class="form-control form-control-color w-100" [(ngModel)]="secondaryColor" name="secondaryColor" required />
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Tertiary Color</label>
+                  <input type="color" class="form-control form-control-color w-100" [(ngModel)]="tertiaryColor" name="tertiaryColor" required />
+                </div>
               </div>
             </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Team Logo</label>
+              <input type="file" class="form-control" (change)="onFileSelected($event)" required />
+            </div>
           </div>
-          <div class="col-md-12 mb-3">
-            <label class="form-label">Team Logo</label>
-            <input type="file" class="form-control" (change)="onFileSelected($event)" required />
-          </div>
-        </div>
-        <button type="submit" class="btn btn-primary">Add Team</button>
-      </form>
+          <button type="submit" class="btn btn-primary">Add Team</button>
+        </form>
+      </div>
     </div>
   </div>
 

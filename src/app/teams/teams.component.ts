@@ -1,9 +1,10 @@
 import { Component } from '@angular/core';
-import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, deleteDoc, doc, updateDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
+import { trigger, transition, style, animate } from '@angular/animations';
 
 interface Team {
   id?: string;
@@ -23,7 +24,18 @@ interface Team {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './teams.component.html',
-  styleUrls: ['./teams.component.css']
+  styleUrls: ['./teams.component.css'],
+  animations: [
+    trigger('slideInOut', [
+      transition(':enter', [
+        style({ transform: 'translateY(-100%)', opacity: 0 }),
+        animate('300ms ease-in', style({ transform: 'translateY(0)', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('300ms ease-out', style({ transform: 'translateY(-100%)', opacity: 0 }))
+      ])
+    ])
+  ]
 })
 export class TeamsComponent {
   city = '';
@@ -36,6 +48,7 @@ export class TeamsComponent {
   primaryColor = '#000000';
   secondaryColor = '#FFFFFF';
   tertiaryColor = '#808080';
+  showAddTeamForm = false;
 
   showEditTeamModal = false;
   editTeamData?: Team;
@@ -122,6 +135,7 @@ export class TeamsComponent {
       this.primaryColor = '#000000';
       this.secondaryColor = '#FFFFFF';
       this.tertiaryColor = '#808080';
+      this.showAddTeamForm = false;
       await this.loadTeams();
     };
 
