@@ -18,7 +18,7 @@
 
 .period-indicator {
   position: absolute;
-  top: -1rem;
+  top: 1rem;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -139,6 +139,9 @@
   font-weight: bold;
   margin: 0 1rem;
   color: #666;
+  display: inline-block;
+  text-align: center;
+  width: 20px;
 }
 
 .score-display {
@@ -148,4 +151,5 @@
   margin: 0 1rem;
   text-align: center;
   color: white;
+  display: inline-block;
 }
