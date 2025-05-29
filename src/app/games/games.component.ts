@@ -1,4 +1,5 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   Firestore,
   collection,
@@ -70,7 +71,7 @@ export class GamesComponent implements OnInit {
     isRival: false
   };
 
-  constructor(private firestore: Firestore) {}
+  constructor(private firestore: Firestore, private router: Router) {}
 
   async ngOnInit() {
     await this.loadTeams();
@@ -289,5 +290,9 @@ export class GamesComponent implements OnInit {
 
   getDays(weekSchedule: WeekSchedule): string[] {
     return Object.keys(weekSchedule.games).sort();
+  }
+
+  viewGame(game: Game) {
+    this.router.navigate(['/games', game.homeTeamId, game.id]);
   }
 }
