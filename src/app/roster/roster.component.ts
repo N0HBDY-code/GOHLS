@@ -2,8 +2,6 @@ import { Component, Input, OnInit, NgZone } from '@angular/core';
 import { Firestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, updateDoc, query, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { getDocsFromServer } from 'firebase/firestore';
-import { setDoc } from 'firebase/firestore';
 
 interface Player {
   id?: string;
@@ -19,7 +17,6 @@ interface Player {
   handedness?: string;
   age?: number;
   rookie?: boolean;
-  overall?: number;
   teamId: string;
   teamName?: string;
   attributes?: Record<string, number>;
@@ -70,6 +67,20 @@ export class RosterComponent implements OnInit {
     await this.loadAvailablePlayers();
   }
 
+  calculateOverall(player: Player): number {
+    if (!player.attributes) return 0;
+    
+    if (player.position === 'G') {
+      // Goalie overall calculation
+      const attrs = this.goalieAttributes.map(attr => player.attributes?.[attr] || 0);
+      return Math.round(attrs.reduce((a, b) => a + b, 0) / attrs.length);
+    } else {
+      // Skater overall calculation
+      const attrs = this.skaterAttributes.map(attr => player.attributes?.[attr] || 0);
+      return Math.round(attrs.reduce((a, b) => a + b, 0) / attrs.length);
+    }
+  }
+
   formatCurrency(amount: number = 0): string {
     return new Intl.NumberFormat('en-US', {
       style: 'decimal',
@@ -99,7 +110,7 @@ export class RosterComponent implements OnInit {
     const q = query(rosterRef, orderBy('firstName'), limit(this.playerPageSize));
     const snapshot = await getDocs(q);
     this.players = await Promise.all(snapshot.docs.map(async docSnap => {
-      const data = docSnap.data() as any;
+      const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
         ...data,
@@ -143,8 +154,8 @@ export class RosterComponent implements OnInit {
   }
 
   async loadAvailablePlayers() {
-    const allPlayersSnap = await getDocsFromServer(collection(this.firestore, 'players'));
-    const rosterSnap = await getDocsFromServer(collection(this.firestore, `teams/${this.teamId}/roster`));
+    const allPlayersSnap = await getDocs(collection(this.firestore, 'players'));
+    const rosterSnap = await getDocs(collection(this.firestore, `teams/${this.teamId}/roster`));
 
     const rosterIds = new Set(rosterSnap.docs.map(doc => doc.id));
 
@@ -169,7 +180,7 @@ export class RosterComponent implements OnInit {
     const q = query(rosterRef, orderBy('firstName'), startAfter(this.lastPlayerDoc), limit(this.playerPageSize));
     const snapshot = await getDocs(q);
     const nextPlayers = await Promise.all(snapshot.docs.map(async docSnap => {
-      const data = docSnap.data() as any;
+      const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
         ...data,
@@ -197,16 +208,16 @@ export class RosterComponent implements OnInit {
   }
 
   async addPlayer() {
+    if (!this.selectedPlayerId) return;
+
     const selected = this.availablePlayers.find(p => p.id === this.selectedPlayerId);
     if (!selected || !selected.id) return;
 
     const rosterDoc = doc(this.firestore, `teams/${this.teamId}/roster/${selected.id}`);
-    await setDoc(rosterDoc, selected);
-
-    const globalPlayerDoc = doc(this.firestore, `players/${selected.id}`);
-    await updateDoc(globalPlayerDoc, {
+    await updateDoc(doc(this.firestore, `players/${selected.id}`), {
       teamId: this.teamId
     });
+    await setDoc(rosterDoc, selected);
 
     this.selectedPlayerId = '';
     this.ngZone.run(() => {
