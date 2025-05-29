@@ -246,3 +246,80 @@
   padding: 0.25rem;
   font-size: 1.2rem;
 }
+
+/* Player Stats Styles */
+.player-stats .card {
+  background: #1a1a1a;
+  color: white;
+}
+
+.player-stats .table {
+  color: white;
+  margin-bottom: 0;
+}
+
+.player-stats .table thead th {
+  background: #333;
+  border-color: #444;
+  color: #999;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.5rem;
+}
+
+.player-stats .table td {
+  border-color: #444;
+  padding: 0.5rem;
+  vertical-align: middle;
+}
+
+.player-stats .table tbody tr:hover {
+  background: #333;
+}
+
+.stat-input {
+  width: 50px;
+  background: transparent;
+  border: 1px solid #444;
+  color: white;
+  padding: 0.25rem;
+  text-align: center;
+}
+
+.stat-input:focus {
+  background: #333;
+  border-color: #666;
+  color: white;
+  outline: none;
+}
+
+.stat-input::-webkit-inner-spin-button,
+.stat-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.btn-group .btn {
+  color: white;
+  border-color: #666;
+}
+
+.btn-group .btn:hover {
+  background: #444;
+}
+
+.btn-group .btn.btn-primary {
+  background: #0d6efd;
+  border-color: #0d6efd;
+}
+
+.btn-group .btn.btn-outline-primary {
+  color: #0d6efd;
+  background: transparent;
+}
+
+.btn-group .btn.btn-outline-primary:hover {
+  background: #0d6efd;
+  color: white;
+}
