@@ -3,6 +3,7 @@ import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } fro
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id?: string;
@@ -28,6 +29,7 @@ export class TeamsComponent {
   selectedConference = '';
   selectedDivision = '';
   teams: Team[] = [];
+  canManageTeams = false;
 
   showEditTeamModal = false;
   editTeamData?: Team;
@@ -43,8 +45,17 @@ export class TeamsComponent {
     }
   ];
 
-  constructor(private firestore: Firestore, private router: Router) {
+  constructor(
+    private firestore: Firestore, 
+    private router: Router,
+    private authService: AuthService
+  ) {
     this.loadTeams();
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageTeams = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
   }
 
   async loadTeams() {
@@ -64,6 +75,8 @@ export class TeamsComponent {
   }
 
   async addTeam() {
+    if (!this.canManageTeams) return;
+
     if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision) {
       alert('All fields are required.');
       return;
@@ -101,6 +114,7 @@ export class TeamsComponent {
   }
 
   async deleteTeam(id: string) {
+    if (!this.canManageTeams) return;
     await deleteDoc(doc(this.firestore, `teams/${id}`));
     await this.loadTeams();
   }
@@ -114,12 +128,13 @@ export class TeamsComponent {
   }
 
   openEditTeamModal(team: Team) {
+    if (!this.canManageTeams) return;
     this.editTeamData = { ...team, logoFile: null }; // reset logoFile
     this.showEditTeamModal = true;
   }
 
   async saveTeamChanges() {
-    if (!this.editTeamData?.id) return;
+    if (!this.canManageTeams || !this.editTeamData?.id) return;
 
     const updates: any = {
       city: this.editTeamData.city,

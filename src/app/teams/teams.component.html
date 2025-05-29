@@ -1,6 +1,6 @@
 <div class="container mt-4">
   <!-- Add Team Form -->
-  <div class="card mt-5">
+  <div class="card mt-5" *ngIf="canManageTeams">
     <div class="card-header">
       <h5 class="mb-0">Add New Team</h5>
     </div>
@@ -62,7 +62,7 @@
               <small>{{ team.division }}</small>
             </div>
           </div>
-          <div class="text-center mt-2">
+          <div class="text-center mt-2" *ngIf="canManageTeams">
             <button class="btn btn-sm btn-outline-secondary me-2" (click)="openEditTeamModal(team); $event.stopPropagation();">Edit</button>
             <button class="btn btn-sm btn-outline-danger" (click)="deleteTeam(team.id!); $event.stopPropagation();">Delete</button>
           </div>
@@ -72,47 +72,45 @@
   </div>
 
   <!-- Edit Team Modal -->
-  <!-- Edit Team Modal -->
-<div class="modal fade show" tabindex="-1" *ngIf="editTeamData as team" style="display: block; background: rgba(0,0,0,0.5);">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">Edit Team</h5>
-        <button type="button" class="btn-close" (click)="editTeamData = undefined"></button>
-      </div>
-      <div class="modal-body">
-        <div class="mb-3">
-          <label class="form-label">City</label>
-          <input type="text" class="form-control" [(ngModel)]="team.city" />
+  <div class="modal fade show" tabindex="-1" *ngIf="editTeamData as team" style="display: block; background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Team</h5>
+          <button type="button" class="btn-close" (click)="editTeamData = undefined"></button>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Mascot</label>
-          <input type="text" class="form-control" [(ngModel)]="team.mascot" />
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">City</label>
+            <input type="text" class="form-control" [(ngModel)]="team.city" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Mascot</label>
+            <input type="text" class="form-control" [(ngModel)]="team.mascot" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Conference</label>
+            <select class="form-select" [(ngModel)]="team.conference">
+              <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Division</label>
+            <select class="form-select" [(ngModel)]="team.division">
+              <option *ngFor="let div of getDivisionsForConference(team.conference)" [value]="div">{{ div }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Update Logo</label>
+            <input type="file" class="form-control" (change)="onEditLogoSelected($event)" />
+            <small class="form-text text-muted">Leave empty to keep the current logo.</small>
+          </div>        
         </div>
-        <div class="mb-3">
-          <label class="form-label">Conference</label>
-          <select class="form-select" [(ngModel)]="team.conference">
-            <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
-          </select>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" (click)="editTeamData = undefined">Cancel</button>
+          <button class="btn btn-primary" (click)="saveTeamChanges()">Save Changes</button>
         </div>
-        <div class="mb-3">
-          <label class="form-label">Division</label>
-          <select class="form-select" [(ngModel)]="team.division">
-            <option *ngFor="let div of getDivisionsForConference(team.conference)" [value]="div">{{ div }}</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Update Logo</label>
-          <input type="file" class="form-control" (change)="onEditLogoSelected($event)" />
-          <small class="form-text text-muted">Leave empty to keep the current logo.</small>
-        </div>        
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="editTeamData = undefined">Cancel</button>
-        <button class="btn btn-primary" (click)="saveTeamChanges()">Save Changes</button>
       </div>
     </div>
   </div>
-</div>
-
 </div>
