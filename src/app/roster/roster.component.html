@@ -1,17 +1,5 @@
-<div *ngIf="!loading && !hasPlayer">
-  <form (ngSubmit)="createPlayer()" class="p-4 border rounded bg-light">
-    <h4 class="mb-3">Create Your Player</h4>
-
-    <!-- Form content remains the same -->
-  </form>
-</div>
-
-<!-- Player Manager -->
-<div *ngIf="!loading && hasPlayer">
-  <app-player-manager></app-player-manager>
-</div>
-
 <div class="container mt-4">
+  <!-- Add Player Section -->
   <div class="mb-3">
     <label for="email" class="form-label">Select Player</label>
     <select class="form-select" [(ngModel)]="selectedPlayerId" name="selectedPlayerId" required>
@@ -20,6 +8,7 @@
         #{{ player.number || '??' }} - {{ player.firstName || '' }} {{ player.lastName || 'Unnamed' }} ({{ player.position }})
       </option>
     </select>
+    <button class="btn btn-primary mt-2" (click)="addPlayer()">Add Player</button>
   </div>
 
   <!-- View Selection Buttons -->
@@ -94,32 +83,7 @@
         <tr>
           <th>#</th>
           <th>Name</th>
-          <th>SPEED</th>
-          <th>BODY CHK</th>
-          <th>ENDUR</th>
-          <th>PK CTRL</th>
-          <th>PASSING</th>
-          <th>SHT/PSS</th>
-          <th>SLAP PWR</th>
-          <th>SLAP ACC</th>
-          <th>WRI PWR</th>
-          <th>WRI ACC</th>
-          <th>AGILITY</th>
-          <th>STRENGTH</th>
-          <th>ACCEL</th>
-          <th>BALANCE</th>
-          <th>FACEOFF</th>
-          <th>DRBLTY</th>
-          <th>DEKE</th>
-          <th>AGGRE</th>
-          <th>POISE</th>
-          <th>HND EYE</th>
-          <th>SHT BLK</th>
-          <th>OFF AWR</th>
-          <th>DEF AWR</th>
-          <th>DISCIP</th>
-          <th>FIGHTING</th>
-          <th>STK CHK</th>
+          <th *ngFor="let attr of skaterAttributes">{{ attr }}</th>
         </tr>
       </thead>
       <tbody>
@@ -132,31 +96,12 @@
     </table>
 
     <!-- Goalie Attributes -->
-    <table class="table table-striped align-middle" *ngIf="hasGoalies">
+    <table class="table table-striped align-middle mt-4" *ngIf="hasGoalies">
       <thead>
         <tr>
           <th>#</th>
           <th>Name</th>
-          <th>GLV LOW</th>
-          <th>GLV HIGH</th>
-          <th>STK LOW</th>
-          <th>STK HIGH</th>
-          <th>5 HOLE</th>
-          <th>SPEED</th>
-          <th>AGILITY</th>
-          <th>CONSIS</th>
-          <th>PK CHK</th>
-          <th>ENDUR</th>
-          <th>BRK AWAY</th>
-          <th>RBD CTRL</th>
-          <th>RECOV</th>
-          <th>POISE</th>
-          <th>PASSING</th>
-          <th>ANGLES</th>
-          <th>PK PL FRQ</th>
-          <th>AGGRE</th>
-          <th>DRBLTY</th>
-          <th>VISION</th>
+          <th *ngFor="let attr of goalieAttributes">{{ attr }}</th>
         </tr>
       </thead>
       <tbody>
