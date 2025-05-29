@@ -17,7 +17,7 @@
         </button>
 
         <!-- Game Info -->
-        <div class="game-info">W{{ game.week }} - D{{ game.day }}</div>
+        <div class="game-info">W{{ game.week }}  {{ game.day }}</div>
 
         <!-- Period Indicator - Only show when editing -->
         <div class="period-indicator" *ngIf="isEditing && canEditScores">
