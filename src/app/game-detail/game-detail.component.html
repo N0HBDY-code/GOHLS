@@ -21,7 +21,7 @@
 
         <!-- Period Indicator - Only show when editing -->
         <div class="period-indicator" *ngIf="isEditing && canEditScores">
-          <span class="period-label">Period:</span>
+          <span class="period-label">:</span>
           <div class="period-buttons">
             <button *ngFor="let period of periods"
                     [class.active]="currentPeriod === period"
