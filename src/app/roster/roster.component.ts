@@ -22,23 +22,12 @@ interface Player {
   overall?: number;
   teamId: string;
   teamName?: string;
-  attributes?: PlayerAttributes;
+  attributes?: Record<string, number>;
   salary?: number;
   contractYears?: number;
   capHit?: number;
   signingBonus?: number;
   performanceBonus?: number;
-}
-
-interface PlayerAttributes {
-  speed: number;
-  shooting: number;
-  passing: number;
-  checking: number;
-  defense: number;
-  faceoffs: number;
-  awareness: number;
-  durability: number;
 }
 
 @Component({
@@ -59,6 +48,21 @@ export class RosterComponent implements OnInit {
   currentView: 'general' | 'attributes' | 'finances' = 'general';
   teamCapSpace: number = 82500000; // Example cap space
 
+  skaterAttributes = [
+    'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
+    'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
+    'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
+    'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
+    'STK CHK'
+  ];
+
+  goalieAttributes = [
+    'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
+    'AGILITY', 'CONSIS', 'PK CHK', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
+    'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
+    'DRBLTY', 'VISION'
+  ];
+
   constructor(private firestore: Firestore, private ngZone: NgZone) {}
 
   async ngOnInit() {
@@ -72,6 +76,22 @@ export class RosterComponent implements OnInit {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(amount);
+  }
+
+  get hasSkaters(): boolean {
+    return this.players.some(p => p.position !== 'G');
+  }
+
+  get hasGoalies(): boolean {
+    return this.players.some(p => p.position === 'G');
+  }
+
+  getSkaters(): Player[] {
+    return this.players.filter(p => p.position !== 'G');
+  }
+
+  getGoalies(): Player[] {
+    return this.players.filter(p => p.position === 'G');
   }
 
   async loadPlayers() {
@@ -89,7 +109,7 @@ export class RosterComponent implements OnInit {
       // Load attributes
       const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
       if (attributesSnap.exists()) {
-        player.attributes = attributesSnap.data() as PlayerAttributes;
+        player.attributes = attributesSnap.data() as Record<string, number>;
       }
 
       // Load contract info
