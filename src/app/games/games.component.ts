@@ -60,7 +60,6 @@ export class GamesComponent implements OnInit {
   editingSeason = false;
   tempSeason = 1;
   selectedWeek = 1;
-  uniqueDays: string[] = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7'];
 
   newGame = {
     homeTeamId: '',
@@ -77,6 +76,10 @@ export class GamesComponent implements OnInit {
     await this.loadTeams();
     await this.loadCurrentSeason();
     await this.loadGames();
+  }
+
+  formatDay(day: string): string {
+    return day.startsWith('D') ? day : `D${day}`;
   }
 
   async loadCurrentSeason() {
@@ -127,6 +130,7 @@ export class GamesComponent implements OnInit {
           allGames.set(gameKey, {
             id: doc.id,
             ...gameData,
+            day: this.formatDay(gameData['day']),
             homeTeam: homeTeam?.name || 'Unknown Team',
             awayTeam: awayTeam?.name || 'Unknown Team',
             homeLogo: homeTeam?.logoUrl,
@@ -195,6 +199,7 @@ export class GamesComponent implements OnInit {
 
     const gameData = {
       ...this.newGame,
+      day: this.formatDay(this.newGame.day),
       season: this.currentSeason,
       tags
     };
@@ -279,5 +284,9 @@ export class GamesComponent implements OnInit {
 
   getGamesForDay(weekSchedule: WeekSchedule, day: string): Game[] {
     return weekSchedule.games[day] || [];
+  }
+
+  getDays(weekSchedule: WeekSchedule): string[] {
+    return Object.keys(weekSchedule.games).sort();
   }
 }
