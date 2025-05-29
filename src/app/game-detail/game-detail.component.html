@@ -6,21 +6,32 @@
   </div>
 
   <div *ngIf="!loading && game" class="card">
-    <div class="card-header">
-      <h4 class="mb-0">Game Details</h4>
-    </div>
     <div class="card-body">
-      <div class="row">
-        <div class="col-md-6">
-          <h5>{{ game.homeTeam }}</h5>
-          <p>Home Team</p>
-        </div>
-        <div class="col-md-6">
-          <h5>{{ game.awayTeam }}</h5>
-          <p>Away Team</p>
+      <!-- Scoreboard -->
+      <div class="scoreboard">
+        <div class="d-flex justify-content-center align-items-center">
+          <!-- Away Team -->
+          <div class="team-section">
+            <img [src]="awayTeamLogo" [alt]="awayTeamName" class="team-logo">
+            <span class="team-name">{{ awayTeamName }}</span>
+          </div>
+
+          <!-- Score -->
+          <div class="d-flex align-items-center">
+            <span class="score">{{ awayScore }}</span>
+            <span class="score-divider">-</span>
+            <span class="score">{{ homeScore }}</span>
+          </div>
+
+          <!-- Home Team -->
+          <div class="team-section">
+            <span class="team-name">{{ homeTeamName }}</span>
+            <img [src]="homeTeamLogo" [alt]="homeTeamName" class="team-logo">
+          </div>
         </div>
       </div>
-      
+
+      <!-- Game Information -->
       <div class="mt-4">
         <h5>Game Information</h5>
         <p><strong>Week:</strong> {{ game.week }}</p>

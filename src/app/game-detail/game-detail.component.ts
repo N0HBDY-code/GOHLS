@@ -16,6 +16,12 @@ export class GameDetailComponent implements OnInit {
   teamId: string;
   game: any;
   loading = true;
+  awayTeamLogo: string = '';
+  awayTeamName: string = '';
+  homeTeamLogo: string = '';
+  homeTeamName: string = '';
+  awayScore: number = 0;
+  homeScore: number = 0;
 
   constructor(
     private route: ActivatedRoute,
@@ -29,8 +35,27 @@ export class GameDetailComponent implements OnInit {
     if (this.gameId && this.teamId) {
       const gameRef = doc(this.firestore, `teams/${this.teamId}/games/${this.gameId}`);
       const gameSnap = await getDoc(gameRef);
+      
       if (gameSnap.exists()) {
         this.game = { id: gameSnap.id, ...gameSnap.data() };
+        
+        // Get home team details
+        const homeTeamRef = doc(this.firestore, `teams/${this.game.homeTeamId}`);
+        const homeTeamSnap = await getDoc(homeTeamRef);
+        if (homeTeamSnap.exists()) {
+          const homeTeamData = homeTeamSnap.data();
+          this.homeTeamLogo = homeTeamData['logoUrl'] || '';
+          this.homeTeamName = homeTeamData['mascot'] || '';
+        }
+
+        // Get away team details
+        const awayTeamRef = doc(this.firestore, `teams/${this.game.awayTeamId}`);
+        const awayTeamSnap = await getDoc(awayTeamRef);
+        if (awayTeamSnap.exists()) {
+          const awayTeamData = awayTeamSnap.data();
+          this.awayTeamLogo = awayTeamData['logoUrl'] || '';
+          this.awayTeamName = awayTeamData['mascot'] || '';
+        }
       }
     }
     this.loading = false;
