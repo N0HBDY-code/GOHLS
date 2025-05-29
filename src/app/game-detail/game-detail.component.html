@@ -9,6 +9,9 @@
     <div class="card-body">
       <!-- Scoreboard -->
       <div class="scoreboard">
+        <!-- Game Info -->
+        <div class="game-info">Week {{ game.week }} - {{ game.day }}</div>
+        
         <div class="d-flex justify-content-center align-items-center">
           <!-- Away Team -->
           <div class="team-section">
@@ -29,14 +32,6 @@
             <img [src]="homeTeamLogo" [alt]="homeTeamName" class="team-logo">
           </div>
         </div>
-      </div>
-
-      <!-- Game Information -->
-      <div class="mt-4">
-        <h5>Game Information</h5>
-        <p><strong>Week:</strong> {{ game.week }}</p>
-        <p><strong>Day:</strong> {{ game.day }}</p>
-        <p><strong>Season:</strong> {{ game.season }}</p>
       </div>
 
       <!-- Stats section to be implemented -->

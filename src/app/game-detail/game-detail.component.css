@@ -4,6 +4,16 @@
   padding: 2rem;
   border-radius: 10px;
   margin-bottom: 2rem;
+  position: relative;
+}
+
+.game-info {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  font-size: 1rem;
+  color: #999;
+  font-weight: 500;
 }
 
 .team-section {
