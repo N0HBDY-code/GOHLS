@@ -27,13 +27,13 @@
   padding: 0.75rem;
   margin-bottom: 0.75rem;
   background-color: #fff;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
   cursor: pointer;
 }
 
 .game-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .team-logo {
@@ -62,7 +62,6 @@
   background-color: #28a745 !important;
 }
 
-.badge.bg-info {
-  background-color: #17a2b8 !important;
-  color: white;
+.badge.bg-danger {
+  background-color: #dc3545 !important;
 }

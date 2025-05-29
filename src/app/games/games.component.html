@@ -57,14 +57,22 @@
           </select>
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Week</label>
           <input type="number" class="form-control" [(ngModel)]="newGame.week" name="week" required min="1">
         </div>
 
-        <div class="col-md-6">
+        <div class="col-md-4">
           <label class="form-label">Day</label>
           <input type="text" class="form-control" [(ngModel)]="newGame.day" name="day" required>
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label">Rival Game</label>
+          <div class="form-check mt-2">
+            <input type="checkbox" class="form-check-input" [(ngModel)]="newGame.isRival" name="isRival" id="isRival">
+            <label class="form-check-label" for="isRival">Mark as Rival Game</label>
+          </div>
         </div>
 
         <div class="col-12">
@@ -105,13 +113,15 @@
             <tbody>
               <tr>
                 <td *ngFor="let day of uniqueDays" class="align-top">
-                  <div *ngFor="let game of getGamesForDay(weekSchedule, day)" class="game-card">
+                  <div *ngFor="let game of getGamesForDay(weekSchedule, day)" 
+                       class="game-card"
+                       (click)="toggleRival(game)">
                     <span [ngClass]="{
                       'badge bg-primary': game.tags?.includes('division'),
                       'badge bg-success': game.tags?.includes('conference'),
-                      'badge bg-info': game.tags?.includes('interconference')
+                      'badge bg-danger': game.tags?.includes('rival')
                     }" class="mb-2 d-block">
-                      {{ game.tags?.[0] }}
+                      {{ game.tags?.[0] || 'regular' }}
                     </span>
                     <div class="team-row">
                       <img [src]="game.homeLogo" 

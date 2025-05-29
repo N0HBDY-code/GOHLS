@@ -9,7 +9,8 @@ import {
   where,
   deleteDoc,
   getDoc,
-  setDoc
+  setDoc,
+  updateDoc
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -33,7 +34,7 @@ interface Game {
   week: number;
   day: string;
   season: number;
-  tags?: string[];
+  tags: string[];
 }
 
 interface WeekSchedule {
@@ -66,7 +67,8 @@ export class GamesComponent implements OnInit {
     awayTeamId: '',
     week: 1,
     day: '',
-    season: 1
+    season: 1,
+    isRival: false
   };
 
   constructor(private firestore: Firestore) {}
@@ -128,7 +130,8 @@ export class GamesComponent implements OnInit {
             homeTeam: homeTeam?.name || 'Unknown Team',
             awayTeam: awayTeam?.name || 'Unknown Team',
             homeLogo: homeTeam?.logoUrl,
-            awayLogo: awayTeam?.logoUrl
+            awayLogo: awayTeam?.logoUrl,
+            tags: gameData['tags'] || []
           } as Game);
         }
       });
@@ -184,12 +187,12 @@ export class GamesComponent implements OnInit {
     if (!homeTeam || !awayTeam) return;
 
     const tags: string[] = [];
-    if (homeTeam.division === awayTeam.division) {
+    if (this.newGame.isRival) {
+      tags.push('rival');
+    } else if (homeTeam.division === awayTeam.division) {
       tags.push('division');
     } else if (homeTeam.conference === awayTeam.conference) {
       tags.push('conference');
-    } else {
-      tags.push('interconference');
     }
 
     const gameData = {
@@ -206,9 +209,40 @@ export class GamesComponent implements OnInit {
       awayTeamId: '',
       week: this.newGame.week,
       day: '',
-      season: this.currentSeason
+      season: this.currentSeason,
+      isRival: false
     };
 
+    await this.loadGames();
+  }
+
+  async toggleRival(game: Game) {
+    const tags = [...game.tags];
+    const rivalIndex = tags.indexOf('rival');
+    
+    if (rivalIndex > -1) {
+      tags.splice(rivalIndex, 1);
+      if (game.homeTeamId && game.awayTeamId) {
+        const homeTeam = this.teams.find(t => t.id === game.homeTeamId);
+        const awayTeam = this.teams.find(t => t.id === game.awayTeamId);
+        if (homeTeam?.division === awayTeam?.division) {
+          tags.push('division');
+        } else if (homeTeam?.conference === awayTeam?.conference) {
+          tags.push('conference');
+        }
+      }
+    } else {
+      tags.length = 0; // Clear existing tags
+      tags.push('rival');
+    }
+
+    // Update both teams' game records
+    const homeGameRef = doc(this.firestore, `teams/${game.homeTeamId}/games/${game.id}`);
+    const awayGameRef = doc(this.firestore, `teams/${game.awayTeamId}/games/${game.id}`);
+    
+    await updateDoc(homeGameRef, { tags });
+    await updateDoc(awayGameRef, { tags });
+    
     await this.loadGames();
   }
 
