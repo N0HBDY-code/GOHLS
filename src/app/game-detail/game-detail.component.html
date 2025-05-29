@@ -21,7 +21,6 @@
 
         <!-- Period Indicator - Only show when editing -->
         <div class="period-indicator" *ngIf="isEditing && canEditScores">
-          <span class="period-label"></span>
           <div class="period-buttons">
             <button *ngFor="let period of periods"
                     [class.active]="currentPeriod === period"
@@ -37,15 +36,15 @@
           <span class="period-display">{{ currentPeriod }}</span>
         </div>
         
-        <div class="d-flex justify-content-center align-items-center">
+        <div class="d-flex justify-content-center align-items-center mt-4">
           <!-- Away Team -->
           <div class="team-section">
             <img [src]="awayTeamLogo" [alt]="awayTeamName" class="team-logo">
             <span class="team-name">{{ awayTeamName }}</span>
           </div>
 
-          <!-- Score -->
-          <div class="d-flex align-items-center">
+          <!-- Score Section -->
+          <div class="score-section">
             <input *ngIf="isEditing" 
                    type="number" 
                    class="score-input" 
