@@ -1,10 +1,10 @@
 import { Component } from '@angular/core';
-import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
-import { CommonModule } from '@angular/common';
+import { Firestore, collection, addDoc, deleteDoc, doc, updateDoc } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { CommonModule } from '@angular/common';
 
 interface Team {
   id?: string;
@@ -80,7 +80,10 @@ export class TeamsComponent {
   async loadTeams() {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
-    this.teams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+    this.teams = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Team));
   }
 
   onFileSelected(event: any) {
