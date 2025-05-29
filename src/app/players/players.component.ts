@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, addDoc, query, where } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -44,7 +44,6 @@ export class PlayersComponent implements OnInit {
     invitedBy: '',
     age: 19 
   };
-  
 
   async ngOnInit() {
     const user = this.auth.currentUser;
@@ -90,13 +89,74 @@ export class PlayersComponent implements OnInit {
     const user = this.auth.currentUser;
     if (!user) return;
 
-    await addDoc(collection(this.firestore, 'players'), {
+    // Create the player document
+    const playerRef = await addDoc(collection(this.firestore, 'players'), {
       ...this.playerForm,
       userId: user.uid,
-      teamId:'none'
+      teamId: 'none'
     });
+
+    // Create default attributes based on position
+    const defaultAttributes = this.getDefaultAttributes(this.playerForm.position);
+    await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), defaultAttributes);
 
     this.hasPlayer = true;
     this.router.navigate(['/player']);
+  }
+
+  private getDefaultAttributes(position: string): Record<string, number> {
+    if (position === 'G') {
+      return {
+        'GLV LOW': 40,
+        'GLV HIGH': 40,
+        'STK LOW': 40,
+        'STK HIGH': 40,
+        '5 HOLE': 40,
+        'SPEED': 40,
+        'AGILITY': 40,
+        'CONSIS': 40,
+        'PK CHK': 40,
+        'ENDUR': 40,
+        'BRK AWAY': 40,
+        'RBD CTRL': 40,
+        'RECOV': 40,
+        'POISE': 40,
+        'PASSING': 40,
+        'ANGLES': 40,
+        'PK PL FRQ': 40,
+        'AGGRE': 40,
+        'DRBLTY': 40,
+        'VISION': 40
+      };
+    } else {
+      return {
+        'SPEED': 40,
+        'BODY CHK': 40,
+        'ENDUR': 40,
+        'PK CTRL': 40,
+        'PASSING': 40,
+        'SHT/PSS': 40,
+        'SLAP PWR': 40,
+        'SLAP ACC': 40,
+        'WRI PWR': 40,
+        'WRI ACC': 40,
+        'AGILITY': 40,
+        'STRENGTH': 40,
+        'ACCEL': 40,
+        'BALANCE': 40,
+        'FACEOFF': 40,
+        'DRBLTY': 40,
+        'DEKE': 40,
+        'AGGRE': 40,
+        'POISE': 40,
+        'HND EYE': 40,
+        'SHT BLK': 40,
+        'OFF AWR': 40,
+        'DEF AWR': 40,
+        'DISCIP': 40,
+        'FIGHTING': 40,
+        'STK CHK': 40
+      };
+    }
   }
 }
