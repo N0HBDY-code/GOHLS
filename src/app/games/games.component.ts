@@ -48,12 +48,15 @@ interface CalendarDay {
 })
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
-  schedule: Game[] = [];
+  allGames: Game[] = [];
+  filteredGames: Game[] = [];
   calendarDays: CalendarDay[] = [];
   selectedTeamId: string = '';
   availableSeasons: number[] = [];
   selectedSeason: number = 1;
   currentMonth: Date = new Date();
+  viewMode: 'all' | 'team' = 'all';
+  filterTags: string[] = [];
 
   // Schedule Generation Parameters
   season: number = 1;
@@ -76,31 +79,52 @@ export class GamesComponent implements OnInit {
       division: doc.data()['division'] || 'Unknown',
       logoUrl: doc.data()['logoUrl'] || ''
     }));
+    await this.loadAllGames();
   }
 
-  async onTeamSelect() {
-    if (!this.selectedTeamId) return;
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const snapshot = await getDocs(gamesRef);
-    const seasons = new Set(snapshot.docs.map(doc => doc.data()['season']));
+  async loadAllGames() {
+    const allGames: Game[] = [];
+    const seasons = new Set<number>();
+
+    for (const team of this.teams) {
+      const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
+      const snapshot = await getDocs(gamesRef);
+      const teamGames = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+      
+      teamGames.forEach(game => {
+        if (!allGames.some(g => 
+          g.date === game.date && 
+          ((g.teamAId === game.teamAId && g.teamBId === game.teamBId) ||
+           (g.teamAId === game.teamBId && g.teamBId === game.teamAId))
+        )) {
+          allGames.push(game);
+          seasons.add(game.season);
+        }
+      });
+    }
+
+    this.allGames = allGames.sort((a, b) => a.date.localeCompare(b.date));
     this.availableSeasons = Array.from(seasons).sort((a, b) => a - b);
     
     if (this.availableSeasons.length > 0) {
       this.selectedSeason = this.availableSeasons[0];
-      await this.loadSeasonGames();
+      this.filterGames();
     }
   }
 
-  async loadSeasonGames() {
-    if (!this.selectedTeamId || !this.selectedSeason) return;
-    
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const q = query(gamesRef, where('season', '==', this.selectedSeason));
-    const snapshot = await getDocs(q);
-    this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
-    
-    if (this.schedule.length > 0) {
-      const dates = this.schedule.map(g => new Date(g.date));
+  filterGames() {
+    this.filteredGames = this.allGames.filter(game => {
+      const matchesSeason = game.season === this.selectedSeason;
+      const matchesTeam = this.viewMode === 'all' || !this.selectedTeamId || 
+        game.teamAId === this.selectedTeamId || game.teamBId === this.selectedTeamId;
+      const matchesTags = this.filterTags.length === 0 || 
+        this.filterTags.some(tag => game.tags?.includes(tag));
+      
+      return matchesSeason && matchesTeam && matchesTags;
+    });
+
+    if (this.filteredGames.length > 0) {
+      const dates = this.filteredGames.map(g => new Date(g.date));
       const startDate = new Date(Math.min(...dates.map(d => d.getTime())));
       const endDate = new Date(Math.max(...dates.map(d => d.getTime())));
       
@@ -109,6 +133,24 @@ export class GamesComponent implements OnInit {
       this.currentMonth = startDate;
       this.generateCalendar();
     }
+  }
+
+  toggleTag(tag: string) {
+    const index = this.filterTags.indexOf(tag);
+    if (index === -1) {
+      this.filterTags.push(tag);
+    } else {
+      this.filterTags.splice(index, 1);
+    }
+    this.filterGames();
+  }
+
+  onTeamSelect() {
+    this.filterGames();
+  }
+
+  onViewModeChange() {
+    this.filterGames();
   }
 
   generateCalendar() {
@@ -125,7 +167,7 @@ export class GamesComponent implements OnInit {
     lastDay.setDate(lastDay.getDate() + (6 - lastDay.getDay()));
 
     for (let d = new Date(firstDay); d <= lastDay; d.setDate(d.getDate() + 1)) {
-      const dayGames = this.schedule.filter(game => {
+      const dayGames = this.filteredGames.filter(game => {
         const gameDate = new Date(game.date);
         return gameDate.toDateString() === d.toDateString();
       });
@@ -238,11 +280,11 @@ export class GamesComponent implements OnInit {
         await batch.commit();
       }
 
-      this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
-      this.generateCalendar();
+      this.allGames = schedule.sort((a, b) => a.date.localeCompare(b.date));
+      this.filterGames();
       
       alert('Schedule generated successfully!');
-      await this.onTeamSelect();
+      await this.loadAllGames();
     } catch (error) {
       console.error('Error generating schedule:', error);
       alert('Error generating schedule. Please try again.');
