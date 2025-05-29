@@ -1,10 +1,47 @@
 <div class="container mt-4">
-  <!-- Add Team Button/Form -->
+  <!-- Conference/Division Management -->
   <div *ngIf="canManageTeams" class="mb-4">
-    <button class="btn btn-primary" (click)="showAddTeamForm = !showAddTeamForm">
-      {{ showAddTeamForm ? 'Hide Form' : 'Add New Team' }}
-    </button>
+    <div class="d-flex gap-2 mb-3">
+      <button class="btn btn-primary" (click)="showAddTeamForm = !showAddTeamForm">
+        {{ showAddTeamForm ? 'Hide Form' : 'Add New Team' }}
+      </button>
+      <button class="btn btn-outline-primary" (click)="showAddConferenceForm = !showAddConferenceForm">
+        {{ showAddConferenceForm ? 'Hide' : 'Add Conference' }}
+      </button>
+      <button class="btn btn-outline-primary" (click)="showAddDivisionForm = !showAddDivisionForm">
+        {{ showAddDivisionForm ? 'Hide' : 'Add Division' }}
+      </button>
+    </div>
+
+    <!-- Add Conference Form -->
+    <div class="card mb-3" *ngIf="showAddConferenceForm">
+      <div class="card-body">
+        <h5 class="card-title">Add New Conference</h5>
+        <div class="input-group">
+          <input type="text" class="form-control" [(ngModel)]="newConferenceName" placeholder="Conference Name">
+          <button class="btn btn-primary" (click)="addConference()">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Division Form -->
+    <div class="card mb-3" *ngIf="showAddDivisionForm">
+      <div class="card-body">
+        <h5 class="card-title">Add New Division</h5>
+        <div class="mb-3">
+          <select class="form-select" [(ngModel)]="selectedConferenceForDivision">
+            <option value="">Select Conference</option>
+            <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+          </select>
+        </div>
+        <div class="input-group">
+          <input type="text" class="form-control" [(ngModel)]="newDivisionName" placeholder="Division Name">
+          <button class="btn btn-primary" (click)="addDivision()">Add</button>
+        </div>
+      </div>
+    </div>
     
+    <!-- Add Team Form -->
     <div class="card mt-3" *ngIf="showAddTeamForm">
       <div class="card-header">
         <h5 class="mb-0">Add New Team</h5>
@@ -68,9 +105,23 @@
   <!-- Display Teams by Conference & Division -->
   <h2 class="mb-4">Teams by Conference & Division</h2>
   <div *ngFor="let conf of conferences" class="mb-5">
-    <h4 class="text-primary">{{ conf.name }}</h4>
+    <div class="d-flex align-items-center justify-content-between">
+      <h4 class="text-primary">{{ conf.name }}</h4>
+      <button *ngIf="canManageTeams" 
+              class="btn btn-sm btn-outline-danger"
+              (click)="deleteConference(conf.name)">
+        Delete Conference
+      </button>
+    </div>
     <div *ngFor="let div of conf.divisions" class="mb-3 ps-3">
-      <h5>{{ div }}</h5>
+      <div class="d-flex align-items-center justify-content-between">
+        <h5>{{ div }}</h5>
+        <button *ngIf="canManageTeams"
+                class="btn btn-sm btn-outline-danger"
+                (click)="deleteDivision(conf.name, div)">
+          Delete Division
+        </button>
+      </div>
       <div class="row mt-2">
         <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivision(conf.name, div)">
           <div class="card h-100 text-center" style="cursor: pointer;" (click)="viewTeam(team.id!)">

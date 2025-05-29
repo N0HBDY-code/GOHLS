@@ -18,6 +18,11 @@ interface Team {
   tertiaryColor?: string;
 }
 
+interface Conference {
+  name: string;
+  divisions: string[];
+}
+
 @Component({
   selector: 'app-teams',
   standalone: true,
@@ -41,7 +46,16 @@ export class TeamsComponent {
   showEditTeamModal = false;
   editTeamData?: Team;
 
-  conferences = [
+  // Conference Management
+  showAddConferenceForm = false;
+  newConferenceName = '';
+  
+  // Division Management
+  showAddDivisionForm = false;
+  selectedConferenceForDivision = '';
+  newDivisionName = '';
+
+  conferences: Conference[] = [
     {
       name: 'Mr. Hockey Conference',
       divisions: ['Europe Division', 'Great Lakes Division', 'Atlantic Division']
@@ -194,5 +208,55 @@ export class TeamsComponent {
   getDivisionsForConference(confName: string): string[] {
     const conf = this.conferences.find(c => c.name === confName);
     return conf?.divisions ?? [];
+  }
+
+  addConference() {
+    if (!this.canManageTeams || !this.newConferenceName.trim()) return;
+    
+    this.conferences.push({
+      name: this.newConferenceName,
+      divisions: []
+    });
+    
+    this.newConferenceName = '';
+    this.showAddConferenceForm = false;
+  }
+
+  addDivision() {
+    if (!this.canManageTeams || !this.newDivisionName.trim() || !this.selectedConferenceForDivision) return;
+    
+    const conference = this.conferences.find(c => c.name === this.selectedConferenceForDivision);
+    if (conference) {
+      conference.divisions.push(this.newDivisionName);
+    }
+    
+    this.newDivisionName = '';
+    this.selectedConferenceForDivision = '';
+    this.showAddDivisionForm = false;
+  }
+
+  deleteConference(conferenceName: string) {
+    if (!this.canManageTeams) return;
+    
+    if (this.teams.some(t => t.conference === conferenceName)) {
+      alert('Cannot delete conference with existing teams');
+      return;
+    }
+    
+    this.conferences = this.conferences.filter(c => c.name !== conferenceName);
+  }
+
+  deleteDivision(conferenceName: string, divisionName: string) {
+    if (!this.canManageTeams) return;
+    
+    if (this.teams.some(t => t.conference === conferenceName && t.division === divisionName)) {
+      alert('Cannot delete division with existing teams');
+      return;
+    }
+    
+    const conference = this.conferences.find(c => c.name === conferenceName);
+    if (conference) {
+      conference.divisions = conference.divisions.filter(d => d !== divisionName);
+    }
   }
 }
