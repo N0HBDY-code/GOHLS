@@ -256,26 +256,36 @@
 .player-stats .table {
   color: white;
   margin-bottom: 0;
+  font-family: monospace;
+  font-size: 0.9rem;
 }
 
 .player-stats .table thead th {
-  background: #333;
-  border-color: #444;
+  background: #1a1a1a;
+  border-color: #333;
   color: #999;
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 0.5rem;
+  text-align: center;
+  font-weight: normal;
 }
 
 .player-stats .table td {
-  border-color: #444;
+  border-color: #333;
   padding: 0.5rem;
   vertical-align: middle;
+  text-align: center;
+  background: #1a1a1a;
 }
 
 .player-stats .table tbody tr:hover {
-  background: #333;
+  background: #222;
+}
+
+.player-stats .table td:nth-child(2) {
+  text-align: left;
 }
 
 .stat-input {
@@ -285,6 +295,15 @@
   color: white;
   padding: 0.25rem;
   text-align: center;
+  font-family: monospace;
+}
+
+.player-stats .table tbody tr:nth-child(odd) td {
+  background: #1d1d1d;
+}
+
+.player-stats .table tbody tr:nth-child(even) td {
+  background: #1a1a1a;
 }
 
 .stat-input:focus {
