@@ -40,7 +40,7 @@
         </div>
       </div>
     </div>
-    
+
     <!-- Add Team Form -->
     <div class="card mt-3" *ngIf="showAddTeamForm">
       <div class="card-header">
@@ -124,15 +124,19 @@
       </div>
       <div class="row mt-2">
         <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivision(conf.name, div)">
-          <div class="card h-100 text-center" style="cursor: pointer;" (click)="viewTeam(team.id!)">
-            <img *ngIf="team.logoUrl"
-              [src]="team.logoUrl"
-              class="card-img-top object-fit-contain"
-              alt="Team Logo"
-              style="height: 120px; width: auto; margin: auto;" />
-            <div class="card-body">
-              <h6 class="card-title">{{ team.city }} {{ team.mascot }}</h6>
-              <small>{{ team.division }}</small>
+          <div class="team-card" 
+               [style.background]="team.primaryColor || '#ffffff'"
+               [style.color]="team.secondaryColor || '#000000'"
+               (click)="viewTeam(team.id!)">
+            <div class="team-logo-container">
+              <img *ngIf="team.logoUrl"
+                   [src]="team.logoUrl"
+                   class="team-logo"
+                   alt="Team Logo" />
+            </div>
+            <div class="team-info">
+              <h6 class="team-name">{{ team.city }} {{ team.mascot }}</h6>
+              <div class="team-division">{{ team.division }}</div>
             </div>
           </div>
           <div class="text-center mt-2" *ngIf="canManageTeams">
