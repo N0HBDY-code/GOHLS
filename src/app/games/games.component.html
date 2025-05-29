@@ -5,12 +5,12 @@
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Season {{ currentSeason }}</h5>
         <div>
-          <button *ngIf="!editingSeason" 
+          <button *ngIf="!editingSeason && canManageSeason" 
                   class="btn btn-outline-primary"
                   (click)="editingSeason = true">
             Change Season
           </button>
-          <div *ngIf="editingSeason" class="d-flex gap-2">
+          <div *ngIf="editingSeason && canManageSeason" class="d-flex gap-2">
             <input type="number" 
                    class="form-control" 
                    style="width: 100px"
@@ -25,7 +25,7 @@
   </div>
 
   <!-- Add Game Form -->
-  <div class="card mb-4">
+  <div class="card mb-4" *ngIf="canManageGames">
     <div class="card-header">
       <h5 class="mb-0">Add New Game</h5>
     </div>
@@ -76,7 +76,8 @@
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Season Schedule</h5>
-        <button class="btn btn-danger" 
+        <button *ngIf="canManageGames" 
+                class="btn btn-danger" 
                 (click)="clearAllGames()"
                 [disabled]="isClearing">
           {{ isClearing ? 'Clearing...' : 'Clear All Games' }}

@@ -16,6 +16,7 @@ import {
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -58,6 +59,8 @@ export class GamesComponent implements OnInit {
   activeWeeks: number[] = [];
   weekSchedule: Map<number, Game[]> = new Map();
   gamesCache = new Map<string, Game>();
+  canManageGames = false;
+  canManageSeason = false;
 
   newGame: {
     homeTeamId: string;
@@ -75,9 +78,23 @@ export class GamesComponent implements OnInit {
     isRival: false
   };
 
-  constructor(private firestore: Firestore, private router: Router) {}
+  constructor(
+    private firestore: Firestore, 
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   async ngOnInit() {
+    // Subscribe to role changes
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageGames = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+      this.canManageSeason = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
+
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
     this.teams = snapshot.docs.map(doc => ({
@@ -164,6 +181,8 @@ export class GamesComponent implements OnInit {
   }
 
   async addGame() {
+    if (!this.canManageGames) return;
+
     if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day) {
       alert('Please fill in all required fields');
       return;
@@ -193,7 +212,6 @@ export class GamesComponent implements OnInit {
     const gameRef = await addDoc(collection(this.firestore, 'games'), gameData);
     const gameId = gameRef.id;
 
-    // Create game entries for both teams
     await Promise.all([
       setDoc(doc(this.firestore, `teams/${homeTeam.id}/games/${gameId}`), {
         ...gameData,
@@ -223,6 +241,8 @@ export class GamesComponent implements OnInit {
   }
 
   async clearAllGames() {
+    if (!this.canManageGames) return;
+
     if (!confirm('Are you sure you want to clear all games? This cannot be undone.')) {
       return;
     }
@@ -249,6 +269,8 @@ export class GamesComponent implements OnInit {
   }
 
   async saveSeason() {
+    if (!this.canManageSeason) return;
+
     this.currentSeason = this.tempSeason;
     this.editingSeason = false;
     await this.loadActiveWeeks();
