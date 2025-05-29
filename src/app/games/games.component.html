@@ -99,24 +99,34 @@
           <table class="table table-bordered">
             <thead>
               <tr>
-                <th *ngFor="let day of uniqueDays">{{ day }}</th>
+                <th *ngFor="let day of uniqueDays" class="text-center">{{ day }}</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td *ngFor="let day of uniqueDays" class="align-top">
-                  <div *ngFor="let game of getGamesForDay(weekSchedule, day)" class="mb-2">
-                    <div class="small">
-                      <span [ngClass]="{
-                        'badge bg-primary': game.tags?.includes('division'),
-                        'badge bg-success': game.tags?.includes('conference'),
-                        'badge bg-info': game.tags?.includes('interconference')
-                      }" class="mb-1 d-inline-block">
-                        {{ game.tags?.[0] }}
-                      </span>
-                      <div>{{ game.homeTeam }}</div>
-                      <div>vs</div>
-                      <div>{{ game.awayTeam }}</div>
+                  <div *ngFor="let game of getGamesForDay(weekSchedule, day)" class="game-card">
+                    <span [ngClass]="{
+                      'badge bg-primary': game.tags?.includes('division'),
+                      'badge bg-success': game.tags?.includes('conference'),
+                      'badge bg-info': game.tags?.includes('interconference')
+                    }" class="mb-2 d-block">
+                      {{ game.tags?.[0] }}
+                    </span>
+                    <div class="team-row">
+                      <img [src]="game.homeLogo" 
+                           *ngIf="game.homeLogo" 
+                           class="team-logo" 
+                           [alt]="game.homeTeam">
+                      <span>{{ game.homeTeam }}</span>
+                    </div>
+                    <div class="text-center my-1">vs</div>
+                    <div class="team-row">
+                      <img [src]="game.awayLogo" 
+                           *ngIf="game.awayLogo" 
+                           class="team-logo" 
+                           [alt]="game.awayTeam">
+                      <span>{{ game.awayTeam }}</span>
                     </div>
                   </div>
                 </td>

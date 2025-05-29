@@ -19,6 +19,7 @@ interface Team {
   name: string;
   conference: string;
   division: string;
+  logoUrl?: string;
 }
 
 interface Game {
@@ -27,6 +28,8 @@ interface Game {
   awayTeamId: string;
   homeTeam: string;
   awayTeam: string;
+  homeLogo?: string;
+  awayLogo?: string;
   week: number;
   day: string;
   season: number;
@@ -98,7 +101,8 @@ export class GamesComponent implements OnInit {
       id: doc.id,
       name: doc.data()['name'] || 'Unnamed',
       conference: doc.data()['conference'],
-      division: doc.data()['division']
+      division: doc.data()['division'],
+      logoUrl: doc.data()['logoUrl']
     }));
   }
 
@@ -115,11 +119,16 @@ export class GamesComponent implements OnInit {
         const gameKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
         
         if (!allGames.has(gameKey)) {
+          const homeTeam = this.teams.find(t => t.id === gameData['homeTeamId']);
+          const awayTeam = this.teams.find(t => t.id === gameData['awayTeamId']);
+          
           allGames.set(gameKey, {
             id: doc.id,
             ...gameData,
-            homeTeam: this.getTeamName(gameData['homeTeamId']),
-            awayTeam: this.getTeamName(gameData['awayTeamId'])
+            homeTeam: homeTeam?.name || 'Unknown Team',
+            awayTeam: awayTeam?.name || 'Unknown Team',
+            homeLogo: homeTeam?.logoUrl,
+            awayLogo: awayTeam?.logoUrl
           } as Game);
         }
       });
@@ -132,10 +141,8 @@ export class GamesComponent implements OnInit {
       return a.day.localeCompare(b.day);
     });
 
-    // Get unique days
     this.uniqueDays = [...new Set(this.games.map(g => g.day))].sort();
 
-    // Organize games by week
     const weekMap = new Map<number, WeekSchedule>();
     
     this.games.forEach(game => {
@@ -191,9 +198,7 @@ export class GamesComponent implements OnInit {
       tags
     };
 
-    // Add to home team's games
     await addDoc(collection(this.firestore, `teams/${this.newGame.homeTeamId}/games`), gameData);
-    // Add to away team's games
     await addDoc(collection(this.firestore, `teams/${this.newGame.awayTeamId}/games`), gameData);
 
     this.newGame = {

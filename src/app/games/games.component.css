@@ -20,3 +20,49 @@
 .btn-group .btn {
   margin-bottom: 0.25rem;
 }
+
+.game-card {
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
+  background-color: #fff;
+  transition: transform 0.2s;
+  cursor: pointer;
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.team-logo {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  margin-right: 0.5rem;
+}
+
+.team-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.badge.bg-primary {
+  background-color: #007bff !important;
+}
+
+.badge.bg-success {
+  background-color: #28a745 !important;
+}
+
+.badge.bg-info {
+  background-color: #17a2b8 !important;
+  color: white;
+}
