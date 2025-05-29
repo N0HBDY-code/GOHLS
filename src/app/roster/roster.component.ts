@@ -22,6 +22,23 @@ interface Player {
   overall?: number;
   teamId: string;
   teamName?: string;
+  attributes?: PlayerAttributes;
+  salary?: number;
+  contractYears?: number;
+  capHit?: number;
+  signingBonus?: number;
+  performanceBonus?: number;
+}
+
+interface PlayerAttributes {
+  speed: number;
+  shooting: number;
+  passing: number;
+  checking: number;
+  defense: number;
+  faceoffs: number;
+  awareness: number;
+  durability: number;
 }
 
 @Component({
@@ -39,19 +56,22 @@ export class RosterComponent implements OnInit {
   selectedPlayerId: string = '';
   lastPlayerDoc: QueryDocumentSnapshot<DocumentData> | null = null;
   playerPageSize = 5;
-
-  // Edit mode
-  editModeId: string | null = null;
-  editFirstName = '';
-  editLastName = '';
-  editPosition = '';
-  editNumber: number | null = null;
+  currentView: 'general' | 'attributes' | 'finances' = 'general';
+  teamCapSpace: number = 82500000; // Example cap space
 
   constructor(private firestore: Firestore, private ngZone: NgZone) {}
 
   async ngOnInit() {
     await this.loadPlayers();
     await this.loadAvailablePlayers();
+  }
+
+  formatCurrency(amount: number = 0): string {
+    return new Intl.NumberFormat('en-US', {
+      style: 'decimal',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   }
 
   async loadPlayers() {
@@ -63,8 +83,25 @@ export class RosterComponent implements OnInit {
       const player: Player = {
         id: docSnap.id,
         ...data,
-        number: data.jerseyNumber // map jerseyNumber to number
+        number: data.jerseyNumber
       };
+
+      // Load attributes
+      const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
+      if (attributesSnap.exists()) {
+        player.attributes = attributesSnap.data() as PlayerAttributes;
+      }
+
+      // Load contract info
+      const contractSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/contract`));
+      if (contractSnap.exists()) {
+        const contractData = contractSnap.data();
+        player.salary = contractData['salary'];
+        player.contractYears = contractData['years'];
+        player.capHit = contractData['capHit'];
+        player.signingBonus = contractData['signingBonus'];
+        player.performanceBonus = contractData['performanceBonus'];
+      }
 
       if (data['teamId']) {
         const teamSnap = await getDoc(doc(this.firestore, `teams/${data['teamId']}`));
@@ -101,7 +138,7 @@ export class RosterComponent implements OnInit {
         return {
           id: doc.id,
           ...data,
-          number: data.jerseyNumber // map jerseyNumber to number
+          number: data.jerseyNumber
         } as Player;
       });
   }
@@ -116,7 +153,7 @@ export class RosterComponent implements OnInit {
       const player: Player = {
         id: docSnap.id,
         ...data,
-        number: data.jerseyNumber // map jerseyNumber to number
+        number: data.jerseyNumber
       };
 
       if (data['teamId']) {
@@ -169,36 +206,5 @@ export class RosterComponent implements OnInit {
     this.availablePlayers = this.availablePlayers.filter(p => p.id !== playerId);
 
     await this.loadAvailablePlayers();
-  }
-
-  startEdit(player: Player) {
-    this.editModeId = player.id!;
-    this.editFirstName = player.firstName || '';
-    this.editLastName = player.lastName || '';
-    this.editPosition = player.position;
-    this.editNumber = player.number;
-  }
-
-  cancelEdit() {
-    this.editModeId = null;
-    this.editFirstName = '';
-    this.editLastName = '';
-    this.editPosition = '';
-    this.editNumber = null;
-  }
-
-  async updatePlayer() {
-    if (!this.editModeId) return;
-    const playerDoc = doc(this.firestore, `teams/${this.teamId}/roster/${this.editModeId}`);
-    await updateDoc(playerDoc, {
-      firstName: this.editFirstName,
-      lastName: this.editLastName,
-      position: this.editPosition,
-      number: this.editNumber
-    });
-    this.cancelEdit();
-    this.ngZone.run(() => {
-      this.loadPlayers();
-    });
   }
 }

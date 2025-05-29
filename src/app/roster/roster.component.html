@@ -18,9 +18,31 @@
           <button class="btn btn-success w-100">Add</button>
         </div>
       </form>
-  
-      <!-- Roster List -->
-      <div class="table-responsive">
+
+      <!-- View Selection Buttons -->
+      <div class="btn-group mb-4">
+        <button class="btn" 
+                [class.btn-primary]="currentView === 'general'"
+                [class.btn-outline-primary]="currentView !== 'general'"
+                (click)="currentView = 'general'">
+          General Info
+        </button>
+        <button class="btn"
+                [class.btn-primary]="currentView === 'attributes'"
+                [class.btn-outline-primary]="currentView !== 'attributes'"
+                (click)="currentView = 'attributes'">
+          Attributes
+        </button>
+        <button class="btn"
+                [class.btn-primary]="currentView === 'finances'"
+                [class.btn-outline-primary]="currentView !== 'finances'"
+                (click)="currentView = 'finances'">
+          Finances
+        </button>
+      </div>
+
+      <!-- General Info View -->
+      <div class="table-responsive" *ngIf="currentView === 'general'">
         <table class="table table-striped align-middle">
           <thead>
             <tr>
@@ -60,11 +82,75 @@
           </tbody>
         </table>
       </div>
-  
+
+      <!-- Attributes View -->
+      <div class="table-responsive" *ngIf="currentView === 'attributes'">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Speed</th>
+              <th>Shooting</th>
+              <th>Passing</th>
+              <th>Checking</th>
+              <th>Defense</th>
+              <th>Faceoffs</th>
+              <th>Awareness</th>
+              <th>Durability</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of players">
+              <td>{{ player.number }}</td>
+              <td>{{ player.firstName }} {{ player.lastName }}</td>
+              <td>{{ player.attributes?.speed || '-' }}</td>
+              <td>{{ player.attributes?.shooting || '-' }}</td>
+              <td>{{ player.attributes?.passing || '-' }}</td>
+              <td>{{ player.attributes?.checking || '-' }}</td>
+              <td>{{ player.attributes?.defense || '-' }}</td>
+              <td>{{ player.attributes?.faceoffs || '-' }}</td>
+              <td>{{ player.attributes?.awareness || '-' }}</td>
+              <td>{{ player.attributes?.durability || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Finances View -->
+      <div class="table-responsive" *ngIf="currentView === 'finances'">
+        <div class="mb-3">
+          <h5>Team Cap Space: ${{ formatCurrency(teamCapSpace) }}</h5>
+        </div>
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Salary</th>
+              <th>Years</th>
+              <th>Cap Hit</th>
+              <th>Signing Bonus</th>
+              <th>Performance Bonus</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of players">
+              <td>{{ player.number }}</td>
+              <td>{{ player.firstName }} {{ player.lastName }}</td>
+              <td>{{ formatCurrency(player.salary) }}</td>
+              <td>{{ player.contractYears || '-' }}</td>
+              <td>{{ formatCurrency(player.capHit) }}</td>
+              <td>{{ formatCurrency(player.signingBonus) }}</td>
+              <td>{{ formatCurrency(player.performanceBonus) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
       <!-- Load More -->
       <div class="text-center mt-3" *ngIf="lastPlayerDoc">
         <button class="btn btn-outline-secondary btn-sm" (click)="loadNextPlayers()">Load More</button>
       </div>
     </div>
   </div>
-  
