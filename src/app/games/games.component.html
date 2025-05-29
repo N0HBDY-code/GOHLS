@@ -76,7 +76,7 @@
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Season Schedule</h5>
-        <button *ngIf="canManageGames" 
+        <button *ngIf="isDeveloper" 
                 class="btn btn-danger" 
                 (click)="clearAllGames()"
                 [disabled]="isClearing">
