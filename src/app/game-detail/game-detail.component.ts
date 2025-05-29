@@ -7,6 +7,18 @@ import { AuthService } from '../auth.service';
 
 type GamePeriod = '1st' | '2nd' | '3rd' | 'OT' | 'Final';
 
+interface GameStats {
+  totalShots: number;
+  hits: number;
+  timeOnAttack: { minutes: number; seconds: number };
+  passingPercentage: number;
+  faceoffsWon: number;
+  penaltyMinutes: number;
+  powerplays: { successful: number; total: number };
+  powerplayMinutes: number;
+  shorthandedGoals: number;
+}
+
 @Component({
   selector: 'app-game-detail',
   standalone: true,
@@ -30,6 +42,30 @@ export class GameDetailComponent implements OnInit {
   currentPeriod: GamePeriod = '1st';
   periods: GamePeriod[] = ['1st', '2nd', '3rd', 'OT', 'Final'];
 
+  homeStats: GameStats = {
+    totalShots: 0,
+    hits: 0,
+    timeOnAttack: { minutes: 0, seconds: 0 },
+    passingPercentage: 0,
+    faceoffsWon: 0,
+    penaltyMinutes: 0,
+    powerplays: { successful: 0, total: 0 },
+    powerplayMinutes: 0,
+    shorthandedGoals: 0
+  };
+
+  awayStats: GameStats = {
+    totalShots: 0,
+    hits: 0,
+    timeOnAttack: { minutes: 0, seconds: 0 },
+    passingPercentage: 0,
+    faceoffsWon: 0,
+    penaltyMinutes: 0,
+    powerplays: { successful: 0, total: 0 },
+    powerplayMinutes: 0,
+    shorthandedGoals: 0
+  };
+
   constructor(
     private route: ActivatedRoute,
     private firestore: Firestore,
@@ -40,7 +76,6 @@ export class GameDetailComponent implements OnInit {
   }
 
   async ngOnInit() {
-    // Check user roles
     this.authService.effectiveRoles.subscribe(roles => {
       this.canEditScores = roles.some(role => 
         ['developer', 'commissioner', 'stats monkey', 'gm'].includes(role)
@@ -58,12 +93,18 @@ export class GameDetailComponent implements OnInit {
       if (gameSnap.exists()) {
         this.game = { id: gameSnap.id, ...gameSnap.data() };
         
-        // Load existing scores and period if they exist
         this.awayScore = this.game.awayScore || 0;
         this.homeScore = this.game.homeScore || 0;
         this.currentPeriod = this.game.period || '1st';
         
-        // Get home team details
+        // Load stats if they exist
+        if (this.game.homeStats) {
+          this.homeStats = { ...this.homeStats, ...this.game.homeStats };
+        }
+        if (this.game.awayStats) {
+          this.awayStats = { ...this.awayStats, ...this.game.awayStats };
+        }
+        
         const homeTeamRef = doc(this.firestore, `teams/${this.game.homeTeamId}`);
         const homeTeamSnap = await getDoc(homeTeamRef);
         if (homeTeamSnap.exists()) {
@@ -72,7 +113,6 @@ export class GameDetailComponent implements OnInit {
           this.homeTeamName = homeTeamData['mascot'] || '';
         }
 
-        // Get away team details
         const awayTeamRef = doc(this.firestore, `teams/${this.game.awayTeamId}`);
         const awayTeamSnap = await getDoc(awayTeamRef);
         if (awayTeamSnap.exists()) {
@@ -85,25 +125,25 @@ export class GameDetailComponent implements OnInit {
     this.loading = false;
   }
 
-  async saveScores() {
+  async saveGameData() {
     if (!this.game || !this.canEditScores) return;
 
-    // Update scores in both team's game records
+    const gameData = {
+      homeScore: this.homeScore,
+      awayScore: this.awayScore,
+      period: this.currentPeriod,
+      homeStats: this.homeStats,
+      awayStats: this.awayStats
+    };
+
     const homeGameRef = doc(this.firestore, `teams/${this.game.homeTeamId}/games/${this.gameId}`);
     const awayGameRef = doc(this.firestore, `teams/${this.game.awayTeamId}/games/${this.gameId}`);
 
-    const scoreData = {
-      homeScore: this.homeScore,
-      awayScore: this.awayScore,
-      period: this.currentPeriod
-    };
-
     await Promise.all([
-      updateDoc(homeGameRef, scoreData),
-      updateDoc(awayGameRef, scoreData)
+      updateDoc(homeGameRef, gameData),
+      updateDoc(awayGameRef, gameData)
     ]);
 
-    // Reload game data to confirm changes
     await this.loadGameData();
     this.isEditing = false;
   }
@@ -112,7 +152,7 @@ export class GameDetailComponent implements OnInit {
     if (!this.canEditScores) return;
     
     if (this.isEditing) {
-      this.saveScores();
+      this.saveGameData();
     } else {
       this.isEditing = true;
     }
@@ -122,6 +162,14 @@ export class GameDetailComponent implements OnInit {
     if (!this.canEditScores) return;
     
     this.currentPeriod = period;
-    await this.saveScores();
+    await this.saveGameData();
+  }
+
+  formatTime(minutes: number, seconds: number): string {
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  formatPowerplays(successful: number, total: number): string {
+    return `${successful}/${total}`;
   }
 }

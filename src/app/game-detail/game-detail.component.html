@@ -19,7 +19,7 @@
         <!-- Game Info -->
         <div class="game-info">W{{ game.week }}  {{ game.day }}</div>
 
-        <!-- Period Indicator - Only show when editing -->
+        <!-- Period Indicator -->
         <div class="period-indicator" *ngIf="isEditing && canEditScores">
           <div class="period-buttons">
             <button *ngFor="let period of periods"
@@ -31,7 +31,6 @@
           </div>
         </div>
 
-        <!-- Current Period Display - Show when not editing -->
         <div class="period-indicator" *ngIf="!isEditing">
           <span class="period-display">{{ currentPeriod }}</span>
         </div>
@@ -68,10 +67,144 @@
         </div>
       </div>
 
-      <!-- Stats section to be implemented -->
-      <div class="mt-4">
-        <h5>Game Stats</h5>
-        <p class="text-muted">Stats entry coming soon...</p>
+      <!-- Game Stats -->
+      <div class="game-stats mt-4">
+        <h5 class="text-center mb-4">Game Statistics</h5>
+        
+        <div class="stats-grid">
+          <!-- Total Shots -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.totalShots" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.totalShots }}</span>
+            </div>
+            <div class="stat-label">TOTAL SHOTS</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.totalShots" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.totalShots }}</span>
+            </div>
+          </div>
+
+          <!-- Hits -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.hits" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.hits }}</span>
+            </div>
+            <div class="stat-label">HITS</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.hits" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.hits }}</span>
+            </div>
+          </div>
+
+          <!-- Time on Attack -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <div *ngIf="isEditing" class="time-input-group">
+                <input type="number" [(ngModel)]="awayStats.timeOnAttack.minutes" class="time-input" min="0" max="59">
+                <span>:</span>
+                <input type="number" [(ngModel)]="awayStats.timeOnAttack.seconds" class="time-input" min="0" max="59">
+              </div>
+              <span *ngIf="!isEditing">{{ formatTime(awayStats.timeOnAttack.minutes, awayStats.timeOnAttack.seconds) }}</span>
+            </div>
+            <div class="stat-label">TIME ON ATTACK</div>
+            <div class="home-stat">
+              <div *ngIf="isEditing" class="time-input-group">
+                <input type="number" [(ngModel)]="homeStats.timeOnAttack.minutes" class="time-input" min="0" max="59">
+                <span>:</span>
+                <input type="number" [(ngModel)]="homeStats.timeOnAttack.seconds" class="time-input" min="0" max="59">
+              </div>
+              <span *ngIf="!isEditing">{{ formatTime(homeStats.timeOnAttack.minutes, homeStats.timeOnAttack.seconds) }}</span>
+            </div>
+          </div>
+
+          <!-- Passing -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.passingPercentage" class="stat-input" min="0" max="100">
+              <span *ngIf="!isEditing">{{ awayStats.passingPercentage }}%</span>
+            </div>
+            <div class="stat-label">PASSING</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.passingPercentage" class="stat-input" min="0" max="100">
+              <span *ngIf="!isEditing">{{ homeStats.passingPercentage }}%</span>
+            </div>
+          </div>
+
+          <!-- Faceoffs Won -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.faceoffsWon" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.faceoffsWon }}</span>
+            </div>
+            <div class="stat-label">FACEOFFS WON</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.faceoffsWon" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.faceoffsWon }}</span>
+            </div>
+          </div>
+
+          <!-- Penalty Minutes -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.penaltyMinutes" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.penaltyMinutes }}</span>
+            </div>
+            <div class="stat-label">PENALTY MINUTES</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.penaltyMinutes" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.penaltyMinutes }}</span>
+            </div>
+          </div>
+
+          <!-- Powerplays -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <div *ngIf="isEditing" class="powerplay-input-group">
+                <input type="number" [(ngModel)]="awayStats.powerplays.successful" class="powerplay-input" min="0">
+                <span>/</span>
+                <input type="number" [(ngModel)]="awayStats.powerplays.total" class="powerplay-input" min="0">
+              </div>
+              <span *ngIf="!isEditing">{{ formatPowerplays(awayStats.powerplays.successful, awayStats.powerplays.total) }}</span>
+            </div>
+            <div class="stat-label">POWERPLAYS</div>
+            <div class="home-stat">
+              <div *ngIf="isEditing" class="powerplay-input-group">
+                <input type="number" [(ngModel)]="homeStats.powerplays.successful" class="powerplay-input" min="0">
+                <span>/</span>
+                <input type="number" [(ngModel)]="homeStats.powerplays.total" class="powerplay-input" min="0">
+              </div>
+              <span *ngIf="!isEditing">{{ formatPowerplays(homeStats.powerplays.successful, homeStats.powerplays.total) }}</span>
+            </div>
+          </div>
+
+          <!-- Powerplay Minutes -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.powerplayMinutes" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.powerplayMinutes }}</span>
+            </div>
+            <div class="stat-label">POWERPLAY MINUTES</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.powerplayMinutes" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.powerplayMinutes }}</span>
+            </div>
+          </div>
+
+          <!-- Shorthanded Goals -->
+          <div class="stat-row">
+            <div class="away-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="awayStats.shorthandedGoals" class="stat-input">
+              <span *ngIf="!isEditing">{{ awayStats.shorthandedGoals }}</span>
+            </div>
+            <div class="stat-label">SHORTHANDED GOALS</div>
+            <div class="home-stat">
+              <input *ngIf="isEditing" type="number" [(ngModel)]="homeStats.shorthandedGoals" class="stat-input">
+              <span *ngIf="!isEditing">{{ homeStats.shorthandedGoals }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
