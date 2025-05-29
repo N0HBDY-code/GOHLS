@@ -19,10 +19,10 @@
         <!-- Game Info -->
         <div class="game-info">Week {{ game.week }} - {{ game.day }}</div>
 
-        <!-- Period Indicator -->
-        <div class="period-indicator">
+        <!-- Period Indicator - Only show when editing -->
+        <div class="period-indicator" *ngIf="isEditing && canEditScores">
           <span class="period-label">Period:</span>
-          <div class="period-buttons" *ngIf="canEditScores">
+          <div class="period-buttons">
             <button *ngFor="let period of periods"
                     [class.active]="currentPeriod === period"
                     (click)="updatePeriod(period)"
@@ -30,7 +30,11 @@
               {{ period }}
             </button>
           </div>
-          <span *ngIf="!canEditScores" class="period-display">{{ currentPeriod }}</span>
+        </div>
+
+        <!-- Current Period Display - Show when not editing -->
+        <div class="period-indicator" *ngIf="!isEditing">
+          <span class="period-display">{{ currentPeriod }}</span>
         </div>
         
         <div class="d-flex justify-content-center align-items-center">
