@@ -40,21 +40,7 @@ interface Game {
 })
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
-  allGames: Game[] = [];
-  filteredGames: Game[] = [];
-  selectedTeamId: string = '';
-  selectedSeason: number = 1;
-  availableSeasons = Array.from({ length: 10 }, (_, i) => i + 1);
-  availableWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
-  availableDays = [
-    'Sunday',
-    'Monday', 
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday'
-  ];
+  games: Game[] = [];
   isClearing = false;
 
   newGame = {
@@ -69,7 +55,7 @@ export class GamesComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadTeams();
-    await this.loadAllGames();
+    await this.loadGames();
   }
 
   async loadTeams() {
@@ -82,43 +68,42 @@ export class GamesComponent implements OnInit {
     }));
   }
 
-  async loadAllGames() {
-    this.allGames = [];
+  async loadGames() {
+    const allGames = new Map<string, Game>();
+    
     for (const team of this.teams) {
       const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
       const snapshot = await getDocs(gamesRef);
-      const games = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        homeTeam: this.getTeamName(doc.data()['homeTeamId']),
-        awayTeam: this.getTeamName(doc.data()['awayTeamId'])
-      } as Game));
-      this.allGames.push(...games);
+      
+      snapshot.docs.forEach(doc => {
+        const gameData = doc.data();
+        const gameKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
+        
+        if (!allGames.has(gameKey)) {
+          allGames.set(gameKey, {
+            id: doc.id,
+            ...gameData,
+            homeTeam: this.getTeamName(gameData['homeTeamId']),
+            awayTeam: this.getTeamName(gameData['awayTeamId'])
+          } as Game);
+        }
+      });
     }
-    this.filterGames();
+    
+    this.games = Array.from(allGames.values()).sort((a, b) => {
+      if (a.week !== b.week) {
+        return a.week - b.week;
+      }
+      return a.day.localeCompare(b.day);
+    });
   }
 
   getTeamName(teamId: string): string {
     return this.teams.find(t => t.id === teamId)?.name || 'Unknown Team';
   }
 
-  filterGames() {
-    let filtered = [...this.allGames];
-    
-    if (this.selectedSeason) {
-      filtered = filtered.filter(g => g.season === this.selectedSeason);
-    }
-
-    this.filteredGames = filtered.sort((a, b) => {
-      if (a.week !== b.week) {
-        return a.week - b.week;
-      }
-      return this.availableDays.indexOf(a.day) - this.availableDays.indexOf(b.day);
-    });
-  }
-
   async addGame() {
-    if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day || !this.newGame.week) {
+    if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day) {
       alert('Please fill in all required fields');
       return;
     }
@@ -152,10 +137,10 @@ export class GamesComponent implements OnInit {
       awayTeamId: '',
       week: 1,
       day: '',
-      season: this.selectedSeason
+      season: 1
     };
 
-    await this.loadAllGames();
+    await this.loadGames();
   }
 
   async clearAllGames() {
@@ -174,9 +159,8 @@ export class GamesComponent implements OnInit {
         }
       }
       
-      this.allGames = [];
-      this.filteredGames = [];
-      await this.loadAllGames();
+      this.games = [];
+      await this.loadGames();
       
       alert('All games have been cleared successfully!');
     } catch (error) {

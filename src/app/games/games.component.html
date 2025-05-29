@@ -33,27 +33,14 @@
           </select>
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label class="form-label">Week</label>
-          <select class="form-select" [(ngModel)]="newGame.week" name="week" required>
-            <option value="">Select Week</option>
-            <option *ngFor="let week of availableWeeks" [value]="week">Week {{ week }}</option>
-          </select>
+          <input type="number" class="form-control" [(ngModel)]="newGame.week" name="week" required min="1">
         </div>
 
-        <div class="col-md-4">
+        <div class="col-md-6">
           <label class="form-label">Day</label>
-          <select class="form-select" [(ngModel)]="newGame.day" name="day" required>
-            <option value="">Select Day</option>
-            <option *ngFor="let day of availableDays" [value]="day">{{ day }}</option>
-          </select>
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">Season</label>
-          <select class="form-select" [(ngModel)]="newGame.season" name="season" required>
-            <option *ngFor="let season of availableSeasons" [value]="season">Season {{ season }}</option>
-          </select>
+          <input type="text" class="form-control" [(ngModel)]="newGame.day" name="day" required>
         </div>
 
         <div class="col-12">
@@ -81,7 +68,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let game of filteredGames">
+            <tr *ngFor="let game of games">
               <td>Week {{ game.week }}</td>
               <td>{{ game.day }}</td>
               <td>{{ game.homeTeam }}</td>
