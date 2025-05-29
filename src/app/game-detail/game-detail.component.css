@@ -278,6 +278,7 @@
   vertical-align: middle;
   text-align: center;
   background: #1a1a1a;
+  color: white;
 }
 
 .player-stats .table tbody tr:hover {
