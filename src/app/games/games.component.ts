@@ -25,15 +25,10 @@ interface Game {
   awayTeamId: string;
   homeTeam: string;
   awayTeam: string;
-  date: string;
+  week: number;
+  day: string;
   season: number;
   tags?: string[];
-}
-
-interface CalendarDay {
-  date: Date;
-  isCurrentMonth: boolean;
-  games: Game[];
 }
 
 @Component({
@@ -47,20 +42,26 @@ export class GamesComponent implements OnInit {
   teams: Team[] = [];
   allGames: Game[] = [];
   filteredGames: Game[] = [];
-  calendarDays: CalendarDay[] = [];
-  currentMonth = new Date();
-  
-  viewMode: 'all' | 'team' = 'all';
   selectedTeamId: string = '';
   selectedSeason: number = 1;
   availableSeasons = Array.from({ length: 10 }, (_, i) => i + 1);
-  filterTags: string[] = [];
+  availableWeeks = Array.from({ length: 52 }, (_, i) => i + 1);
+  availableDays = [
+    'Sunday',
+    'Monday', 
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday'
+  ];
   isClearing = false;
 
   newGame = {
     homeTeamId: '',
     awayTeamId: '',
-    date: '',
+    week: 1,
+    day: '',
     season: 1
   };
 
@@ -69,7 +70,6 @@ export class GamesComponent implements OnInit {
   async ngOnInit() {
     await this.loadTeams();
     await this.loadAllGames();
-    this.generateCalendar();
   }
 
   async loadTeams() {
@@ -102,15 +102,6 @@ export class GamesComponent implements OnInit {
     return this.teams.find(t => t.id === teamId)?.name || 'Unknown Team';
   }
 
-  async onTeamSelect() {
-    await this.loadAllGames();
-  }
-
-  onViewModeChange() {
-    this.selectedTeamId = '';
-    this.loadAllGames();
-  }
-
   filterGames() {
     let filtered = [...this.allGames];
     
@@ -118,35 +109,16 @@ export class GamesComponent implements OnInit {
       filtered = filtered.filter(g => g.season === this.selectedSeason);
     }
 
-    if (this.viewMode === 'team' && this.selectedTeamId) {
-      filtered = filtered.filter(g => 
-        g.homeTeamId === this.selectedTeamId || 
-        g.awayTeamId === this.selectedTeamId
-      );
-    }
-
-    if (this.filterTags.length > 0) {
-      filtered = filtered.filter(g => 
-        g.tags?.some(tag => this.filterTags.includes(tag))
-      );
-    }
-
-    this.filteredGames = filtered;
-    this.generateCalendar();
-  }
-
-  toggleTag(tag: string) {
-    const index = this.filterTags.indexOf(tag);
-    if (index === -1) {
-      this.filterTags.push(tag);
-    } else {
-      this.filterTags.splice(index, 1);
-    }
-    this.filterGames();
+    this.filteredGames = filtered.sort((a, b) => {
+      if (a.week !== b.week) {
+        return a.week - b.week;
+      }
+      return this.availableDays.indexOf(a.day) - this.availableDays.indexOf(b.day);
+    });
   }
 
   async addGame() {
-    if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.date) {
+    if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day || !this.newGame.week) {
       alert('Please fill in all required fields');
       return;
     }
@@ -178,46 +150,12 @@ export class GamesComponent implements OnInit {
     this.newGame = {
       homeTeamId: '',
       awayTeamId: '',
-      date: '',
+      week: 1,
+      day: '',
       season: this.selectedSeason
     };
 
     await this.loadAllGames();
-  }
-
-  generateCalendar() {
-    const firstDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
-    const lastDay = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 1, 0);
-    
-    const startDate = new Date(firstDay);
-    startDate.setDate(startDate.getDate() - startDate.getDay());
-
-    const endDate = new Date(lastDay);
-    endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
-
-    this.calendarDays = [];
-    for (let date = new Date(startDate); date <= endDate; date.setDate(date.getDate() + 1)) {
-      const dayGames = this.filteredGames.filter(game => {
-        const gameDate = new Date(game.date);
-        return gameDate.toDateString() === date.toDateString();
-      });
-
-      this.calendarDays.push({
-        date: new Date(date),
-        isCurrentMonth: date.getMonth() === this.currentMonth.getMonth(),
-        games: dayGames
-      });
-    }
-  }
-
-  previousMonth() {
-    this.currentMonth.setMonth(this.currentMonth.getMonth() - 1);
-    this.generateCalendar();
-  }
-
-  nextMonth() {
-    this.currentMonth.setMonth(this.currentMonth.getMonth() + 1);
-    this.generateCalendar();
   }
 
   async clearAllGames() {
@@ -238,7 +176,6 @@ export class GamesComponent implements OnInit {
       
       this.allGames = [];
       this.filteredGames = [];
-      this.calendarDays = [];
       await this.loadAllGames();
       
       alert('All games have been cleared successfully!');

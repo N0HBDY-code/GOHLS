@@ -1,57 +1,7 @@
-.calendar-grid {
-  min-height: 600px;
+.table td {
+  vertical-align: middle;
 }
 
-.calendar-grid .col {
-  min-height: 100px;
-  max-height: 150px;
-  overflow-y: auto;
-}
-
-.game-item {
-  font-size: 0.75rem;
-  margin-bottom: 0.25rem;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.btn-group .btn {
-  flex: 1;
-}
-
-/* Custom scrollbar for game cells */
-.col::-webkit-scrollbar {
-  width: 4px;
-}
-
-.col::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.col::-webkit-scrollbar-thumb {
-  background: #888;
-}
-
-.col::-webkit-scrollbar-thumb:hover {
-  background: #555;
-}
-
-/* Legend styles */
-.legend span {
-  font-size: 0.875rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.legend i {
-  font-size: 0.75rem;
-}
-
-/* Calendar navigation */
-.btn-group .btn:disabled {
-  opacity: 1;
-  font-weight: bold;
-  min-width: 150px;
+.badge {
+  text-transform: capitalize;
 }

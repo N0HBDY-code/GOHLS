@@ -10,51 +10,6 @@
     </div>
   </div>
 
-  <!-- View Mode and Filters -->
-  <div class="card mb-4">
-    <div class="card-body">
-      <div class="row g-3">
-        <div class="col-md-4">
-          <label class="form-label">View Mode</label>
-          <select class="form-select" [(ngModel)]="viewMode" (change)="onViewModeChange()">
-            <option value="all">All Games</option>
-            <option value="team">Single Team</option>
-          </select>
-        </div>
-
-        <div class="col-md-4" *ngIf="viewMode === 'team'">
-          <label for="teamSelect" class="form-label">Select Team</label>
-          <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="onTeamSelect()">
-            <option value="">-- Choose a Team --</option>
-            <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-          </select>
-        </div>
-
-        <div class="col-md-4">
-          <label class="form-label">Season</label>
-          <select class="form-select" [(ngModel)]="selectedSeason" (change)="filterGames()">
-            <option *ngFor="let season of availableSeasons" [value]="season">Season {{ season }}</option>
-          </select>
-        </div>
-
-        <div class="col-12">
-          <label class="form-label">Filter by Game Type</label>
-          <div class="btn-group">
-            <button class="btn" [class.btn-primary]="filterTags.includes('division')" 
-                    [class.btn-outline-primary]="!filterTags.includes('division')"
-                    (click)="toggleTag('division')">Division</button>
-            <button class="btn" [class.btn-success]="filterTags.includes('conference')"
-                    [class.btn-outline-success]="!filterTags.includes('conference')"
-                    (click)="toggleTag('conference')">Conference</button>
-            <button class="btn" [class.btn-info]="filterTags.includes('interconference')"
-                    [class.btn-outline-info]="!filterTags.includes('interconference')"
-                    (click)="toggleTag('interconference')">Inter-Conference</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- Add New Game -->
   <div class="card mb-4">
     <div class="card-header">
@@ -62,7 +17,7 @@
     </div>
     <div class="card-body">
       <form (ngSubmit)="addGame()" class="row g-3">
-        <div class="col-md-3">
+        <div class="col-md-6">
           <label class="form-label">Home Team</label>
           <select class="form-select" [(ngModel)]="newGame.homeTeamId" name="homeTeam" required>
             <option value="">Select Home Team</option>
@@ -70,7 +25,7 @@
           </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-6">
           <label class="form-label">Away Team</label>
           <select class="form-select" [(ngModel)]="newGame.awayTeamId" name="awayTeam" required>
             <option value="">Select Away Team</option>
@@ -78,14 +33,27 @@
           </select>
         </div>
 
-        <div class="col-md-3">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-control" [(ngModel)]="newGame.date" name="date" required>
+        <div class="col-md-4">
+          <label class="form-label">Week</label>
+          <select class="form-select" [(ngModel)]="newGame.week" name="week" required>
+            <option value="">Select Week</option>
+            <option *ngFor="let week of availableWeeks" [value]="week">Week {{ week }}</option>
+          </select>
         </div>
 
-        <div class="col-md-3">
+        <div class="col-md-4">
+          <label class="form-label">Day</label>
+          <select class="form-select" [(ngModel)]="newGame.day" name="day" required>
+            <option value="">Select Day</option>
+            <option *ngFor="let day of availableDays" [value]="day">{{ day }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
           <label class="form-label">Season</label>
-          <input type="number" class="form-control" [(ngModel)]="newGame.season" name="season" required>
+          <select class="form-select" [(ngModel)]="newGame.season" name="season" required>
+            <option *ngFor="let season of availableSeasons" [value]="season">Season {{ season }}</option>
+          </select>
         </div>
 
         <div class="col-12">
@@ -95,55 +63,41 @@
     </div>
   </div>
 
-  <!-- Calendar View -->
+  <!-- Games List -->
   <div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <button class="btn btn-sm btn-outline-secondary" (click)="previousMonth()">&lt;</button>
-      <div class="btn-group">
-        <button class="btn btn-outline-primary" disabled>
-          {{ currentMonth | date:'MMMM yyyy' }}
-        </button>
-      </div>
-      <button class="btn btn-sm btn-outline-secondary" (click)="nextMonth()">&gt;</button>
+    <div class="card-header">
+      <h5 class="mb-0">Schedule</h5>
     </div>
     <div class="card-body">
-      <!-- Legend -->
-      <div class="legend d-flex gap-4 mb-3">
-        <span><i class="fas fa-circle text-primary"></i> Division Games</span>
-        <span><i class="fas fa-circle text-success"></i> Conference Games</span>
-        <span><i class="fas fa-circle text-info"></i> Inter-Conference Games</span>
-      </div>
-
-      <!-- Calendar Grid -->
-      <div class="row row-cols-7 text-center border-bottom py-2">
-        <div class="col">Sun</div>
-        <div class="col">Mon</div>
-        <div class="col">Tue</div>
-        <div class="col">Wed</div>
-        <div class="col">Thu</div>
-        <div class="col">Fri</div>
-        <div class="col">Sat</div>
-      </div>
-
-      <div class="row row-cols-7 calendar-grid">
-        <ng-container *ngFor="let day of calendarDays">
-          <div class="col border p-2" 
-               [class.bg-light]="!day.isCurrentMonth"
-               [class.bg-white]="day.isCurrentMonth">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <small class="text-muted">{{ day.date | date:'d' }}</small>
-            </div>
-            <div *ngFor="let game of day.games" class="game-item">
-              <span [ngClass]="{
-                'text-primary': game.tags?.includes('division'),
-                'text-success': game.tags?.includes('conference'),
-                'text-info': game.tags?.includes('interconference')
-              }">
-                {{ game.homeTeam }} vs {{ game.awayTeam }}
-              </span>
-            </div>
-          </div>
-        </ng-container>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Week</th>
+              <th>Day</th>
+              <th>Home Team</th>
+              <th>Away Team</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let game of filteredGames">
+              <td>Week {{ game.week }}</td>
+              <td>{{ game.day }}</td>
+              <td>{{ game.homeTeam }}</td>
+              <td>{{ game.awayTeam }}</td>
+              <td>
+                <span [ngClass]="{
+                  'badge bg-primary': game.tags?.includes('division'),
+                  'badge bg-success': game.tags?.includes('conference'),
+                  'badge bg-info': game.tags?.includes('interconference')
+                }">
+                  {{ game.tags?.[0] }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
