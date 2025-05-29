@@ -1,5 +1,7 @@
 <div class="container mt-4">
-    <h2 class="mb-3">Team Roster</h2>
-    <app-roster [teamId]="teamId"></app-roster>
+  <div class="team-header mb-4 d-flex align-items-center gap-3">
+    <img *ngIf="teamLogo" [src]="teamLogo" [alt]="teamName" class="team-logo">
+    <h2 class="mb-0">{{ teamName }}</h2>
   </div>
-  
+  <app-roster [teamId]="teamId"></app-roster>
+</div>
