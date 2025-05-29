@@ -1,65 +1,66 @@
 .card {
   transition: all 0.3s ease;
-  border: none;
-  background: #1a1a1a;
-  color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+  transform: scale(1.03);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
 }
 
-.card-header {
+/* Add Team Form Section */
+.card.mt-5 {
+  background: #1a1a1a;
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.card.mt-5 .card-header {
   background: linear-gradient(45deg, #1a237e, #283593);
   color: white;
   border-bottom: none;
   padding: 1.25rem;
 }
 
-.card-body {
+.card.mt-5 .card-body {
   padding: 1.5rem;
   background: #1a1a1a;
 }
 
-.form-label {
-  font-weight: 500;
+.card.mt-5 .form-label {
   color: #ffffff;
+  font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
-.form-control {
+.card.mt-5 .form-control {
   border-radius: 8px;
   border: 2px solid #333;
   padding: 0.75rem;
-  transition: all 0.2s ease;
   background: #2a2a2a;
   color: white;
 }
 
-.form-control:focus {
+.card.mt-5 .form-control:focus {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
   background: #333;
 }
 
-.form-select {
+.card.mt-5 .form-select {
   border-radius: 8px;
   border: 2px solid #333;
   padding: 0.75rem;
-  cursor: pointer;
   background: #2a2a2a;
   color: white;
 }
 
-.form-select:focus {
+.card.mt-5 .form-select:focus {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
   background: #333;
 }
 
-.btn-primary {
+.card.mt-5 .btn-primary {
   background: #0d6efd;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -68,36 +69,18 @@
   transition: all 0.2s ease;
 }
 
-.btn-primary:hover {
+.card.mt-5 .btn-primary:hover {
   background: #0b5ed7;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
 }
 
-.text-primary {
-  color: #0d6efd !important;
-}
-
-h4.text-primary {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 2rem 0 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 3px solid #0d6efd;
-  color: white !important;
-}
-
-h5 {
-  color: #ffffff;
-  font-weight: 600;
-  margin: 1.5rem 0 1rem;
-}
-
+/* Team Cards Section - Keeping Original Styles */
 .team-card {
   height: 100%;
   border-radius: 12px;
   overflow: hidden;
-  background: #1a1a1a;
+  background: white;
 }
 
 .team-logo-container {
@@ -105,7 +88,6 @@ h5 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #2a2a2a;
   padding: 1rem;
 }
 
@@ -123,12 +105,11 @@ h5 {
 .team-name {
   font-size: 1.25rem;
   font-weight: 600;
-  color: white;
   margin-bottom: 0.5rem;
 }
 
 .team-division {
-  color: #999;
+  color: #666;
   font-size: 0.9rem;
 }
 
@@ -139,28 +120,11 @@ h5 {
   margin-top: 1rem;
 }
 
-.btn-outline-secondary,
-.btn-outline-danger {
-  border-width: 2px;
-  padding: 0.5rem 1rem;
-  font-weight: 500;
-  border-radius: 6px;
-  transition: all 0.2s ease;
-  color: white;
-}
-
-.btn-outline-secondary:hover,
-.btn-outline-danger:hover {
-  transform: translateY(-2px);
-  color: white;
-}
-
+/* Modal Styles */
 .modal-content {
   border-radius: 12px;
   border: none;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-  background: #1a1a1a;
-  color: white;
 }
 
 .modal-header {
@@ -173,31 +137,11 @@ h5 {
 
 .modal-body {
   padding: 2rem;
-  background: #1a1a1a;
 }
 
 .modal-footer {
   border-top: none;
   padding: 1.5rem;
-  background: #1a1a1a;
-}
-
-.btn-close {
-  color: white;
-  opacity: 1;
-  filter: invert(1) grayscale(100%) brightness(200%);
-}
-
-.division-section {
-  background: #1a1a1a;
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-.conference-section {
-  margin-bottom: 3rem;
 }
 
 @media (max-width: 768px) {
