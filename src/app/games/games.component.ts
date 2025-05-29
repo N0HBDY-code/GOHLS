@@ -17,7 +17,28 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
-// ... (keep all interfaces)
+interface Team {
+  id: string;
+  name: string;
+  conference: string;
+  division: string;
+  logoUrl?: string;
+}
+
+interface Game {
+  id?: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  week: number;
+  day: string;
+  season: number;
+  isRival: boolean;
+  homeTeam?: string;
+  awayTeam?: string;
+  homeLogo?: string;
+  awayLogo?: string;
+  tags?: string[];
+}
 
 @Component({
   selector: 'app-games',
@@ -27,13 +48,64 @@ import { FormsModule } from '@angular/forms';
   styleUrls: ['./games.component.css']
 })
 export class GamesComponent implements OnInit {
-  // ... (keep all properties)
+  teams: Team[] = [];
+  currentSeason = 1;
+  tempSeason = 1;
+  editingSeason = false;
+  loading = false;
+  isClearing = false;
+  selectedWeek = 1;
+  activeWeeks: number[] = [];
+  weekSchedule: Map<number, Game[]> = new Map();
+  gamesCache = new Map<string, Game>();
 
-  formatDay(day: string | number): string {
-    if (typeof day === 'string' && day.startsWith('D')) {
-      return day;
+  newGame: {
+    homeTeamId: string;
+    awayTeamId: string;
+    week: number;
+    day: string;
+    season: number;
+    isRival: boolean;
+  } = {
+    homeTeamId: '',
+    awayTeamId: '',
+    week: 1,
+    day: '',
+    season: 1,
+    isRival: false
+  };
+
+  constructor(private firestore: Firestore, private router: Router) {}
+
+  async ngOnInit() {
+    const teamsRef = collection(this.firestore, 'teams');
+    const snapshot = await getDocs(teamsRef);
+    this.teams = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    } as Team));
+
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
     }
-    return `D${day}`;
+  }
+
+  async loadActiveWeeks() {
+    const gamesQuery = query(
+      collection(this.firestore, 'games'),
+      where('season', '==', this.currentSeason)
+    );
+    
+    const snapshot = await getDocs(gamesQuery);
+    const weeks = new Set(snapshot.docs.map(doc => doc.data()['week']));
+    this.activeWeeks = Array.from(weeks).sort((a, b) => a - b);
+  }
+
+  async onWeekChange(week: number) {
+    this.selectedWeek = week;
+    await this.loadWeek(week);
   }
 
   async loadWeek(weekNumber: number) {
@@ -51,35 +123,40 @@ export class GamesComponent implements OnInit {
       const weekGames = await Promise.all(
         snapshot.docs.map(async doc => {
           const gameData = doc.data();
-          const cacheKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
-          
-          if (this.gamesCache.has(cacheKey)) {
-            return this.gamesCache.get(cacheKey)!;
-          }
-
           const homeTeam = this.teams.find(t => t.id === gameData['homeTeamId']);
           const awayTeam = this.teams.find(t => t.id === gameData['awayTeamId']);
           
-          const game: Game = {
+          return {
             id: doc.id,
             ...gameData,
-            day: this.formatDay(gameData['day']),
             homeTeam: homeTeam?.name || 'Unknown Team',
             awayTeam: awayTeam?.name || 'Unknown Team',
             homeLogo: homeTeam?.logoUrl,
             awayLogo: awayTeam?.logoUrl,
             tags: gameData['tags'] || []
           } as Game;
-
-          this.gamesCache.set(cacheKey, game);
-          return game;
         })
       );
 
-      this.updateWeekSchedule(weekGames, weekNumber);
+      this.weekSchedule.set(weekNumber, weekGames);
     } finally {
       this.loading = false;
     }
+  }
+
+  getWeekSchedule(week: number): Game[] | undefined {
+    return this.weekSchedule.get(week);
+  }
+
+  getDays(games: Game[] | undefined): string[] {
+    if (!games) return [];
+    const days = new Set(games.map(g => g.day));
+    return Array.from(days).sort();
+  }
+
+  getGamesForDay(games: Game[] | undefined, day: string): Game[] {
+    if (!games) return [];
+    return games.filter(g => g.day === day);
   }
 
   async addGame() {
@@ -102,16 +179,19 @@ export class GamesComponent implements OnInit {
       tags.push('conference');
     }
 
+    // Format day with 'D' prefix if not present
+    const formattedDay = this.newGame.day.startsWith('D') ? 
+      this.newGame.day : 
+      `D${this.newGame.day}`;
+
     const gameData = {
       ...this.newGame,
-      day: this.formatDay(this.newGame.day),
+      day: formattedDay,
       season: this.currentSeason,
       tags
     };
 
     await addDoc(collection(this.firestore, 'games'), gameData);
-    await addDoc(collection(this.firestore, `teams/${this.newGame.homeTeamId}/games`), gameData);
-    await addDoc(collection(this.firestore, `teams/${this.newGame.awayTeamId}/games`), gameData);
 
     this.newGame = {
       homeTeamId: '',
@@ -126,5 +206,44 @@ export class GamesComponent implements OnInit {
     await this.loadWeek(this.selectedWeek);
   }
 
-  // ... (keep all other methods)
+  async clearAllGames() {
+    if (!confirm('Are you sure you want to clear all games? This cannot be undone.')) {
+      return;
+    }
+
+    this.isClearing = true;
+    try {
+      const gamesQuery = query(
+        collection(this.firestore, 'games'),
+        where('season', '==', this.currentSeason)
+      );
+      
+      const snapshot = await getDocs(gamesQuery);
+      
+      for (const doc of snapshot.docs) {
+        await deleteDoc(doc.ref);
+      }
+
+      this.weekSchedule.clear();
+      this.activeWeeks = [];
+      this.selectedWeek = 1;
+    } finally {
+      this.isClearing = false;
+    }
+  }
+
+  async saveSeason() {
+    this.currentSeason = this.tempSeason;
+    this.editingSeason = false;
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
+    }
+  }
+
+  viewGame(game: Game) {
+    if (!game.id) return;
+    this.router.navigate(['/games', game.homeTeamId, game.id]);
+  }
 }
