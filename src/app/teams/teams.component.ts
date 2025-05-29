@@ -13,6 +13,9 @@ interface Team {
   logoUrl?: string;
   conference: string;
   division: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
 }
 
 @Component({
@@ -30,6 +33,9 @@ export class TeamsComponent {
   selectedDivision = '';
   teams: Team[] = [];
   canManageTeams = false;
+  primaryColor = '#000000';
+  secondaryColor = '#FFFFFF';
+  tertiaryColor = '#808080';
 
   showEditTeamModal = false;
   editTeamData?: Team;
@@ -90,7 +96,10 @@ export class TeamsComponent {
         logoFile: this.logoFile,
         logoUrl: reader.result as string,
         conference: this.selectedConference,
-        division: this.selectedDivision
+        division: this.selectedDivision,
+        primaryColor: this.primaryColor,
+        secondaryColor: this.secondaryColor,
+        tertiaryColor: this.tertiaryColor
       };
 
       await addDoc(collection(this.firestore, 'teams'), {
@@ -99,7 +108,10 @@ export class TeamsComponent {
         logoUrl: newTeam.logoUrl,
         conference: newTeam.conference,
         division: newTeam.division,
-        name: `${newTeam.city} ${newTeam.mascot}`
+        name: `${newTeam.city} ${newTeam.mascot}`,
+        primaryColor: newTeam.primaryColor,
+        secondaryColor: newTeam.secondaryColor,
+        tertiaryColor: newTeam.tertiaryColor
       });
 
       this.city = '';
@@ -107,6 +119,9 @@ export class TeamsComponent {
       this.logoFile = null;
       this.selectedConference = '';
       this.selectedDivision = '';
+      this.primaryColor = '#000000';
+      this.secondaryColor = '#FFFFFF';
+      this.tertiaryColor = '#808080';
       await this.loadTeams();
     };
 
@@ -129,7 +144,13 @@ export class TeamsComponent {
 
   openEditTeamModal(team: Team) {
     if (!this.canManageTeams) return;
-    this.editTeamData = { ...team, logoFile: null }; // reset logoFile
+    this.editTeamData = { 
+      ...team, 
+      logoFile: null,
+      primaryColor: team.primaryColor || '#000000',
+      secondaryColor: team.secondaryColor || '#FFFFFF',
+      tertiaryColor: team.tertiaryColor || '#808080'
+    };
     this.showEditTeamModal = true;
   }
 
@@ -141,7 +162,10 @@ export class TeamsComponent {
       mascot: this.editTeamData.mascot,
       conference: this.editTeamData.conference,
       division: this.editTeamData.division,
-      name: `${this.editTeamData.city} ${this.editTeamData.mascot}`
+      name: `${this.editTeamData.city} ${this.editTeamData.mascot}`,
+      primaryColor: this.editTeamData.primaryColor,
+      secondaryColor: this.editTeamData.secondaryColor,
+      tertiaryColor: this.editTeamData.tertiaryColor
     };
 
     if (this.editTeamData.logoFile) {
