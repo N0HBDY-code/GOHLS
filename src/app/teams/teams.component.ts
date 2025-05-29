@@ -3,7 +3,6 @@ import { Firestore, collection, addDoc, deleteDoc, doc, updateDoc } from '@angul
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../auth.service';
-import { trigger, transition, style, animate } from '@angular/animations';
 import { CommonModule } from '@angular/common';
 
 interface Team {
@@ -24,18 +23,7 @@ interface Team {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './teams.component.html',
-  styleUrls: ['./teams.component.css'],
-  animations: [
-    trigger('slideInOut', [
-      transition(':enter', [
-        style({ transform: 'translateY(-100%)', opacity: 0 }),
-        animate('300ms ease-in', style({ transform: 'translateY(0)', opacity: 1 }))
-      ]),
-      transition(':leave', [
-        animate('300ms ease-out', style({ transform: 'translateY(-100%)', opacity: 0 }))
-      ])
-    ])
-  ]
+  styleUrls: ['./teams.component.css']
 })
 export class TeamsComponent {
   city = '';
