@@ -63,14 +63,14 @@ export class GamesComponent implements OnInit {
     homeTeamId: string;
     awayTeamId: string;
     week: number;
-    day: string;
+    day: number; // Changed from string to number
     season: number;
     isRival: boolean;
   } = {
     homeTeamId: '',
     awayTeamId: '',
     week: 1,
-    day: '',
+    day: 1, // Changed from '' to 1
     season: 1,
     isRival: false
   };
@@ -159,6 +159,10 @@ export class GamesComponent implements OnInit {
     return games.filter(g => g.day === day);
   }
 
+  formatDay(day: number): string {
+    return `D${day}`;
+  }
+
   async addGame() {
     if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day) {
       alert('Please fill in all required fields');
@@ -179,14 +183,9 @@ export class GamesComponent implements OnInit {
       tags.push('conference');
     }
 
-    // Format day with 'D' prefix if not present
-    const formattedDay = this.newGame.day.startsWith('D') ? 
-      this.newGame.day : 
-      `D${this.newGame.day}`;
-
     const gameData = {
       ...this.newGame,
-      day: formattedDay,
+      day: this.formatDay(this.newGame.day),
       season: this.currentSeason,
       tags
     };
@@ -197,7 +196,7 @@ export class GamesComponent implements OnInit {
       homeTeamId: '',
       awayTeamId: '',
       week: this.newGame.week,
-      day: '',
+      day: 1,
       season: this.currentSeason,
       isRival: false
     };
