@@ -39,6 +39,13 @@ interface PlayerStats {
   foPercentage: number;
 }
 
+interface RosterData {
+  ['jerseyNumber']: number;
+  ['firstName']: string;
+  ['lastName']: string;
+  ['position']: string;
+}
+
 @Component({
   selector: 'app-game-detail',
   standalone: true,
@@ -158,16 +165,16 @@ export class GameDetailComponent implements OnInit {
     const homeRosterSnap = await getDocs(homeRosterRef);
     
     this.homePlayerStats = homeRosterSnap.docs.map(doc => {
-      const data = doc.data();
+      const data = doc.data() as RosterData;
       const gameStats = this.game.homePlayerStats?.[doc.id] || {};
       const fow = gameStats.fow || 0;
       const fot = gameStats.fot || 0;
       
       return {
         id: doc.id,
-        number: data.jerseyNumber || 0,
-        name: `${data.firstName} ${data.lastName}`,
-        position: data.position || '',
+        number: data['jerseyNumber'] || 0,
+        name: `${data['firstName']} ${data['lastName']}`,
+        position: data['position'] || '',
         goals: gameStats.goals || 0,
         assists: gameStats.assists || 0,
         points: (gameStats.goals || 0) + (gameStats.assists || 0),
@@ -189,16 +196,16 @@ export class GameDetailComponent implements OnInit {
     const awayRosterSnap = await getDocs(awayRosterRef);
     
     this.awayPlayerStats = awayRosterSnap.docs.map(doc => {
-      const data = doc.data();
+      const data = doc.data() as RosterData;
       const gameStats = this.game.awayPlayerStats?.[doc.id] || {};
       const fow = gameStats.fow || 0;
       const fot = gameStats.fot || 0;
       
       return {
         id: doc.id,
-        number: data.jerseyNumber || 0,
-        name: `${data.firstName} ${data.lastName}`,
-        position: data.position || '',
+        number: data['jerseyNumber'] || 0,
+        name: `${data['firstName']} ${data['lastName']}`,
+        position: data['position'] || '',
         goals: gameStats.goals || 0,
         assists: gameStats.assists || 0,
         points: (gameStats.goals || 0) + (gameStats.assists || 0),
