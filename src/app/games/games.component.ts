@@ -88,7 +88,9 @@ export class GamesComponent implements OnInit {
 
   formatDay(day: string | number): string {
     const dayStr = day.toString();
-    return dayStr.startsWith('D') ? dayStr : `D${dayStr}`;
+    // Remove 'D' prefix if it exists, then add it back
+    const cleanDay = dayStr.startsWith('D') ? dayStr.substring(1) : dayStr;
+    return `D${cleanDay}`;
   }
 
   async loadCurrentSeason() {
@@ -151,8 +153,7 @@ export class GamesComponent implements OnInit {
       const gamesQuery = query(
         collection(this.firestore, 'games'),
         where('season', '==', this.currentSeason),
-        where('week', '==', weekNumber),
-        orderBy('day')
+        where('week', '==', weekNumber)
       );
 
       const snapshot = await getDocs(gamesQuery);
@@ -196,6 +197,9 @@ export class GamesComponent implements OnInit {
       games: {}
     };
 
+    // Clear existing games for this week
+    weekSchedule.games = {};
+
     games.forEach(game => {
       if (!weekSchedule.games[game.day]) {
         weekSchedule.games[game.day] = [];
@@ -203,10 +207,21 @@ export class GamesComponent implements OnInit {
       weekSchedule.games[game.day].push(game);
     });
 
-    if (!this.weeklySchedule.some(w => w.weekNumber === weekNumber)) {
+    // Sort games by day
+    Object.keys(weekSchedule.games).forEach(day => {
+      weekSchedule.games[day].sort((a, b) => {
+        return a.day.localeCompare(b.day);
+      });
+    });
+
+    const existingWeekIndex = this.weeklySchedule.findIndex(w => w.weekNumber === weekNumber);
+    if (existingWeekIndex === -1) {
       this.weeklySchedule.push(weekSchedule);
-      this.weeklySchedule.sort((a, b) => a.weekNumber - b.weekNumber);
+    } else {
+      this.weeklySchedule[existingWeekIndex] = weekSchedule;
     }
+    
+    this.weeklySchedule.sort((a, b) => a.weekNumber - b.weekNumber);
   }
 
   async onWeekChange(weekNumber: number) {
