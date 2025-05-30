@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Firestore, doc, updateDoc, collection, addDoc, getDocs, query, where, DocumentReference, writeBatch } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc, collection, addDoc, getDocs, query, where, DocumentReference, writeBatch, getDoc } from '@angular/fire/firestore';
 
 export interface TradeOffer {
   id?: string;
