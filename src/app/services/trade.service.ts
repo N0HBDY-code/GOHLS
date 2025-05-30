@@ -46,13 +46,18 @@ export class TradeService {
       batch.update(tradeRef, { status: 'accepted' });
     }
 
-    // Move players in a single batch
-    for (const playerId of tradeOffer.playersOffered) {
-      await this.addPlayerToBatch(batch, playerId, tradeOffer.fromTeamId, tradeOffer.toTeamId);
+    // Process offered players if any exist
+    if (tradeOffer.playersOffered.length > 0) {
+      for (const playerId of tradeOffer.playersOffered) {
+        await this.addPlayerToBatch(batch, playerId, tradeOffer.fromTeamId, tradeOffer.toTeamId);
+      }
     }
 
-    for (const playerId of tradeOffer.playersRequested) {
-      await this.addPlayerToBatch(batch, playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
+    // Process requested players if any exist
+    if (tradeOffer.playersRequested.length > 0) {
+      for (const playerId of tradeOffer.playersRequested) {
+        await this.addPlayerToBatch(batch, playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
+      }
     }
 
     // Commit all changes in a single batch
@@ -67,23 +72,26 @@ export class TradeService {
   }
 
   private async addPlayerToBatch(batch: any, playerId: string, fromTeamId: string, toTeamId: string) {
-    // Get player data
-    const playerRef = doc(this.firestore, `players/${playerId}`);
+    // Get player data from the old team's roster
     const oldTeamRosterRef = doc(this.firestore, `teams/${fromTeamId}/roster/${playerId}`);
-    const newTeamRosterRef = doc(this.firestore, `teams/${toTeamId}/roster/${playerId}`);
+    const oldTeamRosterSnap = await getDoc(oldTeamRosterRef);
     
-    const playerSnap = await getDocs(collection(this.firestore, `teams/${fromTeamId}/roster`));
-    const playerData = playerSnap.docs.find(doc => doc.id === playerId)?.data();
-
-    if (playerData) {
-      // Update player's team ID
-      batch.update(playerRef, { teamId: toTeamId });
-      
-      // Remove from old team
-      batch.delete(oldTeamRosterRef);
-      
-      // Add to new team
-      batch.set(newTeamRosterRef, { ...playerData, teamId: toTeamId });
+    if (!oldTeamRosterSnap.exists()) {
+      console.warn(`Player ${playerId} not found in team ${fromTeamId}'s roster`);
+      return;
     }
+
+    const playerData = oldTeamRosterSnap.data();
+    const playerRef = doc(this.firestore, `players/${playerId}`);
+    const newTeamRosterRef = doc(this.firestore, `teams/${toTeamId}/roster/${playerId}`);
+
+    // Update player's team ID
+    batch.update(playerRef, { teamId: toTeamId });
+    
+    // Remove from old team
+    batch.delete(oldTeamRosterRef);
+    
+    // Add to new team
+    batch.set(newTeamRosterRef, { ...playerData, teamId: toTeamId });
   }
 }

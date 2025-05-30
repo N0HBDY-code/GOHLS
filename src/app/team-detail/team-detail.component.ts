@@ -120,14 +120,17 @@ export class TeamDetailComponent implements OnInit {
         ...this.incomingTradeOffers.flatMap(o => o.playersRequested)
       ]);
 
-      const playersRef = collection(this.firestore, 'players');
-      const q = query(playersRef, where('__name__', 'in', Array.from(playerIds)));
-      const playersSnap = await getDocs(q);
-      
-      playersSnap.docs.forEach(doc => {
-        const data = doc.data();
-        this.playerCache.set(doc.id, `${data['firstName']} ${data['lastName']}`);
-      });
+      // Only query if there are player IDs to look up
+      if (playerIds.size > 0) {
+        const playersRef = collection(this.firestore, 'players');
+        const q = query(playersRef, where('__name__', 'in', Array.from(playerIds)));
+        const playersSnap = await getDocs(q);
+        
+        playersSnap.docs.forEach(doc => {
+          const data = doc.data();
+          this.playerCache.set(doc.id, `${data['firstName']} ${data['lastName']}`);
+        });
+      }
     } finally {
       this.loadingTrades = false;
     }
