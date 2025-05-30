@@ -1,0 +1,114 @@
+import { Component, inject } from '@angular/core';
+import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc } from '@angular/fire/firestore';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-headquarters',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './headquarters.component.html',
+  styleUrls: ['./headquarters.component.css']
+})
+export class HeadquartersComponent {
+  private firestore = inject(Firestore);
+
+  searchUsername = '';
+  selectedUser: any = null;
+  selectedRole = '';
+  loading = false;
+  error = '';
+  success = '';
+
+  availableRoles = [
+    'viewer',
+    'developer',
+    'commissioner',
+    'gm',
+    'stats monkey',
+    'finance officer',
+    'progression tracker'
+  ];
+
+  async searchUser() {
+    if (!this.searchUsername.trim()) {
+      this.error = 'Please enter a username';
+      return;
+    }
+
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+    this.selectedUser = null;
+
+    try {
+      const usersRef = collection(this.firestore, 'users');
+      const q = query(usersRef, where('displayName', '==', this.searchUsername));
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        this.error = 'User not found';
+        return;
+      }
+
+      const userDoc = snapshot.docs[0];
+      this.selectedUser = {
+        uid: userDoc.id,
+        ...userDoc.data(),
+        roles: userDoc.data()['roles'] || []
+      };
+    } catch (error) {
+      console.error('Error searching user:', error);
+      this.error = 'Error searching for user';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async addRole() {
+    if (!this.selectedUser || !this.selectedRole) return;
+
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+
+    try {
+      const userRef = doc(this.firestore, 'users', this.selectedUser.uid);
+      await updateDoc(userRef, {
+        roles: arrayUnion(this.selectedRole)
+      });
+
+      this.selectedUser.roles.push(this.selectedRole);
+      this.selectedRole = '';
+      this.success = 'Role added successfully';
+    } catch (error) {
+      console.error('Error adding role:', error);
+      this.error = 'Failed to add role';
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async removeRole(role: string) {
+    if (!this.selectedUser) return;
+
+    this.loading = true;
+    this.error = '';
+    this.success = '';
+
+    try {
+      const userRef = doc(this.firestore, 'users', this.selectedUser.uid);
+      await updateDoc(userRef, {
+        roles: arrayRemove(role)
+      });
+
+      this.selectedUser.roles = this.selectedUser.roles.filter((r: string) => r !== role);
+      this.success = 'Role removed successfully';
+    } catch (error) {
+      console.error('Error removing role:', error);
+      this.error = 'Failed to remove role';
+    } finally {
+      this.loading = false;
+    }
+  }
+}
