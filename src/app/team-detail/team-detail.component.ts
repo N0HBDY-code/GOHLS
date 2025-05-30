@@ -3,7 +3,7 @@ import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RosterComponent } from '../roster/roster.component';
-import { Firestore, doc, getDoc, collection, getDocs } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
 import { ContractService } from '../services/contract.service';
 import { TradeService, TradeOffer } from '../services/trade.service';
@@ -55,6 +55,7 @@ export class TeamDetailComponent implements OnInit {
   partnerPlayers: Player[] = [];
   incomingTradeOffers: TradeOffer[] = [];
   loadingTrades = false;
+  playerCache: Map<string, string> = new Map();
 
   constructor(
     private route: ActivatedRoute,
@@ -112,6 +113,21 @@ export class TeamDetailComponent implements OnInit {
     try {
       const offers = await this.tradeService.getTradeOffersForTeam(this.teamId);
       this.incomingTradeOffers = offers.filter(offer => offer.status === 'pending');
+
+      // Pre-load player names for trade offers
+      const playerIds = new Set([
+        ...this.incomingTradeOffers.flatMap(o => o.playersOffered),
+        ...this.incomingTradeOffers.flatMap(o => o.playersRequested)
+      ]);
+
+      const playersRef = collection(this.firestore, 'players');
+      const q = query(playersRef, where('__name__', 'in', Array.from(playerIds)));
+      const playersSnap = await getDocs(q);
+      
+      playersSnap.docs.forEach(doc => {
+        const data = doc.data();
+        this.playerCache.set(doc.id, `${data['firstName']} ${data['lastName']}`);
+      });
     } finally {
       this.loadingTrades = false;
     }
@@ -122,18 +138,18 @@ export class TeamDetailComponent implements OnInit {
 
     this.isLoading = true;
     try {
-      // Load your team's roster
-      const yourRosterRef = collection(this.firestore, `teams/${this.teamId}/roster`);
-      const yourRosterSnap = await getDocs(yourRosterRef);
+      // Load rosters in parallel
+      const [yourRosterSnap, partnerRosterSnap] = await Promise.all([
+        getDocs(collection(this.firestore, `teams/${this.teamId}/roster`)),
+        getDocs(collection(this.firestore, `teams/${this.selectedTradePartner}/roster`))
+      ]);
+
       this.yourPlayers = yourRosterSnap.docs.map(doc => ({
         ...doc.data() as Player,
         id: doc.id,
         selected: false
       }));
 
-      // Load partner team's roster
-      const partnerRosterRef = collection(this.firestore, `teams/${this.selectedTradePartner}/roster`);
-      const partnerRosterSnap = await getDocs(partnerRosterRef);
       this.partnerPlayers = partnerRosterSnap.docs.map(doc => ({
         ...doc.data() as Player,
         id: doc.id,
@@ -150,14 +166,8 @@ export class TeamDetailComponent implements OnInit {
     return team ? `${team.city} ${team.mascot}` : 'Unknown Team';
   }
 
-  async getPlayerName(playerId: string): Promise<string> {
-    const playerRef = doc(this.firestore, `players/${playerId}`);
-    const playerSnap = await getDoc(playerRef);
-    if (playerSnap.exists()) {
-      const data = playerSnap.data();
-      return `${data['firstName']} ${data['lastName']}`;
-    }
-    return 'Unknown Player';
+  getPlayerName(playerId: string): string {
+    return this.playerCache.get(playerId) || 'Loading...';
   }
 
   getSelectedYourPlayers(): Player[] {

@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Firestore, doc, updateDoc, collection, addDoc, getDocs, query, where } from '@angular/fire/firestore';
+import { Firestore, doc, updateDoc, collection, addDoc, getDocs, query, where, DocumentReference, writeBatch } from '@angular/fire/firestore';
 
 export interface TradeOffer {
   id?: string;
@@ -38,20 +38,25 @@ export class TradeService {
   }
 
   async acceptTrade(tradeOffer: TradeOffer) {
-    // Move players from team to team
-    for (const playerId of tradeOffer.playersOffered) {
-      await this.movePlayer(playerId, tradeOffer.fromTeamId, tradeOffer.toTeamId);
-    }
-
-    for (const playerId of tradeOffer.playersRequested) {
-      await this.movePlayer(playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
-    }
+    const batch = writeBatch(this.firestore);
 
     // Update trade offer status
     if (tradeOffer.id) {
       const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
-      await updateDoc(tradeRef, { status: 'accepted' });
+      batch.update(tradeRef, { status: 'accepted' });
     }
+
+    // Move players in a single batch
+    for (const playerId of tradeOffer.playersOffered) {
+      await this.addPlayerToBatch(batch, playerId, tradeOffer.fromTeamId, tradeOffer.toTeamId);
+    }
+
+    for (const playerId of tradeOffer.playersRequested) {
+      await this.addPlayerToBatch(batch, playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
+    }
+
+    // Commit all changes in a single batch
+    await batch.commit();
   }
 
   async rejectTrade(tradeOffer: TradeOffer) {
@@ -61,23 +66,24 @@ export class TradeService {
     }
   }
 
-  private async movePlayer(playerId: string, fromTeamId: string, toTeamId: string) {
-    // Get player data from old team
+  private async addPlayerToBatch(batch: any, playerId: string, fromTeamId: string, toTeamId: string) {
+    // Get player data
+    const playerRef = doc(this.firestore, `players/${playerId}`);
     const oldTeamRosterRef = doc(this.firestore, `teams/${fromTeamId}/roster/${playerId}`);
+    const newTeamRosterRef = doc(this.firestore, `teams/${toTeamId}/roster/${playerId}`);
+    
     const playerSnap = await getDocs(collection(this.firestore, `teams/${fromTeamId}/roster`));
     const playerData = playerSnap.docs.find(doc => doc.id === playerId)?.data();
 
-    if (!playerData) return;
-
-    // Add to new team
-    const newTeamRosterRef = doc(this.firestore, `teams/${toTeamId}/roster/${playerId}`);
-    await updateDoc(newTeamRosterRef, playerData);
-
-    // Update player's team ID
-    const playerRef = doc(this.firestore, `players/${playerId}`);
-    await updateDoc(playerRef, { teamId: toTeamId });
-
-    // Remove from old team
-    await updateDoc(oldTeamRosterRef, { teamId: toTeamId });
+    if (playerData) {
+      // Update player's team ID
+      batch.update(playerRef, { teamId: toTeamId });
+      
+      // Remove from old team
+      batch.delete(oldTeamRosterRef);
+      
+      // Add to new team
+      batch.set(newTeamRosterRef, { ...playerData, teamId: toTeamId });
+    }
   }
 }
