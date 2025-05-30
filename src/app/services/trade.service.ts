@@ -7,8 +7,10 @@ export interface TradeOffer {
   toTeamId: string;
   playersOffered: string[];
   playersRequested: string[];
-  status: 'pending' | 'accepted' | 'rejected';
+  status: 'pending' | 'accepted' | 'rejected' | 'awaiting_approval' | 'approved' | 'denied';
   timestamp: Date;
+  fromTeamAccepted?: boolean;
+  toTeamAccepted?: boolean;
 }
 
 @Injectable({
@@ -21,7 +23,9 @@ export class TradeService {
     const tradeData: Omit<TradeOffer, 'id'> = {
       ...offer,
       status: 'pending',
-      timestamp: new Date()
+      timestamp: new Date(),
+      fromTeamAccepted: true,
+      toTeamAccepted: false
     };
 
     await addDoc(collection(this.firestore, 'tradeOffers'), tradeData);
@@ -37,38 +41,79 @@ export class TradeService {
     }));
   }
 
-  async acceptTrade(tradeOffer: TradeOffer) {
-    const batch = writeBatch(this.firestore);
+  async getPendingTradeApprovals(): Promise<TradeOffer[]> {
+    const offersRef = collection(this.firestore, 'tradeOffers');
+    const q = query(offersRef, where('status', '==', 'awaiting_approval'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data() as Omit<TradeOffer, 'id'>
+    }));
+  }
 
-    // Update trade offer status
-    if (tradeOffer.id) {
-      const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
-      batch.update(tradeRef, { status: 'accepted' });
+  async acceptTrade(tradeOffer: TradeOffer) {
+    if (!tradeOffer.id) return;
+
+    const tradeRef = doc(this.firestore, 'tradeOffers', tradeOffer.id);
+    
+    if (tradeOffer.toTeamId === tradeOffer.fromTeamId) {
+      throw new Error('Cannot trade with the same team');
     }
 
-    // Process offered players if any exist
+    // Update the accepting team's status
+    const updates: Partial<TradeOffer> = {
+      toTeamAccepted: true
+    };
+
+    // If both teams have accepted, move to awaiting approval
+    if (tradeOffer.fromTeamAccepted) {
+      updates.status = 'awaiting_approval';
+    }
+
+    await updateDoc(tradeRef, updates);
+  }
+
+  async approveTrade(tradeOffer: TradeOffer) {
+    if (!tradeOffer.id) return;
+
+    const batch = writeBatch(this.firestore);
+    const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
+
+    // Update trade status to approved
+    batch.update(tradeRef, { status: 'approved' });
+
+    // Process the player transfers
     if (tradeOffer.playersOffered.length > 0) {
       for (const playerId of tradeOffer.playersOffered) {
         await this.addPlayerToBatch(batch, playerId, tradeOffer.fromTeamId, tradeOffer.toTeamId);
       }
     }
 
-    // Process requested players if any exist
     if (tradeOffer.playersRequested.length > 0) {
       for (const playerId of tradeOffer.playersRequested) {
         await this.addPlayerToBatch(batch, playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
       }
     }
 
-    // Commit all changes in a single batch
     await batch.commit();
   }
 
+  async denyTrade(tradeOffer: TradeOffer) {
+    if (!tradeOffer.id) return;
+    
+    const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
+    await updateDoc(tradeRef, { status: 'denied' });
+  }
+
   async rejectTrade(tradeOffer: TradeOffer) {
-    if (tradeOffer.id) {
-      const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
-      await updateDoc(tradeRef, { status: 'rejected' });
-    }
+    if (!tradeOffer.id) return;
+    
+    const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
+    await updateDoc(tradeRef, { 
+      status: 'rejected',
+      toTeamAccepted: false,
+      fromTeamAccepted: false
+    });
   }
 
   private async addPlayerToBatch(batch: any, playerId: string, fromTeamId: string, toTeamId: string) {
