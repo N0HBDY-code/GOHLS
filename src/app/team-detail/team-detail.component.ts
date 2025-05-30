@@ -10,12 +10,19 @@ import { TradeService, TradeOffer } from '../services/trade.service';
 import { FreeAgencyService } from '../services/free-agency.service';
 
 interface Player {
-  id: string;
+  id?: string;
   firstName: string;
   lastName: string;
   position: string;
   number: number;
   selected?: boolean;
+  teamId: string;
+  overall?: number;
+  salary?: number;
+  contractYears?: number;
+  capHit?: number;
+  signingBonus?: number;
+  performanceBonus?: number;
 }
 
 interface Team {
@@ -104,8 +111,8 @@ export class TeamDetailComponent implements OnInit {
     const yourRosterRef = collection(this.firestore, `teams/${this.teamId}/roster`);
     const yourRosterSnap = await getDocs(yourRosterRef);
     this.yourPlayers = yourRosterSnap.docs.map(doc => ({
-      id: doc.id,
       ...doc.data() as Player,
+      id: doc.id,
       selected: false
     }));
 
@@ -113,8 +120,8 @@ export class TeamDetailComponent implements OnInit {
     const partnerRosterRef = collection(this.firestore, `teams/${this.selectedTradePartner}/roster`);
     const partnerRosterSnap = await getDocs(partnerRosterRef);
     this.partnerPlayers = partnerRosterSnap.docs.map(doc => ({
-      id: doc.id,
       ...doc.data() as Player,
+      id: doc.id,
       selected: false
     }));
   }
@@ -159,8 +166,8 @@ export class TeamDetailComponent implements OnInit {
     const tradeOffer = {
       fromTeamId: this.teamId,
       toTeamId: this.selectedTradePartner,
-      playersOffered: this.getSelectedYourPlayers().map(p => p.id),
-      playersRequested: this.getSelectedPartnerPlayers().map(p => p.id)
+      playersOffered: this.getSelectedYourPlayers().map(p => p.id!),
+      playersRequested: this.getSelectedPartnerPlayers().map(p => p.id!)
     };
 
     await this.tradeService.proposeTrade(tradeOffer);
@@ -176,7 +183,7 @@ export class TeamDetailComponent implements OnInit {
   }
 
   async rejectTrade(offer: TradeOffer) {
-    // Implement reject trade logic
+    await this.tradeService.rejectTrade(offer);
     await this.loadIncomingTradeOffers();
   }
 }

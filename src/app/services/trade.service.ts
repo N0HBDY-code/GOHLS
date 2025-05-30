@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Firestore, doc, updateDoc, collection, addDoc, getDocs, query, where } from '@angular/fire/firestore';
 
 export interface TradeOffer {
+  id?: string;
   fromTeamId: string;
   toTeamId: string;
   playersOffered: string[];
@@ -16,8 +17,8 @@ export interface TradeOffer {
 export class TradeService {
   constructor(private firestore: Firestore) {}
 
-  async proposeTrade(offer: Omit<TradeOffer, 'status' | 'timestamp'>) {
-    const tradeData: TradeOffer = {
+  async proposeTrade(offer: Omit<TradeOffer, 'status' | 'timestamp' | 'id'>) {
+    const tradeData: Omit<TradeOffer, 'id'> = {
       ...offer,
       status: 'pending',
       timestamp: new Date()
@@ -26,11 +27,14 @@ export class TradeService {
     await addDoc(collection(this.firestore, 'tradeOffers'), tradeData);
   }
 
-  async getTradeOffersForTeam(teamId: string) {
+  async getTradeOffersForTeam(teamId: string): Promise<TradeOffer[]> {
     const offersRef = collection(this.firestore, 'tradeOffers');
     const q = query(offersRef, where('toTeamId', '==', teamId));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snapshot.docs.map(doc => ({ 
+      id: doc.id,
+      ...doc.data() as Omit<TradeOffer, 'id'>
+    }));
   }
 
   async acceptTrade(tradeOffer: TradeOffer) {
@@ -41,6 +45,19 @@ export class TradeService {
 
     for (const playerId of tradeOffer.playersRequested) {
       await this.movePlayer(playerId, tradeOffer.toTeamId, tradeOffer.fromTeamId);
+    }
+
+    // Update trade offer status
+    if (tradeOffer.id) {
+      const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
+      await updateDoc(tradeRef, { status: 'accepted' });
+    }
+  }
+
+  async rejectTrade(tradeOffer: TradeOffer) {
+    if (tradeOffer.id) {
+      const tradeRef = doc(this.firestore, `tradeOffers/${tradeOffer.id}`);
+      await updateDoc(tradeRef, { status: 'rejected' });
     }
   }
 
