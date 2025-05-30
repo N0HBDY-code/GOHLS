@@ -9,18 +9,16 @@
               <h4 class="text-dark text-muted">Login</h4>
             </div>
             <div class="mb-3">
-              <label for="exampleInputEmail1" class="form-label">Email</label>
+              <label for="username" class="form-label">Username</label>
               <input
-                type="email"
+                type="text"
                 class="form-control"
-                name="email"
-                [(ngModel)]="email"
+                name="username"
+                [(ngModel)]="username"
               />
             </div>
             <div class="mb-3">
-              <label for="exampleInputPassword1" class="form-label"
-                >Password</label
-              >
+              <label for="password" class="form-label">Password</label>
               <input
                 type="password"
                 class="form-control"
@@ -29,7 +27,7 @@
               />
             </div>
             <button type="button" class="btn btn-info" (click)="login()">
-              Submit
+              Login
             </button>
             <div class="row">
               <div class="col-md-6">
@@ -42,7 +40,7 @@
                   href="/forgot-password"
                   class="text-dark"
                   style="text-decoration: none"
-                  >Forgot Password ?
+                  >Forgot Password?
                 </a>
               </div>
             </div>
