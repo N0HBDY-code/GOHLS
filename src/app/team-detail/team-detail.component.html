@@ -1,7 +1,74 @@
 <div class="container mt-4">
-  <div class="team-header mb-4 d-flex align-items-center gap-3">
-    <img *ngIf="teamLogo" [src]="teamLogo" [alt]="teamName" class="team-logo">
-    <h2 class="mb-0">{{ teamName }}</h2>
+  <div class="team-header mb-4 d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3">
+      <img *ngIf="teamLogo" [src]="teamLogo" [alt]="teamName" class="team-logo">
+      <h2 class="mb-0">{{ teamName }}</h2>
+    </div>
+    <button *ngIf="canManageTeam" 
+            class="btn btn-primary" 
+            (click)="showManageModal = true">
+      Manage Team
+    </button>
   </div>
+
+  <!-- Management Modal -->
+  <div class="modal fade show" 
+       *ngIf="showManageModal" 
+       tabindex="-1" 
+       style="display: block; background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Manage {{ teamName }}</h5>
+          <button type="button" class="btn-close" (click)="showManageModal = false"></button>
+        </div>
+        <div class="modal-body">
+          <!-- Management Tabs -->
+          <ul class="nav nav-tabs mb-3">
+            <li class="nav-item">
+              <a class="nav-link" 
+                 [class.active]="currentTab === 'trades'"
+                 (click)="currentTab = 'trades'">
+                Trade Center
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" 
+                 [class.active]="currentTab === 'contracts'"
+                 (click)="currentTab = 'contracts'">
+                Contracts
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" 
+                 [class.active]="currentTab === 'freeagents'"
+                 (click)="currentTab = 'freeagents'">
+                Free Agents
+              </a>
+            </li>
+          </ul>
+
+          <!-- Trade Center -->
+          <div *ngIf="currentTab === 'trades'">
+            <h6>Propose Trade</h6>
+            <!-- Trade interface will go here -->
+          </div>
+
+          <!-- Contracts -->
+          <div *ngIf="currentTab === 'contracts'">
+            <h6>Contract Management</h6>
+            <!-- Contract interface will go here -->
+          </div>
+
+          <!-- Free Agents -->
+          <div *ngIf="currentTab === 'freeagents'">
+            <h6>Available Free Agents</h6>
+            <!-- Free agent interface will go here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <app-roster [teamId]="teamId"></app-roster>
 </div>
