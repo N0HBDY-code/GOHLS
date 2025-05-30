@@ -22,7 +22,7 @@
 }
 
 .modal-dialog {
-  max-width: 800px;
+  max-width: 90%;
 }
 
 .modal-content {
@@ -38,4 +38,29 @@
 
 .modal-body {
   padding: 1.5rem;
+}
+
+.player-item {
+  padding: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.player-item:last-child {
+  border-bottom: none;
+}
+
+.trade-offer {
+  padding: 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+.trade-offer ul {
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+}
+
+.trade-offer li {
+  margin-bottom: 0.25rem;
 }
