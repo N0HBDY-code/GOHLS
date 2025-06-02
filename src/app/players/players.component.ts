@@ -112,6 +112,50 @@ export class PlayersComponent implements OnInit {
     const baseAttributes: { [key: string]: number } = {};
     
     switch (this.playerForm.archetype) {
+      case 'Defensive Defense':
+        return {
+          'SPEED': 64, 'BODY CHK': 85, 'ENDUR': 73, 'PK CTRL': 95,
+          'PASSING': 66, 'SHT/PSS': 87, 'SLAP PWR': 66, 'SLAP ACC': 85,
+          'WRI PWR': 72, 'WRI ACC': 93, 'AGILITY': 63, 'STRENGTH': 87,
+          'ACCEL': 70, 'BALANCE': 93, 'FACEOFF': 63, 'DRBLTY': 87,
+          'DEKE': 66, 'AGGRE': 90, 'POISE': 74, 'HND EYE': 95,
+          'SHT BLK': 65, 'OFF AWR': 89, 'DEF AWR': 68, 'DISCIP': 92,
+          'FIGHTING': 66, 'STK CHK': 75
+        };
+
+      case 'Offensive Defense':
+        return {
+          'SPEED': 70, 'BODY CHK': 65, 'ENDUR': 68, 'PK CTRL': 66,
+          'PASSING': 72, 'SHT/PSS': 92, 'SLAP PWR': 70, 'SLAP ACC': 90,
+          'WRI PWR': 72, 'WRI ACC': 95, 'AGILITY': 68, 'STRENGTH': 84,
+          'ACCEL': 68, 'BALANCE': 94, 'FACEOFF': 68, 'DRBLTY': 85,
+          'DEKE': 70, 'AGGRE': 88, 'POISE': 66, 'HND EYE': 80,
+          'SHT BLK': 66, 'OFF AWR': 99, 'DEF AWR': 68, 'DISCIP': 88,
+          'FIGHTING': 66, 'STK CHK': 70
+        };
+
+      case '2-Way Defense':
+        return {
+          'SPEED': 66, 'BODY CHK': 90, 'ENDUR': 68, 'PK CTRL': 93,
+          'PASSING': 66, 'SHT/PSS': 99, 'SLAP PWR': 68, 'SLAP ACC': 90,
+          'WRI PWR': 68, 'WRI ACC': 87, 'AGILITY': 66, 'STRENGTH': 90,
+          'ACCEL': 66, 'BALANCE': 92, 'FACEOFF': 66, 'DRBLTY': 87,
+          'DEKE': 66, 'AGGRE': 99, 'POISE': 66, 'HND EYE': 80,
+          'SHT BLK': 68, 'OFF AWR': 91, 'DEF AWR': 67, 'DISCIP': 89,
+          'FIGHTING': 70, 'STK CHK': 90
+        };
+
+      case 'Enforcer Defense':
+        return {
+          'SPEED': 62, 'BODY CHK': 86, 'ENDUR': 75, 'PK CTRL': 99,
+          'PASSING': 66, 'SHT/PSS': 99, 'SLAP PWR': 60, 'SLAP ACC': 80,
+          'WRI PWR': 78, 'WRI ACC': 99, 'AGILITY': 60, 'STRENGTH': 85,
+          'ACCEL': 74, 'BALANCE': 95, 'FACEOFF': 60, 'DRBLTY': 85,
+          'DEKE': 63, 'AGGRE': 87, 'POISE': 75, 'HND EYE': 59,
+          'SHT BLK': 64, 'OFF AWR': 85, 'DEF AWR': 70, 'DISCIP': 90,
+          'FIGHTING': 60, 'STK CHK': 78
+        };
+
       case 'Playmaker':
         return {
           'SPEED': 72, 'BODY CHK': 68, 'ENDUR': 70, 'PK CTRL': 75,
@@ -177,8 +221,6 @@ export class PlayersComponent implements OnInit {
           'SHT BLK': 67, 'OFF AWR': 72, 'DEF AWR': 64, 'DISCIP': 70,
           'FIGHTING': 75, 'STK CHK': 75
         };
-
-      // Add other archetypes here...
 
       default:
         return {};
