@@ -86,13 +86,36 @@ export class PlayersComponent implements OnInit {
   }
 
   private calculateAttributeModifiers(): { [key: string]: number } {
-    const heightMod = Math.floor((this.playerForm.height - 72) / 2); // Base height 72 inches (6'0")
-    const weightMod = Math.floor((this.playerForm.weight - 180) / 10); // Base weight 180 lbs
+    if (this.playerForm.position === 'G') {
+      const heightMod = Math.floor((this.playerForm.height - 72) / 2); // Base height 72 inches (6'0")
+      const weightMod = Math.floor((this.playerForm.weight - 180) / 10); // Base weight 180 lbs
+
+      return {
+        'SPEED': -2 * heightMod,
+        'AGILITY': -2 * heightMod,
+        'PK CTRL': -2 * heightMod,
+        'RECOV': heightMod,
+        'ANGLES': 2 * heightMod,
+        'AGGRE': heightMod,
+        'VISION': heightMod,
+        'GLV HIGH': -weightMod,
+        'STK HIGH': -weightMod,
+        'SPEED': -2 * weightMod,
+        'AGILITY': -weightMod,
+        'ENDUR': -2 * weightMod,
+        'RECOV': -2 * weightMod,
+        'AGGRE': weightMod,
+        'DRBLTY': 2 * weightMod
+      };
+    }
+
+    const heightMod = Math.floor((this.playerForm.height - 72) / 2);
+    const weightMod = Math.floor((this.playerForm.weight - 180) / 10);
 
     const mods: { [key: string]: number } = {};
 
     // Height affects
-    mods['BALANCE'] = -heightMod; // Taller players have lower balance
+    mods['BALANCE'] = -heightMod;
     mods['AGILITY'] = -heightMod;
     mods['STRENGTH'] = heightMod;
     mods['ACCEL'] = -heightMod;
@@ -228,28 +251,43 @@ export class PlayersComponent implements OnInit {
   }
 
   private getGoalieAttributes(): { [key: string]: number } {
-    return {
-      'GLV LOW': 50,
-      'GLV HIGH': 50,
-      'STK LOW': 50,
-      'STK HIGH': 50,
-      '5 HOLE': 50,
-      'SPEED': 50,
-      'AGILITY': 50,
-      'CONSIS': 50,
-      'PK CHK': 50,
-      'ENDUR': 50,
-      'BRK AWAY': 50,
-      'RBD CTRL': 50,
-      'RECOV': 50,
-      'POISE': 50,
-      'PASSING': 50,
-      'ANGLES': 50,
-      'PK PL FRQ': 50,
-      'AGGRE': 50,
-      'DRBLTY': 50,
-      'VISION': 50
-    };
+    switch (this.playerForm.archetype) {
+      case 'Hybrid':
+        return {
+          'GLV LOW': 66, 'GLV HIGH': 66, 'STK LOW': 66, 'STK HIGH': 66,
+          '5 HOLE': 66, 'SPEED': 68, 'AGILITY': 66, 'CONSIS': 90,
+          'PK CTRL': 66, 'ENDUR': 99, 'BRK AWAY': 66, 'RBD CTRL': 92,
+          'RECOV': 66, 'POISE': 92, 'PASSING': 66, 'ANGLES': 92,
+          'PK PL FRQ': 66, 'AGGRE': 85, 'DRBLTY': 66, 'VISION': 92
+        };
+
+      case 'Butterfly':
+        return {
+          'GLV LOW': 62, 'GLV HIGH': 70, 'STK LOW': 62, 'STK HIGH': 68,
+          '5 HOLE': 75, 'SPEED': 98, 'AGILITY': 66, 'CONSIS': 90,
+          'PK CTRL': 70, 'ENDUR': 95, 'BRK AWAY': 60, 'RBD CTRL': 97,
+          'RECOV': 59, 'POISE': 95, 'PASSING': 64, 'ANGLES': 90,
+          'PK PL FRQ': 60, 'AGGRE': 90, 'DRBLTY': 61, 'VISION': 97
+        };
+
+      case 'Standup':
+        return {
+          'GLV LOW': 70, 'GLV HIGH': 62, 'STK LOW': 70, 'STK HIGH': 64,
+          '5 HOLE': 60, 'SPEED': 68, 'AGILITY': 66, 'CONSIS': 99,
+          'PK CTRL': 75, 'ENDUR': 99, 'BRK AWAY': 63, 'RBD CTRL': 89,
+          'RECOV': 70, 'POISE': 96, 'PASSING': 66, 'ANGLES': 92,
+          'PK PL FRQ': 70, 'AGGRE': 90, 'DRBLTY': 71, 'VISION': 97
+        };
+
+      default:
+        return {
+          'GLV LOW': 50, 'GLV HIGH': 50, 'STK LOW': 50, 'STK HIGH': 50,
+          '5 HOLE': 50, 'SPEED': 50, 'AGILITY': 50, 'CONSIS': 50,
+          'PK CTRL': 50, 'ENDUR': 50, 'BRK AWAY': 50, 'RBD CTRL': 50,
+          'RECOV': 50, 'POISE': 50, 'PASSING': 50, 'ANGLES': 50,
+          'PK PL FRQ': 50, 'AGGRE': 50, 'DRBLTY': 50, 'VISION': 50
+        };
+    }
   }
 
   async createPlayer() {
@@ -260,6 +298,14 @@ export class PlayersComponent implements OnInit {
     
     if (this.playerForm.position === 'G') {
       attributes = this.getGoalieAttributes();
+      const modifiers = this.calculateAttributeModifiers();
+      
+      // Apply modifiers to base attributes
+      for (const [attr, mod] of Object.entries(modifiers)) {
+        if (attributes[attr]) {
+          attributes[attr] = Math.max(40, Math.min(99, attributes[attr] + mod));
+        }
+      }
     } else {
       attributes = this.getArchetypeAttributes();
       const modifiers = this.calculateAttributeModifiers();
