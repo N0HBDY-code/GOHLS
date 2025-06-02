@@ -86,47 +86,51 @@ export class PlayersComponent implements OnInit {
   }
 
   private calculateAttributeModifiers(): { [key: string]: number } {
+    const heightMod = Math.floor((this.playerForm.height - 72) / 2); // Base height 72 inches (6'0")
+    const weightMod = Math.floor((this.playerForm.weight - 180) / 10); // Base weight 180 lbs
+
     if (this.playerForm.position === 'G') {
-      const heightMod = Math.floor((this.playerForm.height - 72) / 2); // Base height 72 inches (6'0")
-      const weightMod = Math.floor((this.playerForm.weight - 180) / 10); // Base weight 180 lbs
+      const mods: { [key: string]: number } = {};
 
-      return {
-        'SPEED': -2 * heightMod,
-        'AGILITY': -2 * heightMod,
-        'PK CTRL': -2 * heightMod,
-        'RECOV': heightMod,
-        'ANGLES': 2 * heightMod,
-        'AGGRE': heightMod,
-        'VISION': heightMod,
-        'GLV HIGH': -weightMod,
-        'STK HIGH': -weightMod,
-        'SPEED': -2 * weightMod,
-        'AGILITY': -weightMod,
-        'ENDUR': -2 * weightMod,
-        'RECOV': -2 * weightMod,
-        'AGGRE': weightMod,
-        'DRBLTY': 2 * weightMod
-      };
+      // Height modifiers
+      mods['SPEED'] = -2 * heightMod;
+      mods['AGILITY'] = -2 * heightMod;
+      mods['PK CTRL'] = -2 * heightMod;
+      mods['RECOV'] = heightMod;
+      mods['ANGLES'] = 2 * heightMod;
+      mods['AGGRE'] = heightMod;
+      mods['VISION'] = 2 * heightMod;
+
+      // Weight modifiers
+      mods['GLV HIGH'] = -weightMod;
+      mods['STK HIGH'] = -weightMod;
+      mods['ENDUR'] = -2 * weightMod;
+      mods['DRBLTY'] = 2 * weightMod;
+
+      // Combined modifiers (take the more significant impact)
+      mods['SPEED'] = Math.min(mods['SPEED'] || 0, -2 * weightMod);
+      mods['AGILITY'] = Math.min(mods['AGILITY'] || 0, -weightMod);
+      mods['RECOV'] = Math.min(mods['RECOV'] || 0, -2 * weightMod);
+      mods['AGGRE'] = Math.max(mods['AGGRE'] || 0, weightMod);
+
+      return mods;
     }
-
-    const heightMod = Math.floor((this.playerForm.height - 72) / 2);
-    const weightMod = Math.floor((this.playerForm.weight - 180) / 10);
 
     const mods: { [key: string]: number } = {};
 
-    // Height affects
+    // Height modifiers
     mods['BALANCE'] = -heightMod;
     mods['AGILITY'] = -heightMod;
     mods['STRENGTH'] = heightMod;
     mods['ACCEL'] = -heightMod;
 
-    // Weight affects
+    // Weight modifiers
     mods['SPEED'] = -weightMod;
-    mods['BODY CHK'] = weightMod;
-    mods['STRENGTH'] = weightMod;
-    mods['BALANCE'] = weightMod;
-    mods['AGILITY'] = -weightMod;
-    mods['ACCEL'] = -weightMod;
+    mods['BODY CHK'] = 2 * weightMod;
+    mods['STRENGTH'] = Math.max(mods['STRENGTH'] || 0, 2 * weightMod);
+    mods['BALANCE'] = Math.max(mods['BALANCE'] || 0, weightMod);
+    mods['AGILITY'] = Math.min(mods['AGILITY'] || 0, -weightMod);
+    mods['ACCEL'] = Math.min(mods['ACCEL'] || 0, -weightMod);
 
     return mods;
   }
@@ -298,23 +302,16 @@ export class PlayersComponent implements OnInit {
     
     if (this.playerForm.position === 'G') {
       attributes = this.getGoalieAttributes();
-      const modifiers = this.calculateAttributeModifiers();
-      
-      // Apply modifiers to base attributes
-      for (const [attr, mod] of Object.entries(modifiers)) {
-        if (attributes[attr]) {
-          attributes[attr] = Math.max(40, Math.min(99, attributes[attr] + mod));
-        }
-      }
     } else {
       attributes = this.getArchetypeAttributes();
-      const modifiers = this.calculateAttributeModifiers();
-      
-      // Apply modifiers to base attributes
-      for (const [attr, mod] of Object.entries(modifiers)) {
-        if (attributes[attr]) {
-          attributes[attr] = Math.max(40, Math.min(99, attributes[attr] + mod));
-        }
+    }
+
+    const modifiers = this.calculateAttributeModifiers();
+    
+    // Apply modifiers to base attributes
+    for (const [attr, mod] of Object.entries(modifiers)) {
+      if (attributes[attr]) {
+        attributes[attr] = Math.max(40, Math.min(99, attributes[attr] + mod));
       }
     }
 
