@@ -162,39 +162,75 @@ export class PlayerManagerComponent implements OnInit {
   async loadGameStats() {
     if (!this.player?.id) return;
 
-    // Load stats from all teams the player has been on
-    const teamsRef = collection(this.firestore, 'teams');
-    const teamsSnap = await getDocs(teamsRef);
+    // Use a Set to track unique games and avoid duplicates
+    const uniqueGames = new Map<string, any>();
     
-    this.gameStats = [];
+    // Load stats from the global games collection to avoid duplicates
+    const gamesRef = collection(this.firestore, 'games');
+    const gamesSnap = await getDocs(gamesRef);
     
-    for (const teamDoc of teamsSnap.docs) {
-      const gamesRef = collection(this.firestore, `teams/${teamDoc.id}/games`);
-      const gamesSnap = await getDocs(gamesRef);
+    for (const gameDoc of gamesSnap.docs) {
+      const gameData = gameDoc.data();
       
-      for (const gameDoc of gamesSnap.docs) {
-        const gameData = gameDoc.data();
-        const playerStats = gameData['homePlayerStats']?.[this.player.id] || 
-                           gameData['awayPlayerStats']?.[this.player.id];
+      // Check if this player has stats in this game
+      const homePlayerStats = gameData['homePlayerStats']?.[this.player.id];
+      const awayPlayerStats = gameData['awayPlayerStats']?.[this.player.id];
+      
+      let playerStats = null;
+      let isHome = false;
+      let teamId = '';
+      
+      if (homePlayerStats) {
+        playerStats = homePlayerStats;
+        isHome = true;
+        teamId = gameData['homeTeamId'];
+      } else if (awayPlayerStats) {
+        playerStats = awayPlayerStats;
+        isHome = false;
+        teamId = gameData['awayTeamId'];
+      }
+      
+      if (playerStats && teamId) {
+        // Get team information
+        const teamRef = doc(this.firestore, `teams/${teamId}`);
+        const teamSnap = await getDoc(teamRef);
+        let teamName = 'Unknown Team';
         
-        if (playerStats) {
-          const teamData = teamDoc.data();
-          this.gameStats.push({
-            gameId: gameDoc.id,
-            teamName: `${teamData['city']} ${teamData['mascot']}`,
-            opponent: gameData['opponent'] || 'Unknown',
-            date: gameData['date']?.toDate?.() || new Date(),
-            week: gameData['week'],
-            day: gameData['day'],
-            isHome: gameData['isHome'],
-            ...playerStats
-          });
+        if (teamSnap.exists()) {
+          const teamData = teamSnap.data();
+          teamName = `${teamData['city']} ${teamData['mascot']}`;
         }
+        
+        // Determine opponent
+        let opponentTeamId = isHome ? gameData['awayTeamId'] : gameData['homeTeamId'];
+        let opponent = 'Unknown Opponent';
+        
+        if (opponentTeamId) {
+          const opponentRef = doc(this.firestore, `teams/${opponentTeamId}`);
+          const opponentSnap = await getDoc(opponentRef);
+          if (opponentSnap.exists()) {
+            const opponentData = opponentSnap.data();
+            opponent = `${opponentData['city']} ${opponentData['mascot']}`;
+          }
+        }
+        
+        // Use game ID as unique key to prevent duplicates
+        uniqueGames.set(gameDoc.id, {
+          gameId: gameDoc.id,
+          teamName,
+          opponent,
+          date: gameData['date']?.toDate?.() || new Date(),
+          week: gameData['week'],
+          day: gameData['day'],
+          isHome,
+          ...playerStats
+        });
       }
     }
     
-    // Sort by date descending
-    this.gameStats.sort((a, b) => b.date.getTime() - a.date.getTime());
+    // Convert Map to array and sort by date descending
+    this.gameStats = Array.from(uniqueGames.values())
+      .sort((a, b) => b.date.getTime() - a.date.getTime());
   }
 
   async loadTrainingHistory() {
