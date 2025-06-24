@@ -22,6 +22,7 @@ export class PlayersComponent implements OnInit {
   hasRetiredPlayer = false;
   loading = true;
   retiredPlayerName = '';
+  showCreateForm = false; // Add this flag to control form visibility
 
   filteredArchetypes: string[] = [];
 
@@ -63,13 +64,16 @@ export class PlayersComponent implements OnInit {
         this.hasRetiredPlayer = true;
         this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
         this.hasActivePlayer = false;
+        this.showCreateForm = false;
       } else {
         this.hasActivePlayer = true;
         this.hasRetiredPlayer = false;
+        this.showCreateForm = false;
       }
     } else {
       this.hasActivePlayer = false;
       this.hasRetiredPlayer = false;
+      this.showCreateForm = true; // Show form if no player exists
     }
     
     this.loading = false;
@@ -354,11 +358,12 @@ export class PlayersComponent implements OnInit {
 
     this.hasActivePlayer = true;
     this.hasRetiredPlayer = false;
+    this.showCreateForm = false;
     this.router.navigate(['/player']);
   }
 
   createNewPlayer() {
-    // Reset form and allow creation of new player
+    // Reset form and show creation form
     this.playerForm = {
       firstName: '',
       lastName: '',
@@ -383,5 +388,6 @@ export class PlayersComponent implements OnInit {
     this.filteredArchetypes = [];
     this.hasActivePlayer = false;
     this.hasRetiredPlayer = false;
+    this.showCreateForm = true; // This is the key fix!
   }
 }

@@ -1,7 +1,7 @@
 <div *ngIf="loading" class="alert alert-info mt-3 text-center">Loading...</div>
 
 <!-- Show retired player message with option to create new -->
-<div *ngIf="!loading && hasRetiredPlayer && !hasActivePlayer" class="container mt-4">
+<div *ngIf="!loading && hasRetiredPlayer && !showCreateForm" class="container mt-4">
   <div class="alert alert-info text-center">
     <h4><i class="fas fa-medal me-2"></i>{{ retiredPlayerName }} Has Retired</h4>
     <p class="mb-3">Your player has retired from professional hockey. Thank you for your service to the league!</p>
@@ -11,8 +11,8 @@
   </div>
 </div>
 
-<!-- Show player creation form if none exists or creating new after retirement -->
-<div *ngIf="!loading && !hasActivePlayer && !hasRetiredPlayer">
+<!-- Show player creation form -->
+<div *ngIf="!loading && showCreateForm">
   <div class="container mt-4">
     <div class="card shadow-lg">
       <div class="card-header bg-primary text-white">
