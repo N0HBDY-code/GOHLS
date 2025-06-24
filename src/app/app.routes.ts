@@ -7,7 +7,6 @@ import { ForgotPasswordComponent } from './forgot-password/forgot-password.compo
 import { Analytics } from '@angular/fire/analytics';
 import { GamesComponent } from './games/games.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
-import { ReportsComponent } from './reports/reports.component';
 import { TeamsComponent } from './teams/teams.component';
 import { PlayersComponent } from './players/players.component';
 import { PlayerManagerComponent } from './player-manager/player-manager.component';
@@ -48,7 +47,7 @@ export const routes: Routes = [
     {
         path:'analytics',
         component: AnalyticsComponent,
-        title: 'Analytics'
+        title: 'Analytics & Reports'
     },
     {
         path:'games',
@@ -59,11 +58,6 @@ export const routes: Routes = [
         path: 'games/:teamId/:gameId',
         component: GameDetailComponent,
         title: 'Game Details'
-    },
-    {
-        path:'reports',
-        component: ReportsComponent,
-        title: 'Reports'
     },
     {
         path: 'teams',

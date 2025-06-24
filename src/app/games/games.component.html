@@ -120,9 +120,27 @@
                   <span class="team-name">{{ game.homeTeam }}</span>
                 </div>
 
-                <div class="text-center my-2">
-                  <span class="vs-text">VS</span>
+                <!-- Score Display -->
+                <div class="text-center my-2" *ngIf="hasScore(game); else vsDisplay">
+                  <div class="score-display">
+                    <span class="score-number">{{ game.homeScore || 0 }}</span>
+                    <span class="score-divider">-</span>
+                    <span class="score-number">{{ game.awayScore || 0 }}</span>
+                  </div>
+                  <div class="game-status">
+                    <span class="badge" 
+                          [class.bg-warning]="game.period && game.period !== 'Final'"
+                          [class.bg-success]="game.period === 'Final'">
+                      {{ game.period || 'In Progress' }}
+                    </span>
+                  </div>
                 </div>
+
+                <ng-template #vsDisplay>
+                  <div class="text-center my-2">
+                    <span class="vs-text">VS</span>
+                  </div>
+                </ng-template>
 
                 <!-- Away Team -->
                 <div class="team-row">

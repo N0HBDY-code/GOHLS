@@ -39,6 +39,9 @@ interface Game {
   homeLogo?: string;
   awayLogo?: string;
   tags?: string[];
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
 }
 
 @Component({
@@ -152,7 +155,10 @@ export class GamesComponent implements OnInit {
             awayTeam: awayTeam?.name || 'Unknown Team',
             homeLogo: homeTeam?.logoUrl,
             awayLogo: awayTeam?.logoUrl,
-            tags: gameData['tags'] || []
+            tags: gameData['tags'] || [],
+            homeScore: gameData['homeScore'],
+            awayScore: gameData['awayScore'],
+            period: gameData['period']
           } as Game;
         })
       );
@@ -180,6 +186,12 @@ export class GamesComponent implements OnInit {
 
   formatDay(day: number): string {
     return `D${day}`;
+  }
+
+  hasScore(game: Game): boolean {
+    return (game.homeScore !== undefined && game.homeScore !== null) || 
+           (game.awayScore !== undefined && game.awayScore !== null) ||
+           (game.period !== undefined && game.period !== null);
   }
 
   async addGame() {

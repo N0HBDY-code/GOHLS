@@ -163,13 +163,6 @@
             <div class="team-info">
               <h6 class="team-name">{{ team.city }} {{ team.mascot }}</h6>
               <div class="team-division">{{ team.division }}</div>
-              <div class="team-league">
-                <span class="badge" 
-                      [class.bg-warning]="team.league === 'major'"
-                      [class.bg-info]="team.league === 'minor'">
-                  {{ (team.league || 'major') | titlecase }} League
-                </span>
-              </div>
             </div>
           </div>
           <div class="text-center mt-2" *ngIf="canManageTeams">
