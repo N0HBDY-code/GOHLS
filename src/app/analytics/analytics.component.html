@@ -62,24 +62,70 @@
               <button class="btn" 
                       [class.btn-primary]="selectedLeague === 'major'"
                       [class.btn-outline-primary]="selectedLeague !== 'major'"
-                      (click)="selectedLeague = 'major'; loadStandings()">
+                      (click)="selectedLeague = 'major'; onLeagueChange()">
                 Major League
               </button>
               <button class="btn"
                       [class.btn-primary]="selectedLeague === 'minor'"
                       [class.btn-outline-primary]="selectedLeague !== 'minor'"
-                      (click)="selectedLeague = 'minor'; loadStandings()">
+                      (click)="selectedLeague = 'minor'; onLeagueChange()">
                 Minor League
               </button>
             </div>
 
-            <!-- Refresh Button -->
-            <button class="btn btn-outline-secondary btn-sm" 
-                    (click)="refreshStandings()"
-                    [disabled]="loadingStandings"
-                    title="Refresh standings data">
-              <i class="fas fa-sync-alt" [class.fa-spin]="loadingStandings"></i>
-            </button>
+            <!-- Management Buttons -->
+            <div class="btn-group">
+              <button *ngIf="canManagePlayoffs"
+                      class="btn btn-outline-warning btn-sm" 
+                      (click)="showPlayoffManager = !showPlayoffManager"
+                      title="Manage playoff clinching status">
+                <i class="fas fa-cog me-1"></i>Manage Playoffs
+              </button>
+              
+              <!-- Refresh Button -->
+              <button class="btn btn-outline-secondary btn-sm" 
+                      (click)="refreshStandings()"
+                      [disabled]="loadingStandings"
+                      title="Refresh standings data">
+                <i class="fas fa-sync-alt" [class.fa-spin]="loadingStandings"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Playoff Management Panel -->
+    <div *ngIf="showPlayoffManager && canManagePlayoffs" class="card mb-4 border-warning">
+      <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0">
+          <i class="fas fa-trophy me-2"></i>Playoff Status Management
+        </h5>
+      </div>
+      <div class="card-body">
+        <p class="mb-3">Set playoff clinching status for teams. This will add visual indicators to the standings.</p>
+        
+        <div class="row">
+          <div *ngFor="let team of teams.filter(t => (t.league || 'major') === selectedLeague)" class="col-md-4 mb-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                  <img *ngIf="team.logoUrl" 
+                       [src]="team.logoUrl" 
+                       [alt]="team.name"
+                       class="team-logo-small me-2">
+                  <strong>{{ team.name }}</strong>
+                </div>
+                <select class="form-select form-select-sm" 
+                        [value]="getTeamPlayoffStatus(team.id)"
+                        (change)="updateTeamPlayoffStatus(team.id, $event.target.value)">
+                  <option value="none">No Status</option>
+                  <option value="championship">Championship Clinched (x)</option>
+                  <option value="wildcard">Playoffs Clinched (y)</option>
+                  <option value="eliminated">Eliminated (e)</option>
+                </select>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -111,7 +157,8 @@
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let team of getStandingsForDivision(conference.name, division); let i = index">
+                <tr *ngFor="let team of getStandingsForDivision(conference.name, division); let i = index"
+                    [ngClass]="getPlayoffStatusClass(team)">
                   <td class="fw-bold">{{ i + 1 }}</td>
                   <td>
                     <div class="d-flex align-items-center">
@@ -120,6 +167,9 @@
                            [alt]="team.name"
                            class="team-logo-small me-2">
                       <span class="fw-semibold">{{ team.name }}</span>
+                      <span *ngIf="getPlayoffStatusBadge(team) as badge" 
+                            [ngClass]="badge.class" 
+                            class="ms-2">{{ badge.text }}</span>
                     </div>
                   </td>
                   <td>{{ team.gamesPlayed }}</td>
@@ -175,7 +225,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let team of getStandingsForConference(conference.name); let i = index">
+                  <tr *ngFor="let team of getStandingsForConference(conference.name); let i = index"
+                      [ngClass]="getPlayoffStatusClass(team)">
                     <td class="fw-bold">{{ i + 1 }}</td>
                     <td>
                       <div class="d-flex align-items-center">
@@ -184,6 +235,9 @@
                              [alt]="team.name"
                              class="team-logo-small me-2">
                         <span class="fw-semibold">{{ team.name }}</span>
+                        <span *ngIf="getPlayoffStatusBadge(team) as badge" 
+                              [ngClass]="badge.class" 
+                              class="ms-2">{{ badge.text }}</span>
                       </div>
                     </td>
                     <td><small class="text-muted">{{ team.division }}</small></td>
@@ -236,8 +290,7 @@
               </thead>
               <tbody>
                 <tr *ngFor="let team of getOverallStandings(); let i = index"
-                    [class.table-warning]="i < 8"
-                    [class.table-success]="i < 4">
+                    [ngClass]="getPlayoffStatusClass(team)">
                   <td class="fw-bold">{{ i + 1 }}</td>
                   <td>
                     <div class="d-flex align-items-center">
@@ -246,6 +299,9 @@
                            [alt]="team.name"
                            class="team-logo-small me-2">
                       <span class="fw-semibold">{{ team.name }}</span>
+                      <span *ngIf="getPlayoffStatusBadge(team) as badge" 
+                            [ngClass]="badge.class" 
+                            class="ms-2">{{ badge.text }}</span>
                     </div>
                   </td>
                   <td><small class="text-muted">{{ team.conference }}</small></td>
@@ -271,16 +327,20 @@
         <!-- Playoff Legend -->
         <div class="card-footer bg-light">
           <div class="row text-center">
-            <div class="col-md-4">
-              <span class="badge bg-success me-2">■</span>
-              <small>Top 4 - Championship Playoffs</small>
+            <div class="col-md-3">
+              <span class="badge bg-success me-2">x</span>
+              <small>Championship Clinched</small>
             </div>
-            <div class="col-md-4">
-              <span class="badge bg-warning text-dark me-2">■</span>
-              <small>5-8 - Wildcard Playoffs</small>
+            <div class="col-md-3">
+              <span class="badge bg-warning text-dark me-2">y</span>
+              <small>Playoffs Clinched</small>
             </div>
-            <div class="col-md-4">
-              <small class="text-muted">9+ - Eliminated</small>
+            <div class="col-md-3">
+              <span class="badge bg-danger me-2">e</span>
+              <small>Eliminated</small>
+            </div>
+            <div class="col-md-3">
+              <small class="text-muted">No indicator - Still competing</small>
             </div>
           </div>
         </div>

@@ -5,11 +5,15 @@ import {
   getDocs,
   doc,
   CollectionReference,
-  DocumentData
+  DocumentData,
+  setDoc,
+  getDoc,
+  updateDoc
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { saveAs } from 'file-saver';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -47,6 +51,7 @@ interface StandingsTeam {
   goalsAgainst: number;
   goalDifferential: number;
   pointPercentage: number;
+  playoffStatus?: 'championship' | 'wildcard' | 'eliminated' | null;
 }
 
 interface Conference {
@@ -84,6 +89,11 @@ export class AnalyticsComponent implements OnInit {
   private teamsCache: Team[] = [];
   private teamsCacheTimestamp = 0;
   
+  // Playoff management
+  canManagePlayoffs = false;
+  showPlayoffManager = false;
+  playoffStatuses: Map<string, string> = new Map();
+  
   // Conference structures
   majorLeagueConferences: Conference[] = [
     {
@@ -120,11 +130,22 @@ export class AnalyticsComponent implements OnInit {
   selectedExportTeamId = '';
   selectedExportGameId = '';
 
-  constructor(private firestore: Firestore) {}
+  constructor(
+    private firestore: Firestore,
+    private authService: AuthService
+  ) {}
 
   async ngOnInit() {
+    // Check permissions
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManagePlayoffs = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
+
     await this.loadTeams();
     await this.loadStandings();
+    await this.loadPlayoffStatuses();
   }
 
   get conferences(): Conference[] {
@@ -166,6 +187,70 @@ export class AnalyticsComponent implements OnInit {
 
   async loadTeams() {
     this.teams = await this.loadTeamsWithCache();
+  }
+
+  async loadPlayoffStatuses() {
+    try {
+      const statusRef = doc(this.firestore, `playoffStatuses/${this.selectedLeague}`);
+      const statusSnap = await getDoc(statusRef);
+      
+      if (statusSnap.exists()) {
+        const data = statusSnap.data();
+        this.playoffStatuses = new Map(Object.entries(data));
+      } else {
+        this.playoffStatuses = new Map();
+      }
+    } catch (error) {
+      console.error('Error loading playoff statuses:', error);
+      this.playoffStatuses = new Map();
+    }
+  }
+
+  async savePlayoffStatuses() {
+    try {
+      const statusRef = doc(this.firestore, `playoffStatuses/${this.selectedLeague}`);
+      const statusData = Object.fromEntries(this.playoffStatuses);
+      await setDoc(statusRef, statusData);
+      
+      // Clear cache to force reload with new playoff statuses
+      this.standingsCache.clear();
+      await this.loadStandings();
+    } catch (error) {
+      console.error('Error saving playoff statuses:', error);
+    }
+  }
+
+  async updateTeamPlayoffStatus(teamId: string, status: string) {
+    if (status === 'none') {
+      this.playoffStatuses.delete(teamId);
+    } else {
+      this.playoffStatuses.set(teamId, status);
+    }
+    await this.savePlayoffStatuses();
+  }
+
+  getTeamPlayoffStatus(teamId: string): string {
+    return this.playoffStatuses.get(teamId) || 'none';
+  }
+
+  getPlayoffStatusClass(team: StandingsTeam): string {
+    const status = this.getTeamPlayoffStatus(team.id);
+    switch (status) {
+      case 'championship': return 'table-success';
+      case 'wildcard': return 'table-warning';
+      case 'eliminated': return 'table-danger';
+      default: return '';
+    }
+  }
+
+  getPlayoffStatusBadge(team: StandingsTeam): { text: string; class: string } | null {
+    const status = this.getTeamPlayoffStatus(team.id);
+    switch (status) {
+      case 'championship': return { text: 'x', class: 'badge bg-success' };
+      case 'wildcard': return { text: 'y', class: 'badge bg-warning text-dark' };
+      case 'eliminated': return { text: 'e', class: 'badge bg-danger' };
+      default: return null;
+    }
   }
 
   async loadStandings() {
@@ -251,7 +336,8 @@ export class AnalyticsComponent implements OnInit {
           goalsFor,
           goalsAgainst,
           goalDifferential: goalsFor - goalsAgainst,
-          pointPercentage
+          pointPercentage,
+          playoffStatus: this.getTeamPlayoffStatus(team.id) as any
         };
       });
 
@@ -337,6 +423,11 @@ export class AnalyticsComponent implements OnInit {
 
   onStandingsViewChange() {
     // View type changed, no need to reload data, just update display
+  }
+
+  async onLeagueChange() {
+    await this.loadPlayoffStatuses();
+    await this.loadStandings();
   }
 
   async onTeamSelect() {
