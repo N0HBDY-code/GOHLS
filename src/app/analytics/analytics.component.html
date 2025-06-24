@@ -106,7 +106,7 @@
         <p class="mb-3">Set playoff clinching status for teams. This will add visual indicators to the standings.</p>
         
         <div class="row">
-          <div *ngFor="let team of teams.filter(t => (t.league || 'major') === selectedLeague)" class="col-md-4 mb-3">
+          <div *ngFor="let team of filteredTeams" class="col-md-4 mb-3">
             <div class="card">
               <div class="card-body">
                 <div class="d-flex align-items-center mb-2">

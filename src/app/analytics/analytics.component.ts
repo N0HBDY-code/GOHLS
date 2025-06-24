@@ -152,6 +152,11 @@ export class AnalyticsComponent implements OnInit {
     return this.selectedLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
   }
 
+  // Add getter for filtered teams by league
+  get filteredTeams(): Team[] {
+    return this.teams.filter(t => (t.league || 'major') === this.selectedLeague);
+  }
+
   private isCacheValid(cacheKey: string): boolean {
     const cached = this.standingsCache.get(cacheKey);
     if (!cached) return false;
