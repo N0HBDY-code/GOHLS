@@ -4,6 +4,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
 
+interface Team {
+  id: string;
+  name: string;
+  city?: string;
+  mascot?: string;
+  league?: string;
+  conference?: string;
+  division?: string;
+}
+
 @Component({
   selector: 'app-headquarters',
   standalone: true,
@@ -32,8 +42,8 @@ export class HeadquartersComponent implements OnInit {
   // New Player Assignment
   newPlayers: any[] = [];
   loadingNewPlayers = false;
-  majorLeagueTeams: any[] = [];
-  minorLeagueTeams: any[] = [];
+  majorLeagueTeams: Team[] = [];
+  minorLeagueTeams: Team[] = [];
 
   availableRoles = [
     'viewer',
@@ -74,15 +84,22 @@ export class HeadquartersComponent implements OnInit {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
     
-    const allTeams = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      name: `${doc.data()['city']} ${doc.data()['mascot']}`
-    }));
+    const allTeams: Team[] = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: `${data['city']} ${data['mascot']}`,
+        city: data['city'],
+        mascot: data['mascot'],
+        league: data['league'] || 'major',
+        conference: data['conference'],
+        division: data['division']
+      };
+    });
 
     // Separate teams by league
-    this.majorLeagueTeams = allTeams.filter(team => team['league'] === 'major' || !team['league']);
-    this.minorLeagueTeams = allTeams.filter(team => team['league'] === 'minor');
+    this.majorLeagueTeams = allTeams.filter(team => team.league === 'major' || !team.league);
+    this.minorLeagueTeams = allTeams.filter(team => team.league === 'minor');
   }
 
   async assignPlayerToTeam(player: any) {
