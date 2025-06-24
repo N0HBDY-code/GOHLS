@@ -13,6 +13,7 @@ interface Team {
   logoUrl?: string;
   conference: string;
   division: string;
+  league: string;
   primaryColor?: string;
   secondaryColor?: string;
   tertiaryColor?: string;
@@ -36,12 +37,14 @@ export class TeamsComponent {
   logoFile: File | null = null;
   selectedConference = '';
   selectedDivision = '';
+  selectedLeague = '';
   teams: Team[] = [];
   canManageTeams = false;
   primaryColor = '#000000';
   secondaryColor = '#FFFFFF';
   tertiaryColor = '#808080';
   showAddTeamForm = false;
+  currentLeagueView: 'major' | 'minor' = 'major';
 
   showEditTeamModal = false;
   editTeamData?: Team;
@@ -84,7 +87,8 @@ export class TeamsComponent {
     const snapshot = await getDocs(teamsRef);
     this.teams = snapshot.docs.map(doc => ({
       id: doc.id,
-      ...doc.data()
+      ...doc.data(),
+      league: doc.data()['league'] || 'major' // Default to major league for existing teams
     } as Team));
   }
 
@@ -101,7 +105,7 @@ export class TeamsComponent {
   async addTeam() {
     if (!this.canManageTeams) return;
 
-    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision) {
+    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision || !this.selectedLeague) {
       alert('All fields are required.');
       return;
     }
@@ -115,6 +119,7 @@ export class TeamsComponent {
         logoUrl: reader.result as string,
         conference: this.selectedConference,
         division: this.selectedDivision,
+        league: this.selectedLeague,
         primaryColor: this.primaryColor,
         secondaryColor: this.secondaryColor,
         tertiaryColor: this.tertiaryColor
@@ -126,6 +131,7 @@ export class TeamsComponent {
         logoUrl: newTeam.logoUrl,
         conference: newTeam.conference,
         division: newTeam.division,
+        league: newTeam.league,
         name: `${newTeam.city} ${newTeam.mascot}`,
         primaryColor: newTeam.primaryColor,
         secondaryColor: newTeam.secondaryColor,
@@ -137,6 +143,7 @@ export class TeamsComponent {
       this.logoFile = null;
       this.selectedConference = '';
       this.selectedDivision = '';
+      this.selectedLeague = '';
       this.primaryColor = '#000000';
       this.secondaryColor = '#FFFFFF';
       this.tertiaryColor = '#808080';
@@ -164,8 +171,12 @@ export class TeamsComponent {
     this.router.navigate(['/teams', teamId]);
   }
 
-  getTeamsByDivision(conference: string, division: string): Team[] {
-    return this.teams.filter(t => t.conference === conference && t.division === division);
+  getTeamsByDivisionAndLeague(conference: string, division: string, league: string): Team[] {
+    return this.teams.filter(t => 
+      t.conference === conference && 
+      t.division === division && 
+      (t.league || 'major') === league
+    );
   }
 
   openEditTeamModal(team: Team) {
@@ -173,6 +184,7 @@ export class TeamsComponent {
     this.editTeamData = { 
       ...team, 
       logoFile: null,
+      league: team.league || 'major',
       primaryColor: team.primaryColor || '#000000',
       secondaryColor: team.secondaryColor || '#FFFFFF',
       tertiaryColor: team.tertiaryColor || '#808080'
@@ -188,6 +200,7 @@ export class TeamsComponent {
       mascot: this.editTeamData.mascot,
       conference: this.editTeamData.conference,
       division: this.editTeamData.division,
+      league: this.editTeamData.league,
       name: `${this.editTeamData.city} ${this.editTeamData.mascot}`,
       primaryColor: this.editTeamData.primaryColor,
       secondaryColor: this.editTeamData.secondaryColor,

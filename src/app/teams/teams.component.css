@@ -50,6 +50,11 @@
 .team-division {
   font-size: 0.9rem;
   opacity: 0.9;
+  margin-bottom: 0.5rem;
+}
+
+.team-league {
+  margin-top: 0.5rem;
 }
 
 .action-buttons {
@@ -143,6 +148,36 @@
 .modal-footer {
   border-top: none;
   padding: 1.5rem;
+}
+
+/* League Tabs */
+.nav-tabs {
+  border-bottom: 2px solid #dee2e6;
+  margin-bottom: 2rem;
+}
+
+.nav-tabs .nav-link {
+  border: none;
+  color: #6c757d;
+  font-weight: 500;
+  padding: 1rem 1.5rem;
+  border-radius: 0;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.nav-tabs .nav-link:hover {
+  border-color: transparent;
+  color: #0d6efd;
+  border-bottom-color: #0d6efd;
+}
+
+.nav-tabs .nav-link.active {
+  color: #0d6efd;
+  background-color: transparent;
+  border-color: transparent;
+  border-bottom-color: #0d6efd;
+  font-weight: 600;
 }
 
 @media (max-width: 768px) {

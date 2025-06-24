@@ -57,14 +57,22 @@
               <label class="form-label">Mascot</label>
               <input type="text" class="form-control" [(ngModel)]="mascot" name="mascot" required />
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-md-4 mb-3">
+              <label class="form-label">League</label>
+              <select class="form-select" [(ngModel)]="selectedLeague" name="selectedLeague" required>
+                <option value="">-- Select League --</option>
+                <option value="major">Major League</option>
+                <option value="minor">Minor League</option>
+              </select>
+            </div>
+            <div class="col-md-4 mb-3">
               <label class="form-label">Conference</label>
               <select class="form-select" [(ngModel)]="selectedConference" name="selectedConference" required>
                 <option value="">-- Select Conference --</option>
                 <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
               </select>
             </div>
-            <div class="col-md-6 mb-3" *ngIf="selectedConference">
+            <div class="col-md-4 mb-3" *ngIf="selectedConference">
               <label class="form-label">Division</label>
               <select class="form-select" [(ngModel)]="selectedDivision" name="selectedDivision" required>
                 <option value="">-- Select Division --</option>
@@ -102,8 +110,27 @@
     </div>
   </div>
 
-  <!-- Display Teams by Conference & Division -->
-  <h2 class="mb-4">Teams by Conference & Division</h2>
+  <!-- League Tabs -->
+  <div class="mb-4">
+    <ul class="nav nav-tabs">
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentLeagueView === 'major'"
+           (click)="currentLeagueView = 'major'">
+          <i class="fas fa-trophy me-1"></i> Major League
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentLeagueView === 'minor'"
+           (click)="currentLeagueView = 'minor'">
+          <i class="fas fa-medal me-1"></i> Minor League
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Display Teams by League, Conference & Division -->
   <div *ngFor="let conf of conferences" class="mb-5">
     <div class="d-flex align-items-center justify-content-between">
       <h4 class="text-primary">{{ conf.name }}</h4>
@@ -123,7 +150,7 @@
         </button>
       </div>
       <div class="row mt-2">
-        <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivision(conf.name, div)">
+        <div class="col-md-3 mb-3" *ngFor="let team of getTeamsByDivisionAndLeague(conf.name, div, currentLeagueView)">
           <div class="team-card" 
                [style.border-color]="team.primaryColor || '#000000'"
                (click)="viewTeam(team.id!)">
@@ -136,6 +163,13 @@
             <div class="team-info">
               <h6 class="team-name">{{ team.city }} {{ team.mascot }}</h6>
               <div class="team-division">{{ team.division }}</div>
+              <div class="team-league">
+                <span class="badge" 
+                      [class.bg-warning]="team.league === 'major'"
+                      [class.bg-info]="team.league === 'minor'">
+                  {{ (team.league || 'major') | titlecase }} League
+                </span>
+              </div>
             </div>
           </div>
           <div class="text-center mt-2" *ngIf="canManageTeams">
@@ -163,6 +197,13 @@
           <div class="mb-3">
             <label class="form-label">Mascot</label>
             <input type="text" class="form-control" [(ngModel)]="team.mascot" />
+          </div>
+          <div class="mb-3">
+            <label class="form-label">League</label>
+            <select class="form-select" [(ngModel)]="team.league">
+              <option value="major">Major League</option>
+              <option value="minor">Minor League</option>
+            </select>
           </div>
           <div class="mb-3">
             <label class="form-label">Conference</label>
