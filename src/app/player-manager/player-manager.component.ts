@@ -162,69 +162,81 @@ export class PlayerManagerComponent implements OnInit {
   async loadGameStats() {
     if (!this.player?.id) return;
 
-    // Use a Set to track unique games and avoid duplicates
+    this.gameStats = [];
+    
+    // Get all teams to search through their games
+    const teamsRef = collection(this.firestore, 'teams');
+    const teamsSnap = await getDocs(teamsRef);
+    
     const uniqueGames = new Map<string, any>();
     
-    // Load stats from the global games collection to avoid duplicates
-    const gamesRef = collection(this.firestore, 'games');
-    const gamesSnap = await getDocs(gamesRef);
-    
-    for (const gameDoc of gamesSnap.docs) {
-      const gameData = gameDoc.data();
+    for (const teamDoc of teamsSnap.docs) {
+      const teamId = teamDoc.id;
+      const teamData = teamDoc.data();
+      const teamName = `${teamData['city']} ${teamData['mascot']}`;
       
-      // Check if this player has stats in this game
-      const homePlayerStats = gameData['homePlayerStats']?.[this.player.id];
-      const awayPlayerStats = gameData['awayPlayerStats']?.[this.player.id];
+      // Check team's games for this player's stats
+      const gamesRef = collection(this.firestore, `teams/${teamId}/games`);
+      const gamesSnap = await getDocs(gamesRef);
       
-      let playerStats = null;
-      let isHome = false;
-      let teamId = '';
-      
-      if (homePlayerStats) {
-        playerStats = homePlayerStats;
-        isHome = true;
-        teamId = gameData['homeTeamId'];
-      } else if (awayPlayerStats) {
-        playerStats = awayPlayerStats;
-        isHome = false;
-        teamId = gameData['awayTeamId'];
-      }
-      
-      if (playerStats && teamId) {
-        // Get team information
-        const teamRef = doc(this.firestore, `teams/${teamId}`);
-        const teamSnap = await getDoc(teamRef);
-        let teamName = 'Unknown Team';
+      for (const gameDoc of gamesSnap.docs) {
+        const gameData = gameDoc.data();
         
-        if (teamSnap.exists()) {
-          const teamData = teamSnap.data();
-          teamName = `${teamData['city']} ${teamData['mascot']}`;
+        // Check if this player has stats in this game
+        const homePlayerStats = gameData['homePlayerStats']?.[this.player.id];
+        const awayPlayerStats = gameData['awayPlayerStats']?.[this.player.id];
+        
+        let playerStats = null;
+        let isHome = false;
+        let playerTeamName = teamName;
+        
+        if (homePlayerStats && gameData['homeTeamId'] === teamId) {
+          playerStats = homePlayerStats;
+          isHome = true;
+        } else if (awayPlayerStats && gameData['awayTeamId'] === teamId) {
+          playerStats = awayPlayerStats;
+          isHome = false;
         }
         
-        // Determine opponent
-        let opponentTeamId = isHome ? gameData['awayTeamId'] : gameData['homeTeamId'];
-        let opponent = 'Unknown Opponent';
-        
-        if (opponentTeamId) {
-          const opponentRef = doc(this.firestore, `teams/${opponentTeamId}`);
-          const opponentSnap = await getDoc(opponentRef);
-          if (opponentSnap.exists()) {
-            const opponentData = opponentSnap.data();
-            opponent = `${opponentData['city']} ${opponentData['mascot']}`;
+        if (playerStats) {
+          // Get opponent information
+          const opponentTeamId = isHome ? gameData['awayTeamId'] : gameData['homeTeamId'];
+          let opponent = 'Unknown Opponent';
+          
+          if (opponentTeamId) {
+            const opponentRef = doc(this.firestore, `teams/${opponentTeamId}`);
+            const opponentSnap = await getDoc(opponentRef);
+            if (opponentSnap.exists()) {
+              const opponentData = opponentSnap.data();
+              opponent = `${opponentData['city']} ${opponentData['mascot']}`;
+            }
+          }
+          
+          // Create unique key using game date, teams, and week/day to avoid duplicates
+          const gameKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
+          
+          if (!uniqueGames.has(gameKey)) {
+            uniqueGames.set(gameKey, {
+              gameId: gameDoc.id,
+              teamName: playerTeamName,
+              opponent,
+              date: gameData['date']?.toDate?.() || new Date(),
+              week: gameData['week'],
+              day: gameData['day'],
+              isHome,
+              goals: playerStats.goals || 0,
+              assists: playerStats.assists || 0,
+              plusMinus: playerStats.plusMinus || 0,
+              shots: playerStats.shots || 0,
+              pim: playerStats.pim || 0,
+              hits: playerStats.hits || 0,
+              ppg: playerStats.ppg || 0,
+              shg: playerStats.shg || 0,
+              fot: playerStats.fot || 0,
+              fow: playerStats.fow || 0
+            });
           }
         }
-        
-        // Use game ID as unique key to prevent duplicates
-        uniqueGames.set(gameDoc.id, {
-          gameId: gameDoc.id,
-          teamName,
-          opponent,
-          date: gameData['date']?.toDate?.() || new Date(),
-          week: gameData['week'],
-          day: gameData['day'],
-          isHome,
-          ...playerStats
-        });
       }
     }
     
