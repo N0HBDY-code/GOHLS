@@ -16,7 +16,7 @@
     <!-- Add Conference Form -->
     <div class="card mb-3" *ngIf="showAddConferenceForm">
       <div class="card-body">
-        <h5 class="card-title">Add New Conference</h5>
+        <h5 class="card-title">Add New Conference to {{ currentLeagueView | titlecase }} League</h5>
         <div class="input-group">
           <input type="text" class="form-control" [(ngModel)]="newConferenceName" placeholder="Conference Name">
           <button class="btn btn-primary" (click)="addConference()">Add</button>
@@ -27,7 +27,7 @@
     <!-- Add Division Form -->
     <div class="card mb-3" *ngIf="showAddDivisionForm">
       <div class="card-body">
-        <h5 class="card-title">Add New Division</h5>
+        <h5 class="card-title">Add New Division to {{ currentLeagueView | titlecase }} League</h5>
         <div class="mb-3">
           <select class="form-select" [(ngModel)]="selectedConferenceForDivision">
             <option value="">Select Conference</option>
@@ -59,7 +59,7 @@
             </div>
             <div class="col-md-4 mb-3">
               <label class="form-label">League</label>
-              <select class="form-select" [(ngModel)]="selectedLeague" name="selectedLeague" required>
+              <select class="form-select" [(ngModel)]="selectedLeague" name="selectedLeague" (change)="onLeagueChange()" required>
                 <option value="">-- Select League --</option>
                 <option value="major">Major League</option>
                 <option value="minor">Minor League</option>
@@ -69,14 +69,14 @@
               <label class="form-label">Conference</label>
               <select class="form-select" [(ngModel)]="selectedConference" name="selectedConference" required>
                 <option value="">-- Select Conference --</option>
-                <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+                <option *ngFor="let conf of availableConferences" [value]="conf.name">{{ conf.name }}</option>
               </select>
             </div>
             <div class="col-md-4 mb-3" *ngIf="selectedConference">
               <label class="form-label">Division</label>
               <select class="form-select" [(ngModel)]="selectedDivision" name="selectedDivision" required>
                 <option value="">-- Select Division --</option>
-                <ng-container *ngFor="let conf of conferences">
+                <ng-container *ngFor="let conf of availableConferences">
                   <ng-container *ngIf="conf.name === selectedConference">
                     <option *ngFor="let div of conf.divisions" [value]="div">{{ div }}</option>
                   </ng-container>
@@ -177,6 +177,13 @@
             <button class="btn btn-sm btn-outline-danger" (click)="deleteTeam(team.id!); $event.stopPropagation();">Delete</button>
           </div>
         </div>
+        <!-- Show message if no teams in this division -->
+        <div *ngIf="getTeamsByDivisionAndLeague(conf.name, div, currentLeagueView).length === 0" class="col-12">
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-plus-circle fa-2x mb-2"></i>
+            <p>No teams in {{ div }} yet</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -208,7 +215,7 @@
           <div class="mb-3">
             <label class="form-label">Conference</label>
             <select class="form-select" [(ngModel)]="team.conference">
-              <option *ngFor="let conf of conferences" [value]="conf.name">{{ conf.name }}</option>
+              <option *ngFor="let conf of (team.league === 'minor' ? minorLeagueConferences : majorLeagueConferences)" [value]="conf.name">{{ conf.name }}</option>
             </select>
           </div>
           <div class="mb-3">

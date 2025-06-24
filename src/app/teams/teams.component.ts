@@ -58,7 +58,8 @@ export class TeamsComponent {
   selectedConferenceForDivision = '';
   newDivisionName = '';
 
-  conferences: Conference[] = [
+  // Separate conference structures for each league
+  majorLeagueConferences: Conference[] = [
     {
       name: 'Mr. Hockey Conference',
       divisions: ['Europe Division', 'Great Lakes Division', 'Atlantic Division']
@@ -66,6 +67,17 @@ export class TeamsComponent {
     {
       name: 'The Rocket Conference',
       divisions: ['Northwest Division', 'Pacific Division', 'South Division']
+    }
+  ];
+
+  minorLeagueConferences: Conference[] = [
+    {
+      name: 'Development Conference',
+      divisions: ['Eastern Development', 'Western Development', 'Central Development']
+    },
+    {
+      name: 'Prospect Conference',
+      divisions: ['Northern Prospects', 'Southern Prospects', 'Coastal Prospects']
     }
   ];
 
@@ -80,6 +92,14 @@ export class TeamsComponent {
         ['developer', 'commissioner'].includes(role)
       );
     });
+  }
+
+  get conferences(): Conference[] {
+    return this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+  }
+
+  get availableConferences(): Conference[] {
+    return this.selectedLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
   }
 
   async loadTeams() {
@@ -100,6 +120,12 @@ export class TeamsComponent {
     if (this.editTeamData) {
       this.editTeamData.logoFile = event.target.files[0] || null;
     }
+  }
+
+  onLeagueChange() {
+    // Reset conference and division when league changes
+    this.selectedConference = '';
+    this.selectedDivision = '';
   }
 
   async addTeam() {
@@ -226,14 +252,17 @@ export class TeamsComponent {
   }
 
   getDivisionsForConference(confName: string): string[] {
-    const conf = this.conferences.find(c => c.name === confName);
+    const currentConferences = this.editTeamData?.league === 'minor' ? this.minorLeagueConferences : this.majorLeagueConferences;
+    const conf = currentConferences.find(c => c.name === confName);
     return conf?.divisions ?? [];
   }
 
   addConference() {
     if (!this.canManageTeams || !this.newConferenceName.trim()) return;
     
-    this.conferences.push({
+    const targetConferences = this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    
+    targetConferences.push({
       name: this.newConferenceName,
       divisions: []
     });
@@ -245,7 +274,9 @@ export class TeamsComponent {
   addDivision() {
     if (!this.canManageTeams || !this.newDivisionName.trim() || !this.selectedConferenceForDivision) return;
     
-    const conference = this.conferences.find(c => c.name === this.selectedConferenceForDivision);
+    const targetConferences = this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    const conference = targetConferences.find(c => c.name === this.selectedConferenceForDivision);
+    
     if (conference) {
       conference.divisions.push(this.newDivisionName);
     }
@@ -258,29 +289,37 @@ export class TeamsComponent {
   deleteConference(conferenceName: string) {
     if (!this.canManageTeams) return;
     
-    if (this.teams.some(t => t.conference === conferenceName)) {
+    const currentLeague = this.currentLeagueView;
+    if (this.teams.some(t => t.conference === conferenceName && (t.league || 'major') === currentLeague)) {
       alert('Cannot delete conference with existing teams');
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete the ${conferenceName}? This action cannot be undone.`;
+    const confirmMessage = `Are you sure you want to delete the ${conferenceName} from ${currentLeague} league? This action cannot be undone.`;
     if (!confirm(confirmMessage)) return;
     
-    this.conferences = this.conferences.filter(c => c.name !== conferenceName);
+    if (currentLeague === 'major') {
+      this.majorLeagueConferences = this.majorLeagueConferences.filter(c => c.name !== conferenceName);
+    } else {
+      this.minorLeagueConferences = this.minorLeagueConferences.filter(c => c.name !== conferenceName);
+    }
   }
 
   deleteDivision(conferenceName: string, divisionName: string) {
     if (!this.canManageTeams) return;
     
-    if (this.teams.some(t => t.conference === conferenceName && t.division === divisionName)) {
+    const currentLeague = this.currentLeagueView;
+    if (this.teams.some(t => t.conference === conferenceName && t.division === divisionName && (t.league || 'major') === currentLeague)) {
       alert('Cannot delete division with existing teams');
       return;
     }
 
-    const confirmMessage = `Are you sure you want to delete the ${divisionName} from ${conferenceName}? This action cannot be undone.`;
+    const confirmMessage = `Are you sure you want to delete the ${divisionName} from ${conferenceName} in ${currentLeague} league? This action cannot be undone.`;
     if (!confirm(confirmMessage)) return;
     
-    const conference = this.conferences.find(c => c.name === conferenceName);
+    const targetConferences = currentLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    const conference = targetConferences.find(c => c.name === conferenceName);
+    
     if (conference) {
       conference.divisions = conference.divisions.filter(d => d !== divisionName);
     }
