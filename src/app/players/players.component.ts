@@ -18,8 +18,10 @@ export class PlayersComponent implements OnInit {
   private auth: Auth = inject(Auth);
   private router: Router = inject(Router);
 
-  hasPlayer = false;
+  hasActivePlayer = false;
+  hasRetiredPlayer = false;
   loading = true;
+  retiredPlayerName = '';
 
   filteredArchetypes: string[] = [];
 
@@ -54,7 +56,22 @@ export class PlayersComponent implements OnInit {
       where('userId', '==', user.uid)
     );
     const snapshot = await getDocs(playerQuery);
-    this.hasPlayer = !snapshot.empty;
+    
+    if (!snapshot.empty) {
+      const playerData = snapshot.docs[0].data();
+      if (playerData['status'] === 'retired') {
+        this.hasRetiredPlayer = true;
+        this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
+        this.hasActivePlayer = false;
+      } else {
+        this.hasActivePlayer = true;
+        this.hasRetiredPlayer = false;
+      }
+    } else {
+      this.hasActivePlayer = false;
+      this.hasRetiredPlayer = false;
+    }
+    
     this.loading = false;
   }
 
@@ -319,13 +336,52 @@ export class PlayersComponent implements OnInit {
     const playerRef = await addDoc(collection(this.firestore, 'players'), {
       ...this.playerForm,
       userId: user.uid,
-      teamId: 'none'
+      teamId: 'none',
+      status: 'active',
+      createdDate: new Date()
     });
 
     // Create attributes document
     await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), attributes);
 
-    this.hasPlayer = true;
+    // Add creation to player history
+    await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
+      action: 'created',
+      teamId: 'none',
+      timestamp: new Date(),
+      details: 'Player entered the league'
+    });
+
+    this.hasActivePlayer = true;
+    this.hasRetiredPlayer = false;
     this.router.navigate(['/player']);
+  }
+
+  createNewPlayer() {
+    // Reset form and allow creation of new player
+    this.playerForm = {
+      firstName: '',
+      lastName: '',
+      gamertag: '',
+      position: '',
+      archetype: '',
+      jerseyNumber: 0,
+      handedness: '',
+      height: 72,
+      weight: 180,
+      fight: '',
+      origin: '',
+      hair: '',
+      beard: '',
+      tape: '',
+      ethnicity: '',
+      twitch: '',
+      referral: '',
+      invitedBy: '',
+      age: 19
+    };
+    this.filteredArchetypes = [];
+    this.hasActivePlayer = false;
+    this.hasRetiredPlayer = false;
   }
 }
