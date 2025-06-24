@@ -118,7 +118,7 @@
                 </div>
                 <select class="form-select form-select-sm" 
                         [value]="getTeamPlayoffStatus(team.id)"
-                        (change)="updateTeamPlayoffStatus(team.id, $event.target.value)">
+                        (change)="updateTeamPlayoffStatus(team.id, $any($event.target).value)">
                   <option value="none">No Status</option>
                   <option value="championship">Championship Clinched (x)</option>
                   <option value="wildcard">Playoffs Clinched (y)</option>
