@@ -4,6 +4,7 @@ import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { serverTimestamp } from '@angular/fire/firestore';
+
 @Component({
   selector: 'app-player-manager',
   standalone: true,
@@ -28,6 +29,45 @@ export class PlayerManagerComponent implements OnInit {
   secondaryProgress: number = 0;
   existingTrainingId: string | null = null;
 
+  // Player attributes
+  playerAttributes: Record<string, number> = {};
+  
+  // Attribute display order
+  skaterAttributeOrder = [
+    'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
+    'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
+    'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
+    'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
+    'STK CHK'
+  ];
+
+  goalieAttributeOrder = [
+    'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
+    'AGILITY', 'CONSIS', 'PK CTRL', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
+    'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
+    'DRBLTY', 'VISION'
+  ];
+
+  // Training impact mapping
+  private trainingMap: Record<string, string[]> = {
+    'Speed Skating': ['SPEED', 'ACCEL', 'AGILITY'],
+    'Distance Skating': ['ENDUR', 'BALANCE', 'DRBLTY'],
+    'Stick Handling': ['PK CTRL', 'DEKE', 'HND EYE'],
+    'MMA': ['BODY CHK', 'STRENGTH', 'AGGRE', 'FIGHTING'],
+    'Marksmanship': ['WRI PWR', 'SLAP PWR', 'PASSING'],
+    'Hit the Targets': ['WRI ACC', 'SLAP ACC', 'POISE'],
+    'Study Film': ['OFF AWR', 'DEF AWR', 'DISCIP'],
+    'Special Teams': ['STK CHK', 'SHT BLK', 'FACEOFF'],
+    'Learn Secondary Position': [], // No immediate attribute impact
+    'Shots High': ['GLV HIGH', 'STK HIGH', 'VISION'],
+    'Shots Low': ['GLV LOW', 'STK LOW', '5 HOLE'],
+    'Side to Sides': ['SPEED', 'AGILITY', 'POISE'],
+    'Puck Skills': ['PK CTRL', 'PASSING', 'PK PL FRQ'],
+    'Laps in Pads': ['ENDUR', 'DRBLTY', 'AGGRE'],
+    'Positioning': ['BRK AWAY', 'ANGLES'],
+    'Under Pressure': ['RBD CTRL', 'RECOV']
+  };
+
   async ngOnInit() {
     const user = this.auth.currentUser;
     if (!user) return;
@@ -41,6 +81,7 @@ export class PlayerManagerComponent implements OnInit {
       this.player = snapshot.docs[0].data();
       this.player.id = snapshot.docs[0].id;
       this.setTrainingOptions(this.player.position);
+      await this.loadPlayerAttributes();
       await this.checkSecondaryProgress();
       await this.checkExistingTraining();
 
@@ -54,9 +95,19 @@ export class PlayerManagerComponent implements OnInit {
           this.teamName = `${city} ${mascot}`.trim();
         }
       }
-      
     }
     this.loading = false;
+  }
+
+  async loadPlayerAttributes() {
+    if (!this.player?.id) return;
+    
+    const attributesRef = doc(this.firestore, `players/${this.player.id}/meta/attributes`);
+    const attributesSnap = await getDoc(attributesRef);
+    
+    if (attributesSnap.exists()) {
+      this.playerAttributes = attributesSnap.data() as Record<string, number>;
+    }
   }
 
   setTrainingOptions(position: string) {
@@ -74,6 +125,31 @@ export class PlayerManagerComponent implements OnInit {
         this.trainingOptions.push('Learn Secondary Position');
       }
     }
+  }
+
+  onTrainingChange() {
+    // This will trigger the template to update the visual indicators
+  }
+
+  isAttributeAffected(attribute: string): boolean {
+    if (!this.tempTrainingType) return false;
+    const affectedAttributes = this.trainingMap[this.tempTrainingType] || [];
+    return affectedAttributes.includes(attribute);
+  }
+
+  getAttributeDelta(): number {
+    if (!this.player?.age) return 0;
+    
+    const age = this.player.age;
+    const currentWeek = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+    
+    if (age <= 26) return currentWeek <= 5 ? 3 : 2;
+    if (age <= 29) return 1;
+    if (age === 30) return 1;
+    if (age === 31) return -1;
+    if (age === 32) return -2;
+    if (age === 33) return -2;
+    return -3;
   }
 
   async checkSecondaryProgress() {
@@ -145,5 +221,4 @@ export class PlayerManagerComponent implements OnInit {
   
     this.trainingSubmitted = true;
   }
-  
 }

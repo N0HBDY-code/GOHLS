@@ -1,0 +1,57 @@
+.table td {
+  vertical-align: middle;
+  text-align: center;
+  padding: 0.5rem;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.table th {
+  text-align: center;
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background-color: #f8f9fa;
+}
+
+.table-success {
+  background-color: #d1e7dd !important;
+  border-color: #badbcc !important;
+}
+
+.attribute-value {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.training-impact {
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.card {
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.card-title {
+  color: #495057;
+  font-weight: 600;
+}
+
+.badge {
+  font-size: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .table {
+    font-size: 0.8rem;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.25rem;
+  }
+}
