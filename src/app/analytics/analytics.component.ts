@@ -52,6 +52,12 @@ interface Conference {
   divisions: string[];
 }
 
+interface CachedStandings {
+  data: Map<string, StandingsTeam[]>;
+  timestamp: number;
+  league: 'major' | 'minor';
+}
+
 @Component({
   selector: 'app-analytics',
   standalone: true,
@@ -62,10 +68,16 @@ interface Conference {
 export class AnalyticsComponent implements OnInit {
   currentView: 'standings' | 'analytics' | 'reports' = 'standings';
   
-  // Standings data
+  // Standings data with caching
   selectedLeague: 'major' | 'minor' = 'major';
   standings: Map<string, StandingsTeam[]> = new Map();
   loadingStandings = false;
+  
+  // Cache management
+  private standingsCache: Map<string, CachedStandings> = new Map();
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+  private teamsCache: Team[] = [];
+  private teamsCacheTimestamp = 0;
   
   // Conference structures
   majorLeagueConferences: Conference[] = [
@@ -114,10 +126,27 @@ export class AnalyticsComponent implements OnInit {
     return this.selectedLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
   }
 
-  async loadTeams() {
+  private isCacheValid(cacheKey: string): boolean {
+    const cached = this.standingsCache.get(cacheKey);
+    if (!cached) return false;
+    
+    const now = Date.now();
+    return (now - cached.timestamp) < this.CACHE_DURATION && cached.league === this.selectedLeague;
+  }
+
+  private async loadTeamsWithCache(): Promise<Team[]> {
+    const now = Date.now();
+    
+    // Check if teams cache is still valid (cache for 10 minutes)
+    if (this.teamsCache.length > 0 && (now - this.teamsCacheTimestamp) < (10 * 60 * 1000)) {
+      return this.teamsCache;
+    }
+
+    // Load fresh teams data
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
-    this.teams = snapshot.docs.map(doc => ({
+    
+    this.teamsCache = snapshot.docs.map(doc => ({
       id: doc.id,
       name: (doc.data() as any).name || 'Unnamed',
       logoUrl: (doc.data() as any).logoUrl,
@@ -125,21 +154,47 @@ export class AnalyticsComponent implements OnInit {
       division: (doc.data() as any).division,
       league: (doc.data() as any).league || 'major'
     }));
+    
+    this.teamsCacheTimestamp = now;
+    return this.teamsCache;
+  }
+
+  async loadTeams() {
+    this.teams = await this.loadTeamsWithCache();
   }
 
   async loadStandings() {
+    const cacheKey = this.selectedLeague;
+    
+    // Check cache first
+    if (this.isCacheValid(cacheKey)) {
+      const cached = this.standingsCache.get(cacheKey)!;
+      this.standings = cached.data;
+      return;
+    }
+
     this.loadingStandings = true;
     try {
-      const leagueTeams = this.teams.filter(team => 
+      // Use cached teams data
+      const allTeams = await this.loadTeamsWithCache();
+      const leagueTeams = allTeams.filter(team => 
         (team.league || 'major') === this.selectedLeague
       );
 
-      const standingsData: StandingsTeam[] = [];
-
-      for (const team of leagueTeams) {
+      // Batch load all games for league teams in parallel
+      const teamGamesPromises = leagueTeams.map(async (team) => {
         const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
         const gamesSnapshot = await getDocs(gamesRef);
-        
+        return {
+          team,
+          games: gamesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        };
+      });
+
+      const teamGamesResults = await Promise.all(teamGamesPromises);
+      
+      // Process standings data efficiently
+      const standingsData: StandingsTeam[] = teamGamesResults.map(({ team, games }) => {
         let wins = 0;
         let losses = 0;
         let overtimeLosses = 0;
@@ -147,16 +202,15 @@ export class AnalyticsComponent implements OnInit {
         let goalsAgainst = 0;
         let gamesPlayed = 0;
 
-        for (const gameDoc of gamesSnapshot.docs) {
-          const gameData = gameDoc.data();
-          
+        // Process games for this team
+        games.forEach((gameData: any) => {
           // Only count games with scores
-          if (gameData['homeScore'] !== undefined || gameData['awayScore'] !== undefined) {
+          if (gameData.homeScore !== undefined || gameData.awayScore !== undefined) {
             gamesPlayed++;
             
-            const isHome = gameData['isHome'] || false;
-            const teamScore = isHome ? (gameData['homeScore'] || 0) : (gameData['awayScore'] || 0);
-            const opponentScore = isHome ? (gameData['awayScore'] || 0) : (gameData['homeScore'] || 0);
+            const isHome = gameData.isHome || false;
+            const teamScore = isHome ? (gameData.homeScore || 0) : (gameData.awayScore || 0);
+            const opponentScore = isHome ? (gameData.awayScore || 0) : (gameData.homeScore || 0);
             
             goalsFor += teamScore;
             goalsAgainst += opponentScore;
@@ -164,20 +218,20 @@ export class AnalyticsComponent implements OnInit {
             if (teamScore > opponentScore) {
               wins++;
             } else if (teamScore < opponentScore) {
-              // Check if it was an overtime/shootout loss (could be determined by period)
-              if (gameData['period'] === 'OT' || gameData['period'] === 'SO') {
+              // Check if it was an overtime/shootout loss
+              if (gameData.period === 'OT' || gameData.period === 'SO') {
                 overtimeLosses++;
               } else {
                 losses++;
               }
             }
           }
-        }
+        });
 
         const points = (wins * 2) + overtimeLosses;
         const pointPercentage = gamesPlayed > 0 ? points / (gamesPlayed * 2) : 0;
 
-        standingsData.push({
+        return {
           id: team.id,
           name: team.name,
           logoUrl: team.logoUrl,
@@ -190,17 +244,17 @@ export class AnalyticsComponent implements OnInit {
           goalsAgainst,
           goalDifferential: goalsFor - goalsAgainst,
           pointPercentage
-        });
-      }
+        };
+      });
 
-      // Group by division and sort by points
-      this.standings.clear();
+      // Group by division and sort efficiently
+      const newStandings = new Map<string, StandingsTeam[]>();
       
       for (const conference of this.conferences) {
         for (const division of conference.divisions) {
           const divisionTeams = standingsData
             .filter(team => {
-              const teamData = this.teams.find(t => t.id === team.id);
+              const teamData = allTeams.find(t => t.id === team.id);
               return teamData?.conference === conference.name && teamData?.division === division;
             })
             .sort((a, b) => {
@@ -209,9 +263,19 @@ export class AnalyticsComponent implements OnInit {
               return b.goalDifferential - a.goalDifferential;
             });
           
-          this.standings.set(`${conference.name}-${division}`, divisionTeams);
+          newStandings.set(`${conference.name}-${division}`, divisionTeams);
         }
       }
+
+      this.standings = newStandings;
+
+      // Cache the results
+      this.standingsCache.set(cacheKey, {
+        data: new Map(newStandings),
+        timestamp: Date.now(),
+        league: this.selectedLeague
+      });
+
     } finally {
       this.loadingStandings = false;
     }
@@ -238,17 +302,23 @@ export class AnalyticsComponent implements OnInit {
 
     this.totalGames = games.length;
 
-    for (const game of games) {
+    // Batch load all stats for all games
+    const statsPromises = games.map(async (game) => {
       const statsRef = collection(this.firestore, `teams/${this.selectedTeamId}/games/${game.id}/stats`);
       const statsSnapshot = await getDocs(statsRef);
+      return statsSnapshot.docs.map(doc => doc.data());
+    });
 
-      for (const statDoc of statsSnapshot.docs) {
-        const stats = statDoc.data() as any;
+    const allGameStats = await Promise.all(statsPromises);
+    
+    // Process stats efficiently
+    allGameStats.forEach(gameStats => {
+      gameStats.forEach((stats: any) => {
         this.totalPoints += stats.points || 0;
         this.totalAssists += stats.assists || 0;
         this.totalRebounds += stats.rebounds || 0;
-      }
-    }
+      });
+    });
   }
 
   async onExportTeamSelect() {
@@ -265,8 +335,11 @@ export class AnalyticsComponent implements OnInit {
     const game = this.exportGames.find(g => g.id === this.selectedExportGameId);
     if (!game) return;
 
-    const rosterSnap = await getDocs(collection(this.firestore, `teams/${this.selectedExportTeamId}/roster`));
-    const statsSnap = await getDocs(collection(this.firestore, `teams/${this.selectedExportTeamId}/games/${this.selectedExportGameId}/stats`));
+    // Batch load roster and stats
+    const [rosterSnap, statsSnap] = await Promise.all([
+      getDocs(collection(this.firestore, `teams/${this.selectedExportTeamId}/roster`)),
+      getDocs(collection(this.firestore, `teams/${this.selectedExportTeamId}/games/${this.selectedExportGameId}/stats`))
+    ]);
 
     const roster = rosterSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const statsMap = Object.fromEntries(statsSnap.docs.map(doc => [doc.id, doc.data()]));
@@ -300,6 +373,20 @@ export class AnalyticsComponent implements OnInit {
     const csv = [headers.join(","), ...finalRows].join("\n");
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     saveAs(blob, `game_${this.selectedExportGameId}_players.csv`);
+  }
+
+  // Force refresh standings (bypass cache)
+  async refreshStandings() {
+    const cacheKey = this.selectedLeague;
+    this.standingsCache.delete(cacheKey);
+    await this.loadStandings();
+  }
+
+  // Clear all caches
+  clearCache() {
+    this.standingsCache.clear();
+    this.teamsCache = [];
+    this.teamsCacheTimestamp = 0;
   }
 
   get avgPoints(): number {

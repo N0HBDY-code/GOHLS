@@ -33,18 +33,26 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
           <h5 class="mb-0">League Standings</h5>
-          <div class="btn-group">
-            <button class="btn" 
-                    [class.btn-primary]="selectedLeague === 'major'"
-                    [class.btn-outline-primary]="selectedLeague !== 'major'"
-                    (click)="selectedLeague = 'major'; loadStandings()">
-              Major League
-            </button>
-            <button class="btn"
-                    [class.btn-primary]="selectedLeague === 'minor'"
-                    [class.btn-outline-primary]="selectedLeague !== 'minor'"
-                    (click)="selectedLeague = 'minor'; loadStandings()">
-              Minor League
+          <div class="d-flex gap-2">
+            <div class="btn-group">
+              <button class="btn" 
+                      [class.btn-primary]="selectedLeague === 'major'"
+                      [class.btn-outline-primary]="selectedLeague !== 'major'"
+                      (click)="selectedLeague = 'major'; loadStandings()">
+                Major League
+              </button>
+              <button class="btn"
+                      [class.btn-primary]="selectedLeague === 'minor'"
+                      [class.btn-outline-primary]="selectedLeague !== 'minor'"
+                      (click)="selectedLeague = 'minor'; loadStandings()">
+                Minor League
+              </button>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" 
+                    (click)="refreshStandings()"
+                    [disabled]="loadingStandings"
+                    title="Refresh standings data">
+              <i class="fas fa-sync-alt" [class.fa-spin]="loadingStandings"></i>
             </button>
           </div>
         </div>
@@ -103,13 +111,30 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- No teams message -->
+        <div *ngIf="getStandingsForDivision(conference.name, division).length === 0" 
+             class="text-center text-muted py-4">
+          <i class="fas fa-info-circle me-2"></i>No teams in {{ division }}
+        </div>
       </div>
     </div>
 
+    <!-- Loading indicator -->
     <div *ngIf="loadingStandings" class="text-center my-4">
       <div class="spinner-border text-primary" role="status">
         <span class="visually-hidden">Loading standings...</span>
       </div>
+      <p class="mt-2 text-muted">Loading {{ selectedLeague }} league standings...</p>
+    </div>
+
+    <!-- Cache info (for development) -->
+    <div class="mt-4 text-center">
+      <small class="text-muted">
+        <i class="fas fa-clock me-1"></i>
+        Data cached for faster loading • 
+        <button class="btn btn-link btn-sm p-0" (click)="clearCache()">Clear cache</button>
+      </small>
     </div>
   </div>
 
