@@ -1,9 +1,10 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc, updateDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc, updateDoc, orderBy } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { serverTimestamp } from '@angular/fire/firestore';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-player-manager',
@@ -15,6 +16,7 @@ import { serverTimestamp } from '@angular/fire/firestore';
 export class PlayerManagerComponent implements OnInit {
   private firestore: Firestore = inject(Firestore);
   private auth: Auth = inject(Auth);
+  private router: Router = inject(Router);
 
   player: any = null;
   teamName: string = '';
@@ -68,6 +70,14 @@ export class PlayerManagerComponent implements OnInit {
     'Under Pressure': ['RBD CTRL', 'RECOV']
   };
 
+  // History data
+  playerHistory: any[] = [];
+  gameStats: any[] = [];
+  trainingHistory: any[] = [];
+  currentView: 'overview' | 'history' | 'stats' | 'trainings' = 'overview';
+  showRetireModal = false;
+  retireConfirmation = '';
+
   async ngOnInit() {
     const user = this.auth.currentUser;
     if (!user) return;
@@ -80,12 +90,22 @@ export class PlayerManagerComponent implements OnInit {
     if (!snapshot.empty) {
       this.player = snapshot.docs[0].data();
       this.player.id = snapshot.docs[0].id;
+      
+      // Check if player is retired
+      if (this.player.status === 'retired') {
+        this.loading = false;
+        return;
+      }
+
       this.setTrainingOptions(this.player.position);
       await this.loadPlayerAttributes();
+      await this.loadPlayerHistory();
+      await this.loadGameStats();
+      await this.loadTrainingHistory();
       await this.checkSecondaryProgress();
       await this.checkExistingTraining();
 
-      if (this.player.teamId) {
+      if (this.player.teamId && this.player.teamId !== 'none') {
         const teamRef = doc(this.firestore, `teams/${this.player.teamId}`);
         const teamSnap = await getDoc(teamRef);
         if (teamSnap.exists()) {
@@ -108,6 +128,87 @@ export class PlayerManagerComponent implements OnInit {
     if (attributesSnap.exists()) {
       this.playerAttributes = attributesSnap.data() as Record<string, number>;
     }
+  }
+
+  async loadPlayerHistory() {
+    if (!this.player?.id) return;
+
+    const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
+    const historyQuery = query(historyRef, orderBy('timestamp', 'desc'));
+    const historySnap = await getDocs(historyQuery);
+    
+    this.playerHistory = await Promise.all(historySnap.docs.map(async (doc) => {
+      const data = doc.data();
+      let teamName = 'Unknown Team';
+      
+      if (data['teamId'] && data['teamId'] !== 'none') {
+        const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
+        const teamSnap = await getDoc(teamRef);
+        if (teamSnap.exists()) {
+          const teamData = teamSnap.data();
+          teamName = `${teamData['city']} ${teamData['mascot']}`;
+        }
+      }
+      
+      return {
+        id: doc.id,
+        ...data,
+        teamName,
+        timestamp: data['timestamp']?.toDate?.() || new Date(data['timestamp'])
+      };
+    }));
+  }
+
+  async loadGameStats() {
+    if (!this.player?.id) return;
+
+    // Load stats from all teams the player has been on
+    const teamsRef = collection(this.firestore, 'teams');
+    const teamsSnap = await getDocs(teamsRef);
+    
+    this.gameStats = [];
+    
+    for (const teamDoc of teamsSnap.docs) {
+      const gamesRef = collection(this.firestore, `teams/${teamDoc.id}/games`);
+      const gamesSnap = await getDocs(gamesRef);
+      
+      for (const gameDoc of gamesSnap.docs) {
+        const gameData = gameDoc.data();
+        const playerStats = gameData['homePlayerStats']?.[this.player.id] || 
+                           gameData['awayPlayerStats']?.[this.player.id];
+        
+        if (playerStats) {
+          const teamData = teamDoc.data();
+          this.gameStats.push({
+            gameId: gameDoc.id,
+            teamName: `${teamData['city']} ${teamData['mascot']}`,
+            opponent: gameData['opponent'] || 'Unknown',
+            date: gameData['date']?.toDate?.() || new Date(),
+            week: gameData['week'],
+            day: gameData['day'],
+            isHome: gameData['isHome'],
+            ...playerStats
+          });
+        }
+      }
+    }
+    
+    // Sort by date descending
+    this.gameStats.sort((a, b) => b.date.getTime() - a.date.getTime());
+  }
+
+  async loadTrainingHistory() {
+    if (!this.player?.id) return;
+
+    const trainingRef = collection(this.firestore, `players/${this.player.id}/progressions`);
+    const trainingQuery = query(trainingRef, orderBy('timestamp', 'desc'));
+    const trainingSnap = await getDocs(trainingQuery);
+    
+    this.trainingHistory = trainingSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data()['timestamp']?.toDate?.() || new Date(doc.data()['timestamp'])
+    }));
   }
 
   setTrainingOptions(position: string) {
@@ -220,5 +321,74 @@ export class PlayerManagerComponent implements OnInit {
     }
   
     this.trainingSubmitted = true;
+    await this.loadTrainingHistory();
+  }
+
+  async retirePlayer() {
+    if (this.retireConfirmation !== 'RETIRE') {
+      alert('Please type "RETIRE" to confirm retirement');
+      return;
+    }
+
+    if (!this.player?.id) return;
+
+    // Add retirement to player history
+    const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
+    await addDoc(historyRef, {
+      action: 'retired',
+      teamId: this.player.teamId,
+      timestamp: new Date(),
+      details: 'Player announced retirement from professional hockey'
+    });
+
+    // Update player status
+    const playerRef = doc(this.firestore, `players/${this.player.id}`);
+    await updateDoc(playerRef, {
+      status: 'retired',
+      retiredDate: new Date(),
+      teamId: 'retired'
+    });
+
+    // Remove from team roster if on a team
+    if (this.player.teamId && this.player.teamId !== 'none') {
+      const rosterRef = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}`);
+      await updateDoc(rosterRef, {
+        status: 'retired',
+        retiredDate: new Date()
+      });
+    }
+
+    this.showRetireModal = false;
+    this.player.status = 'retired';
+    alert('Your player has been retired. Thank you for your service to the league!');
+  }
+
+  getTotalStats() {
+    return this.gameStats.reduce((totals, game) => {
+      totals.games += 1;
+      totals.goals += game.goals || 0;
+      totals.assists += game.assists || 0;
+      totals.points += (game.goals || 0) + (game.assists || 0);
+      totals.pim += game.pim || 0;
+      totals.hits += game.hits || 0;
+      totals.shots += game.shots || 0;
+      return totals;
+    }, { games: 0, goals: 0, assists: 0, points: 0, pim: 0, hits: 0, shots: 0 });
+  }
+
+  getTeamHistory() {
+    const teams = new Map();
+    
+    this.playerHistory.forEach(entry => {
+      if (entry.action === 'signed' || entry.action === 'traded') {
+        teams.set(entry.teamId, {
+          teamName: entry.teamName,
+          joinDate: entry.timestamp,
+          action: entry.action
+        });
+      }
+    });
+
+    return Array.from(teams.values()).sort((a, b) => b.joinDate.getTime() - a.joinDate.getTime());
   }
 }
