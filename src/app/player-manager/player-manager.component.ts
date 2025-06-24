@@ -137,21 +137,21 @@ export class PlayerManagerComponent implements OnInit {
     const historyQuery = query(historyRef, orderBy('timestamp', 'desc'));
     const historySnap = await getDocs(historyQuery);
     
-    this.playerHistory = await Promise.all(historySnap.docs.map(async (doc) => {
-      const data = doc.data();
+    this.playerHistory = await Promise.all(historySnap.docs.map(async (historyDoc) => {
+      const data = historyDoc.data();
       let teamName = 'Unknown Team';
       
       if (data['teamId'] && data['teamId'] !== 'none') {
         const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
         const teamSnap = await getDoc(teamRef);
         if (teamSnap.exists()) {
-          const teamData = teamSnap.data();
+          const teamData = teamSnap.data() as any;
           teamName = `${teamData['city']} ${teamData['mascot']}`;
         }
       }
       
       return {
-        id: doc.id,
+        id: historyDoc.id,
         ...data,
         teamName,
         timestamp: data['timestamp']?.toDate?.() || new Date(data['timestamp'])
