@@ -36,6 +36,8 @@ interface StandingsTeam {
   id: string;
   name: string;
   logoUrl?: string;
+  conference?: string;
+  division?: string;
   gamesPlayed: number;
   wins: number;
   losses: number;
@@ -70,7 +72,10 @@ export class AnalyticsComponent implements OnInit {
   
   // Standings data with caching
   selectedLeague: 'major' | 'minor' = 'major';
+  standingsViewType: 'division' | 'conference' | 'overall' = 'division';
   standings: Map<string, StandingsTeam[]> = new Map();
+  overallStandings: StandingsTeam[] = [];
+  conferenceStandings: Map<string, StandingsTeam[]> = new Map();
   loadingStandings = false;
   
   // Cache management
@@ -170,6 +175,7 @@ export class AnalyticsComponent implements OnInit {
     if (this.isCacheValid(cacheKey)) {
       const cached = this.standingsCache.get(cacheKey)!;
       this.standings = cached.data;
+      this.processStandingsViews();
       return;
     }
 
@@ -235,6 +241,8 @@ export class AnalyticsComponent implements OnInit {
           id: team.id,
           name: team.name,
           logoUrl: team.logoUrl,
+          conference: team.conference,
+          division: team.division,
           gamesPlayed,
           wins,
           losses,
@@ -268,6 +276,7 @@ export class AnalyticsComponent implements OnInit {
       }
 
       this.standings = newStandings;
+      this.processStandingsViews();
 
       // Cache the results
       this.standingsCache.set(cacheKey, {
@@ -281,8 +290,53 @@ export class AnalyticsComponent implements OnInit {
     }
   }
 
+  private processStandingsViews() {
+    // Create overall standings (all teams sorted)
+    const allTeams: StandingsTeam[] = [];
+    this.standings.forEach(teams => allTeams.push(...teams));
+    
+    this.overallStandings = allTeams.sort((a, b) => {
+      if (b.points !== a.points) return b.points - a.points;
+      if (b.pointPercentage !== a.pointPercentage) return b.pointPercentage - a.pointPercentage;
+      return b.goalDifferential - a.goalDifferential;
+    });
+
+    // Create conference standings
+    this.conferenceStandings.clear();
+    
+    for (const conference of this.conferences) {
+      const conferenceTeams: StandingsTeam[] = [];
+      
+      for (const division of conference.divisions) {
+        const divisionTeams = this.standings.get(`${conference.name}-${division}`) || [];
+        conferenceTeams.push(...divisionTeams);
+      }
+      
+      // Sort conference teams
+      conferenceTeams.sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.pointPercentage !== a.pointPercentage) return b.pointPercentage - a.pointPercentage;
+        return b.goalDifferential - a.goalDifferential;
+      });
+      
+      this.conferenceStandings.set(conference.name, conferenceTeams);
+    }
+  }
+
   getStandingsForDivision(conference: string, division: string): StandingsTeam[] {
     return this.standings.get(`${conference}-${division}`) || [];
+  }
+
+  getStandingsForConference(conference: string): StandingsTeam[] {
+    return this.conferenceStandings.get(conference) || [];
+  }
+
+  getOverallStandings(): StandingsTeam[] {
+    return this.overallStandings;
+  }
+
+  onStandingsViewChange() {
+    // View type changed, no need to reload data, just update display
   }
 
   async onTeamSelect() {

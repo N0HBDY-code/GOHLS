@@ -75,3 +75,88 @@
   width: 2rem;
   height: 2rem;
 }
+
+/* Playoff position highlighting */
+.table-success {
+  background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.table-warning {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+/* View type buttons */
+.btn-info {
+  background-color: #0dcaf0;
+  border-color: #0dcaf0;
+  color: #000;
+}
+
+.btn-outline-info {
+  color: #0dcaf0;
+  border-color: #0dcaf0;
+}
+
+.btn-outline-info:hover {
+  background-color: #0dcaf0;
+  border-color: #0dcaf0;
+  color: #000;
+}
+
+/* Responsive design improvements */
+@media (max-width: 768px) {
+  .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .btn-group {
+    flex-wrap: wrap;
+  }
+  
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .nav-tabs .nav-link {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Enhanced card styling */
+.card-header.bg-primary {
+  background: linear-gradient(45deg, #0d6efd, #6610f2) !important;
+}
+
+.card-header.bg-success {
+  background: linear-gradient(45deg, #198754, #20c997) !important;
+}
+
+/* Table enhancements */
+.table th {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Badge styling */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+}
+
+/* Loading animation */
+.fa-spin {
+  animation: fa-spin 2s infinite linear;
+}
+
+@keyframes fa-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
