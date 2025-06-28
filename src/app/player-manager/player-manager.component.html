@@ -157,7 +157,20 @@
               <i class="fas fa-dumbbell"></i>
             </div>
             Weekly Training Program
+            <span class="badge ms-2" 
+                  [class.bg-success]="progressionsOpen"
+                  [class.bg-danger]="!progressionsOpen">
+              {{ progressionsOpen ? 'Open' : 'Closed' }}
+            </span>
           </h5>
+
+          <!-- Progressions Closed Message -->
+          <div *ngIf="!progressionsOpen" class="alert alert-warning">
+            <i class="fas fa-lock me-2"></i>
+            <strong>Training Submissions Closed</strong><br>
+            Training submissions are currently closed for Week {{ currentProgressionWeek }}. 
+            Please wait for the next progression period to open.
+          </div>
 
           <!-- Training Submitted State -->
           <div *ngIf="trainingSubmitted" class="training-submitted">
@@ -174,7 +187,9 @@
                   </span>
                 </p>
               </div>
-              <button class="btn btn-warning" (click)="trainingSubmitted = false">
+              <button class="btn btn-warning" 
+                      (click)="trainingSubmitted = false"
+                      [disabled]="!progressionsOpen">
                 <i class="fas fa-edit me-1"></i> Edit Training
               </button>
             </div>
@@ -187,6 +202,7 @@
                     [(ngModel)]="tempTrainingType" 
                     name="training" 
                     (change)="onTrainingChange()"
+                    [disabled]="!progressionsOpen"
                     id="trainingSelect">
               <option value="">-- Choose Your Training --</option>
               <option *ngFor="let option of trainingOptions" [value]="option">
@@ -196,7 +212,7 @@
             
             <button class="btn btn-primary" 
                     (click)="submitTraining()"
-                    [disabled]="!tempTrainingType">
+                    [disabled]="!tempTrainingType || !progressionsOpen">
               <i class="fas fa-paper-plane me-1"></i> Submit Training
             </button>
           </div>

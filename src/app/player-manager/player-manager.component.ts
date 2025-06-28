@@ -28,6 +28,10 @@ export class PlayerManagerComponent implements OnInit {
   trainingSubmitted = false;
   trainingStatus: 'pending' | 'processed' | null = null;
 
+  // Progression control
+  progressionsOpen = true;
+  currentProgressionWeek = 1;
+
   secondaryProgress: number = 0;
   existingTrainingId: string | null = null;
 
@@ -82,6 +86,9 @@ export class PlayerManagerComponent implements OnInit {
     const user = this.auth.currentUser;
     if (!user) return;
 
+    // Load progression settings first
+    await this.loadProgressionSettings();
+
     const playerQuery = query(
       collection(this.firestore, 'players'),
       where('userId', '==', user.uid)
@@ -117,6 +124,26 @@ export class PlayerManagerComponent implements OnInit {
       }
     }
     this.loading = false;
+  }
+
+  async loadProgressionSettings() {
+    try {
+      const settingsRef = doc(this.firestore, 'progressionSettings/config');
+      const snap = await getDoc(settingsRef);
+
+      if (snap.exists()) {
+        const data = snap.data();
+        this.progressionsOpen = data['open'] ?? true;
+        this.currentProgressionWeek = data['week'] ?? 1;
+      } else {
+        this.progressionsOpen = true;
+        this.currentProgressionWeek = 1;
+      }
+    } catch (error) {
+      console.error('Error loading progression settings:', error);
+      this.progressionsOpen = true;
+      this.currentProgressionWeek = 1;
+    }
   }
 
   async loadPlayerAttributes() {
@@ -332,6 +359,12 @@ export class PlayerManagerComponent implements OnInit {
 
   async submitTraining() {
     if (!this.tempTrainingType || !this.player?.id || !this.player?.teamId) return;
+
+    // Check if progressions are open
+    if (!this.progressionsOpen) {
+      alert('Training submissions are currently closed. Please wait for the next progression period to open.');
+      return;
+    }
   
     const trainingData = {
       training: this.tempTrainingType,
