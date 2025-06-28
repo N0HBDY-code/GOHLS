@@ -85,11 +85,10 @@ export class PlayersComponent implements OnInit, OnDestroy {
       // Reset all states first
       this.resetAllStates();
 
-      // Check for players in the main players collection first
+      // Check for players in the main players collection (both active and retired)
       const playerQuery = query(
         collection(this.firestore, 'players'),
-        where('userId', '==', userId),
-        where('status', 'in', ['active', 'retired']) // Only check for active or retired players
+        where('userId', '==', userId)
       );
       const playerSnapshot = await getDocs(playerQuery);
       
