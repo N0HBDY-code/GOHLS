@@ -63,34 +63,39 @@ export class PlayersComponent implements OnInit {
 
   async checkPlayerStatus(userId: string) {
     try {
+      console.log('Checking player status for user:', userId);
+      
       // Reset all states first
-      this.hasActivePlayer = false;
-      this.hasRetiredPlayer = false;
-      this.hasPendingPlayer = false;
-      this.showCreateForm = false;
+      this.resetAllStates();
 
-      // Check for players in the main players collection
+      // Check for players in the main players collection first
       const playerQuery = query(
         collection(this.firestore, 'players'),
         where('userId', '==', userId)
       );
       const playerSnapshot = await getDocs(playerQuery);
       
+      console.log('Found players in main collection:', playerSnapshot.docs.length);
+      
       if (!playerSnapshot.empty) {
         const playerData = playerSnapshot.docs[0].data();
-        console.log('Found player with status:', playerData['status']); // Debug log
+        const playerStatus = playerData['status'];
+        console.log('Player status:', playerStatus);
         
-        if (playerData['status'] === 'retired') {
+        if (playerStatus === 'retired') {
           this.hasRetiredPlayer = true;
           this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
+          console.log('Player is retired:', this.retiredPlayerName);
           return;
-        } else if (playerData['status'] === 'active') {
+        } else if (playerStatus === 'active') {
           this.hasActivePlayer = true;
+          console.log('Player is active');
           return;
         }
       }
 
       // If no active/retired player found, check for pending requests
+      console.log('No active/retired player found, checking pending...');
       const pendingQuery = query(
         collection(this.firestore, 'pendingPlayers'),
         where('userId', '==', userId),
@@ -98,14 +103,18 @@ export class PlayersComponent implements OnInit {
       );
       const pendingSnapshot = await getDocs(pendingQuery);
       
+      console.log('Found pending players:', pendingSnapshot.docs.length);
+      
       if (!pendingSnapshot.empty) {
         const pendingData = pendingSnapshot.docs[0].data();
         this.hasPendingPlayer = true;
         this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
+        console.log('Player is pending:', this.pendingPlayerName);
         return;
       }
 
       // No player found at all - show create form
+      console.log('No player found, showing create form');
       this.showCreateForm = true;
     } catch (error) {
       console.error('Error checking player status:', error);
@@ -114,11 +123,21 @@ export class PlayersComponent implements OnInit {
     }
   }
 
+  private resetAllStates() {
+    this.hasActivePlayer = false;
+    this.hasRetiredPlayer = false;
+    this.hasPendingPlayer = false;
+    this.showCreateForm = false;
+    this.retiredPlayerName = '';
+    this.pendingPlayerName = '';
+  }
+
   // Add a method to refresh player status (can be called from outside)
   async refreshPlayerStatus() {
     const user = this.auth.currentUser;
     if (!user) return;
 
+    console.log('Manually refreshing player status...');
     this.loading = true;
     await this.checkPlayerStatus(user.uid);
     this.loading = false;
@@ -166,12 +185,10 @@ export class PlayersComponent implements OnInit {
         userDisplayName: user.displayName
       });
 
-      // Update component state
+      // Update component state immediately
+      this.resetAllStates();
       this.hasPendingPlayer = true;
       this.pendingPlayerName = `${this.playerForm.firstName} ${this.playerForm.lastName}`;
-      this.hasActivePlayer = false;
-      this.hasRetiredPlayer = false;
-      this.showCreateForm = false;
 
       alert('Your player has been submitted for approval! You will be notified once it has been reviewed by league management.');
     } catch (error) {
@@ -204,9 +221,7 @@ export class PlayersComponent implements OnInit {
       age: 19
     };
     this.filteredArchetypes = [];
-    this.hasActivePlayer = false;
-    this.hasRetiredPlayer = false;
-    this.hasPendingPlayer = false;
+    this.resetAllStates();
     this.showCreateForm = true;
   }
 }

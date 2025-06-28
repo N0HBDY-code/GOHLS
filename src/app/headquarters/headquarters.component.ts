@@ -146,6 +146,8 @@ export class HeadquartersComponent implements OnInit {
     this.playerApprovalSuccess = '';
 
     try {
+      console.log('Approving player:', this.selectedPendingPlayer.firstName, this.selectedPendingPlayer.lastName);
+      
       // Create the player document
       const playerRef = await addDoc(collection(this.firestore, 'players'), {
         firstName: this.selectedPendingPlayer.firstName,
@@ -173,8 +175,11 @@ export class HeadquartersComponent implements OnInit {
         createdDate: new Date()
       });
 
+      console.log('Player created with ID:', playerRef.id);
+
       // Create attributes document
       await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), this.playerAttributes);
+      console.log('Attributes set for player');
 
       // Add creation to player history
       await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
@@ -183,9 +188,11 @@ export class HeadquartersComponent implements OnInit {
         timestamp: new Date(),
         details: 'Player approved and entered the league'
       });
+      console.log('Player history added');
 
       // Remove from pending players
       await deleteDoc(doc(this.firestore, `pendingPlayers/${this.selectedPendingPlayer.id}`));
+      console.log('Removed from pending players');
 
       // Refresh the lists
       await Promise.all([
@@ -193,12 +200,12 @@ export class HeadquartersComponent implements OnInit {
         this.loadNewPlayers()
       ]);
 
-      this.playerApprovalSuccess = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created!`;
+      this.playerApprovalSuccess = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created successfully!`;
       
       // Close modal after short delay
       setTimeout(() => {
         this.closePlayerApprovalModal();
-      }, 1500);
+      }, 2000);
 
     } catch (error) {
       console.error('Error approving player:', error);
@@ -480,7 +487,7 @@ export class HeadquartersComponent implements OnInit {
     } catch (error) {
       console.error('Error removing role:', error);
       this.error = 'Failed to remove role';
-      setTimeout(() => this.error = '', 3000);
+      setTimeout () => this.error = '', 3000);
     } finally {
       this.loading = false;
     }
