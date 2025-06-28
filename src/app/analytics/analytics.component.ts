@@ -51,7 +51,7 @@ interface StandingsTeam {
   goalsAgainst: number;
   goalDifferential: number;
   pointPercentage: number;
-  playoffStatus?: 'championship' | 'wildcard' | 'eliminated' | null;
+  playoffStatus?: 'league' | 'conference' | 'division' | 'playoff' | 'eliminated' | null;
 }
 
 interface Conference {
@@ -241,8 +241,10 @@ export class AnalyticsComponent implements OnInit {
   getPlayoffStatusClass(team: StandingsTeam): string {
     const status = this.getTeamPlayoffStatus(team.id);
     switch (status) {
-      case 'championship': return 'table-success';
-      case 'wildcard': return 'table-warning';
+      case 'league': return 'table-warning';
+      case 'conference': return 'table-info';
+      case 'division': return 'table-primary';
+      case 'playoff': return 'table-success';
       case 'eliminated': return 'table-danger';
       default: return '';
     }
@@ -251,8 +253,10 @@ export class AnalyticsComponent implements OnInit {
   getPlayoffStatusBadge(team: StandingsTeam): { text: string; class: string } | null {
     const status = this.getTeamPlayoffStatus(team.id);
     switch (status) {
-      case 'championship': return { text: 'x', class: 'badge bg-success' };
-      case 'wildcard': return { text: 'y', class: 'badge bg-warning text-dark' };
+      case 'league': return { text: 'P', class: 'badge bg-warning text-dark' };
+      case 'conference': return { text: 'z', class: 'badge bg-info' };
+      case 'division': return { text: 'y', class: 'badge bg-primary' };
+      case 'playoff': return { text: 'x', class: 'badge bg-success' };
       case 'eliminated': return { text: 'e', class: 'badge bg-danger' };
       default: return null;
     }

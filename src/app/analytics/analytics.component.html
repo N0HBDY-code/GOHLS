@@ -120,8 +120,10 @@
                         [value]="getTeamPlayoffStatus(team.id)"
                         (change)="updateTeamPlayoffStatus(team.id, $any($event.target).value)">
                   <option value="none">No Status</option>
-                  <option value="championship">Championship Clinched (x)</option>
-                  <option value="wildcard">Playoffs Clinched (y)</option>
+                  <option value="league">League Championship Clinched (P)</option>
+                  <option value="conference">Conference Championship Clinched (z)</option>
+                  <option value="division">Division Championship Clinched (y)</option>
+                  <option value="playoff">Playoff Spot Clinched (x)</option>
                   <option value="eliminated">Eliminated (e)</option>
                 </select>
               </div>
@@ -327,19 +329,27 @@
         <!-- Playoff Legend -->
         <div class="card-footer bg-light">
           <div class="row text-center">
-            <div class="col-md-3">
+            <div class="col-md-2">
+              <span class="badge bg-warning text-dark me-2">P</span>
+              <small>League Championship</small>
+            </div>
+            <div class="col-md-2">
+              <span class="badge bg-info me-2">z</span>
+              <small>Conference Championship</small>
+            </div>
+            <div class="col-md-2">
+              <span class="badge bg-primary me-2">y</span>
+              <small>Division Championship</small>
+            </div>
+            <div class="col-md-2">
               <span class="badge bg-success me-2">x</span>
-              <small>Championship Clinched</small>
+              <small>Playoff Spot</small>
             </div>
-            <div class="col-md-3">
-              <span class="badge bg-warning text-dark me-2">y</span>
-              <small>Playoffs Clinched</small>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <span class="badge bg-danger me-2">e</span>
               <small>Eliminated</small>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
               <small class="text-muted">No indicator - Still competing</small>
             </div>
           </div>
