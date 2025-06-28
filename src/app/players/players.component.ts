@@ -54,51 +54,59 @@ export class PlayersComponent implements OnInit {
     const user = this.auth.currentUser;
     if (!user) return;
 
-    // Check for existing players
+    await this.checkPlayerStatus(user.uid);
+    this.loading = false;
+  }
+
+  async checkPlayerStatus(userId: string) {
+    // First check for active players
     const playerQuery = query(
       collection(this.firestore, 'players'),
-      where('userId', '==', user.uid)
+      where('userId', '==', userId)
     );
-    const snapshot = await getDocs(playerQuery);
+    const playerSnapshot = await getDocs(playerQuery);
     
-    if (!snapshot.empty) {
-      const playerData = snapshot.docs[0].data();
+    if (!playerSnapshot.empty) {
+      const playerData = playerSnapshot.docs[0].data();
       if (playerData['status'] === 'retired') {
         this.hasRetiredPlayer = true;
         this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
         this.hasActivePlayer = false;
         this.hasPendingPlayer = false;
         this.showCreateForm = false;
+        return;
       } else if (playerData['status'] === 'active') {
         this.hasActivePlayer = true;
         this.hasRetiredPlayer = false;
         this.hasPendingPlayer = false;
         this.showCreateForm = false;
-      }
-    } else {
-      // Check for pending player requests
-      const pendingQuery = query(
-        collection(this.firestore, 'pendingPlayers'),
-        where('userId', '==', user.uid)
-      );
-      const pendingSnapshot = await getDocs(pendingQuery);
-      
-      if (!pendingSnapshot.empty) {
-        const pendingData = pendingSnapshot.docs[0].data();
-        this.hasPendingPlayer = true;
-        this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
-        this.hasActivePlayer = false;
-        this.hasRetiredPlayer = false;
-        this.showCreateForm = false;
-      } else {
-        this.hasActivePlayer = false;
-        this.hasRetiredPlayer = false;
-        this.hasPendingPlayer = false;
-        this.showCreateForm = true;
+        return;
       }
     }
+
+    // If no active player found, check for pending requests
+    const pendingQuery = query(
+      collection(this.firestore, 'pendingPlayers'),
+      where('userId', '==', userId),
+      where('status', '==', 'pending')
+    );
+    const pendingSnapshot = await getDocs(pendingQuery);
     
-    this.loading = false;
+    if (!pendingSnapshot.empty) {
+      const pendingData = pendingSnapshot.docs[0].data();
+      this.hasPendingPlayer = true;
+      this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
+      this.hasActivePlayer = false;
+      this.hasRetiredPlayer = false;
+      this.showCreateForm = false;
+      return;
+    }
+
+    // No player found at all - show create form
+    this.hasActivePlayer = false;
+    this.hasRetiredPlayer = false;
+    this.hasPendingPlayer = false;
+    this.showCreateForm = true;
   }
 
   onPositionChange() {
@@ -132,23 +140,29 @@ export class PlayersComponent implements OnInit {
     const user = this.auth.currentUser;
     if (!user) return;
 
-    // Create a pending player request instead of a full player
-    await addDoc(collection(this.firestore, 'pendingPlayers'), {
-      ...this.playerForm,
-      userId: user.uid,
-      status: 'pending',
-      submittedDate: new Date(),
-      userEmail: user.email,
-      userDisplayName: user.displayName
-    });
+    try {
+      // Create a pending player request instead of a full player
+      await addDoc(collection(this.firestore, 'pendingPlayers'), {
+        ...this.playerForm,
+        userId: user.uid,
+        status: 'pending',
+        submittedDate: new Date(),
+        userEmail: user.email,
+        userDisplayName: user.displayName
+      });
 
-    this.hasPendingPlayer = true;
-    this.pendingPlayerName = `${this.playerForm.firstName} ${this.playerForm.lastName}`;
-    this.hasActivePlayer = false;
-    this.hasRetiredPlayer = false;
-    this.showCreateForm = false;
+      // Update component state
+      this.hasPendingPlayer = true;
+      this.pendingPlayerName = `${this.playerForm.firstName} ${this.playerForm.lastName}`;
+      this.hasActivePlayer = false;
+      this.hasRetiredPlayer = false;
+      this.showCreateForm = false;
 
-    alert('Your player has been submitted for approval! You will be notified once it has been reviewed by league management.');
+      alert('Your player has been submitted for approval! You will be notified once it has been reviewed by league management.');
+    } catch (error) {
+      console.error('Error submitting player:', error);
+      alert('Failed to submit player. Please try again.');
+    }
   }
 
   createNewPlayer() {

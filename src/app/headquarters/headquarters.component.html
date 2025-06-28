@@ -10,6 +10,10 @@
           </h4>
         </div>
         <div class="card-body">
+          <!-- Player Approval Messages -->
+          <div *ngIf="playerApprovalError" class="alert alert-danger">{{ playerApprovalError }}</div>
+          <div *ngIf="playerApprovalSuccess" class="alert alert-success">{{ playerApprovalSuccess }}</div>
+
           <div *ngIf="loadingPendingPlayers" class="text-center">
             <div class="spinner-border text-info"></div>
             <p>Loading pending players...</p>
@@ -62,12 +66,12 @@
                 <div class="col-md-2">
                   <button class="btn btn-success w-100 mb-2" 
                           (click)="openPlayerApprovalModal(player)"
-                          [disabled]="loading">
+                          [disabled]="playerApprovalLoading">
                     <i class="fas fa-check me-1"></i>Approve
                   </button>
                   <button class="btn btn-outline-danger w-100" 
                           (click)="rejectPlayer(player)"
-                          [disabled]="loading">
+                          [disabled]="playerApprovalLoading">
                     <i class="fas fa-times me-1"></i>Reject
                   </button>
                 </div>
@@ -295,6 +299,10 @@
         <button type="button" class="btn-close btn-close-white" (click)="closePlayerApprovalModal()"></button>
       </div>
       <div class="modal-body">
+        <!-- Modal Messages -->
+        <div *ngIf="playerApprovalError" class="alert alert-danger">{{ playerApprovalError }}</div>
+        <div *ngIf="playerApprovalSuccess" class="alert alert-success">{{ playerApprovalSuccess }}</div>
+
         <div class="row">
           <!-- Player Info -->
           <div class="col-md-4">
@@ -358,8 +366,9 @@
         <button type="button" 
                 class="btn btn-success" 
                 (click)="approvePlayer()"
-                [disabled]="loading">
-          <i class="fas fa-check me-1"></i>Create Player
+                [disabled]="playerApprovalLoading">
+          <span *ngIf="playerApprovalLoading" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!playerApprovalLoading" class="fas fa-check me-1"></i>Create Player
         </button>
       </div>
     </div>

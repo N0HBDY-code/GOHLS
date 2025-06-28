@@ -45,12 +45,15 @@ export class HeadquartersComponent implements OnInit {
   majorLeagueTeams: Team[] = [];
   minorLeagueTeams: Team[] = [];
 
-  // Pending Player Approvals
+  // Pending Player Approvals - separate state management
   pendingPlayers: any[] = [];
   loadingPendingPlayers = false;
   showPlayerApprovalModal = false;
   selectedPendingPlayer: any = null;
   playerAttributes: Record<string, number> = {};
+  playerApprovalLoading = false;
+  playerApprovalError = '';
+  playerApprovalSuccess = '';
 
   // Attribute lists
   skaterAttributes = [
@@ -98,6 +101,10 @@ export class HeadquartersComponent implements OnInit {
         id: doc.id,
         ...doc.data()
       }));
+    } catch (error) {
+      console.error('Error loading pending players:', error);
+      this.playerApprovalError = 'Failed to load pending players';
+      setTimeout(() => this.playerApprovalError = '', 3000);
     } finally {
       this.loadingPendingPlayers = false;
     }
@@ -106,6 +113,8 @@ export class HeadquartersComponent implements OnInit {
   openPlayerApprovalModal(player: any) {
     this.selectedPendingPlayer = player;
     this.showPlayerApprovalModal = true;
+    this.playerApprovalError = '';
+    this.playerApprovalSuccess = '';
     
     // Initialize attributes with default values
     if (player.position === 'G') {
@@ -125,18 +134,23 @@ export class HeadquartersComponent implements OnInit {
     this.showPlayerApprovalModal = false;
     this.selectedPendingPlayer = null;
     this.playerAttributes = {};
+    this.playerApprovalError = '';
+    this.playerApprovalSuccess = '';
   }
 
   async approvePlayer() {
     if (!this.selectedPendingPlayer) return;
 
-    this.loading = true;
+    this.playerApprovalLoading = true;
+    this.playerApprovalError = '';
+    this.playerApprovalSuccess = '';
+
     try {
       // Create the player document
       const playerRef = await addDoc(collection(this.firestore, 'players'), {
         firstName: this.selectedPendingPlayer.firstName,
         lastName: this.selectedPendingPlayer.lastName,
-        gamertag: this.selectedPendingPlayer.gamertag,
+        callName: this.selectedPendingPlayer.gamertag,
         position: this.selectedPendingPlayer.position,
         archetype: this.selectedPendingPlayer.archetype,
         jerseyNumber: this.selectedPendingPlayer.jerseyNumber,
@@ -174,18 +188,23 @@ export class HeadquartersComponent implements OnInit {
       await deleteDoc(doc(this.firestore, `pendingPlayers/${this.selectedPendingPlayer.id}`));
 
       // Refresh the lists
-      await this.loadPendingPlayers();
-      await this.loadNewPlayers();
+      await Promise.all([
+        this.loadPendingPlayers(),
+        this.loadNewPlayers()
+      ]);
 
-      this.closePlayerApprovalModal();
-      this.success = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created!`;
-      setTimeout(() => this.success = '', 3000);
+      this.playerApprovalSuccess = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created!`;
+      
+      // Close modal after short delay
+      setTimeout(() => {
+        this.closePlayerApprovalModal();
+      }, 1500);
+
     } catch (error) {
       console.error('Error approving player:', error);
-      this.error = 'Failed to approve player';
-      setTimeout(() => this.error = '', 3000);
+      this.playerApprovalError = 'Failed to approve player. Please try again.';
     } finally {
-      this.loading = false;
+      this.playerApprovalLoading = false;
     }
   }
 
@@ -194,7 +213,10 @@ export class HeadquartersComponent implements OnInit {
       return;
     }
 
-    this.loading = true;
+    this.playerApprovalLoading = true;
+    this.playerApprovalError = '';
+    this.playerApprovalSuccess = '';
+
     try {
       // Remove from pending players
       await deleteDoc(doc(this.firestore, `pendingPlayers/${player.id}`));
@@ -202,14 +224,14 @@ export class HeadquartersComponent implements OnInit {
       // Refresh the list
       await this.loadPendingPlayers();
 
-      this.success = `${player.firstName} ${player.lastName} has been rejected.`;
-      setTimeout(() => this.success = '', 3000);
+      this.playerApprovalSuccess = `${player.firstName} ${player.lastName} has been rejected.`;
+      setTimeout(() => this.playerApprovalSuccess = '', 3000);
     } catch (error) {
       console.error('Error rejecting player:', error);
-      this.error = 'Failed to reject player';
-      setTimeout(() => this.error = '', 3000);
+      this.playerApprovalError = 'Failed to reject player';
+      setTimeout(() => this.playerApprovalError = '', 3000);
     } finally {
-      this.loading = false;
+      this.playerApprovalLoading = false;
     }
   }
 
