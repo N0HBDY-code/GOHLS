@@ -80,39 +80,13 @@ export class PlayersComponent implements OnInit, OnDestroy {
 
   async checkPlayerStatus(userId: string) {
     try {
-      console.log('Checking player status for user:', userId);
+      console.log('🔍 Checking player status for user:', userId);
       
       // Reset all states first
       this.resetAllStates();
 
-      // Check for players in the main players collection first
-      const playerQuery = query(
-        collection(this.firestore, 'players'),
-        where('userId', '==', userId)
-      );
-      const playerSnapshot = await getDocs(playerQuery);
-      
-      console.log('Found players in main collection:', playerSnapshot.docs.length);
-      
-      if (!playerSnapshot.empty) {
-        const playerData = playerSnapshot.docs[0].data();
-        const playerStatus = playerData['status'];
-        console.log('Player status:', playerStatus);
-        
-        if (playerStatus === 'retired') {
-          this.hasRetiredPlayer = true;
-          this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
-          console.log('Player is retired:', this.retiredPlayerName);
-          return;
-        } else if (playerStatus === 'active') {
-          this.hasActivePlayer = true;
-          console.log('Player is active');
-          return;
-        }
-      }
-
-      // If no active/retired player found, check for pending requests
-      console.log('No active/retired player found, checking pending...');
+      // FIRST: Check for pending players (highest priority for navigation persistence)
+      console.log('📋 Checking for pending players first...');
       const pendingQuery = query(
         collection(this.firestore, 'pendingPlayers'),
         where('userId', '==', userId),
@@ -120,21 +94,48 @@ export class PlayersComponent implements OnInit, OnDestroy {
       );
       const pendingSnapshot = await getDocs(pendingQuery);
       
-      console.log('Found pending players:', pendingSnapshot.docs.length);
+      console.log('📋 Found pending players:', pendingSnapshot.docs.length);
       
       if (!pendingSnapshot.empty) {
         const pendingData = pendingSnapshot.docs[0].data();
         this.hasPendingPlayer = true;
         this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
-        console.log('Player is pending:', this.pendingPlayerName);
-        return;
+        console.log('✅ Player is pending:', this.pendingPlayerName);
+        return; // Exit early - pending player found
       }
 
-      // No player found at all - show create form
-      console.log('No player found, showing create form');
+      // SECOND: Check for active/retired players in the main players collection
+      console.log('👤 No pending player found, checking main players collection...');
+      const playerQuery = query(
+        collection(this.firestore, 'players'),
+        where('userId', '==', userId)
+      );
+      const playerSnapshot = await getDocs(playerQuery);
+      
+      console.log('👤 Found players in main collection:', playerSnapshot.docs.length);
+      
+      if (!playerSnapshot.empty) {
+        const playerData = playerSnapshot.docs[0].data();
+        const playerStatus = playerData['status'];
+        console.log('👤 Player status:', playerStatus);
+        
+        if (playerStatus === 'retired') {
+          this.hasRetiredPlayer = true;
+          this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
+          console.log('🏆 Player is retired:', this.retiredPlayerName);
+          return;
+        } else if (playerStatus === 'active') {
+          this.hasActivePlayer = true;
+          console.log('⚡ Player is active');
+          return;
+        }
+      }
+
+      // THIRD: No player found at all - show create form
+      console.log('➕ No player found, showing create form');
       this.showCreateForm = true;
     } catch (error) {
-      console.error('Error checking player status:', error);
+      console.error('❌ Error checking player status:', error);
       // On error, default to showing create form
       this.showCreateForm = true;
     }
@@ -154,7 +155,7 @@ export class PlayersComponent implements OnInit, OnDestroy {
     const user = this.auth.currentUser;
     if (!user) return;
 
-    console.log('Manually refreshing player status...');
+    console.log('🔄 Manually refreshing player status...');
     this.loading = true;
     await this.checkPlayerStatus(user.uid);
     this.loading = false;
@@ -192,6 +193,8 @@ export class PlayersComponent implements OnInit, OnDestroy {
     if (!user) return;
 
     try {
+      console.log('📝 Creating pending player request...');
+      
       // Create a pending player request instead of a full player
       await addDoc(collection(this.firestore, 'pendingPlayers'), {
         ...this.playerForm,
@@ -202,19 +205,25 @@ export class PlayersComponent implements OnInit, OnDestroy {
         userDisplayName: user.displayName
       });
 
+      console.log('✅ Pending player created successfully');
+
       // Update component state immediately to show pending player
       this.resetAllStates();
       this.hasPendingPlayer = true;
       this.pendingPlayerName = `${this.playerForm.firstName} ${this.playerForm.lastName}`;
 
+      console.log('🎯 Component state updated to show pending player:', this.pendingPlayerName);
+
       alert('Your player has been submitted for approval! You can now view your pending player below.');
     } catch (error) {
-      console.error('Error submitting player:', error);
+      console.error('❌ Error submitting player:', error);
       alert('Failed to submit player. Please try again.');
     }
   }
 
   createNewPlayer() {
+    console.log('➕ Creating new player - resetting form...');
+    
     // Reset form and show creation form
     this.playerForm = {
       firstName: '',
