@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
@@ -45,6 +45,29 @@ export class HeadquartersComponent implements OnInit {
   majorLeagueTeams: Team[] = [];
   minorLeagueTeams: Team[] = [];
 
+  // Pending Player Approvals
+  pendingPlayers: any[] = [];
+  loadingPendingPlayers = false;
+  showPlayerApprovalModal = false;
+  selectedPendingPlayer: any = null;
+  playerAttributes: Record<string, number> = {};
+
+  // Attribute lists
+  skaterAttributes = [
+    'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
+    'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
+    'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
+    'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
+    'STK CHK'
+  ];
+
+  goalieAttributes = [
+    'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
+    'AGILITY', 'CONSIS', 'PK CTRL', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
+    'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
+    'DRBLTY', 'VISION'
+  ];
+
   availableRoles = [
     'viewer',
     'developer',
@@ -59,8 +82,135 @@ export class HeadquartersComponent implements OnInit {
     await Promise.all([
       this.loadPendingTrades(),
       this.loadNewPlayers(),
-      this.loadTeams()
+      this.loadTeams(),
+      this.loadPendingPlayers()
     ]);
+  }
+
+  async loadPendingPlayers() {
+    this.loadingPendingPlayers = true;
+    try {
+      const playersRef = collection(this.firestore, 'pendingPlayers');
+      const q = query(playersRef, where('status', '==', 'pending'));
+      const snapshot = await getDocs(q);
+      
+      this.pendingPlayers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+    } finally {
+      this.loadingPendingPlayers = false;
+    }
+  }
+
+  openPlayerApprovalModal(player: any) {
+    this.selectedPendingPlayer = player;
+    this.showPlayerApprovalModal = true;
+    
+    // Initialize attributes with default values
+    if (player.position === 'G') {
+      this.playerAttributes = {};
+      this.goalieAttributes.forEach(attr => {
+        this.playerAttributes[attr] = 66; // Default value
+      });
+    } else {
+      this.playerAttributes = {};
+      this.skaterAttributes.forEach(attr => {
+        this.playerAttributes[attr] = 66; // Default value
+      });
+    }
+  }
+
+  closePlayerApprovalModal() {
+    this.showPlayerApprovalModal = false;
+    this.selectedPendingPlayer = null;
+    this.playerAttributes = {};
+  }
+
+  async approvePlayer() {
+    if (!this.selectedPendingPlayer) return;
+
+    this.loading = true;
+    try {
+      // Create the player document
+      const playerRef = await addDoc(collection(this.firestore, 'players'), {
+        firstName: this.selectedPendingPlayer.firstName,
+        lastName: this.selectedPendingPlayer.lastName,
+        gamertag: this.selectedPendingPlayer.gamertag,
+        position: this.selectedPendingPlayer.position,
+        archetype: this.selectedPendingPlayer.archetype,
+        jerseyNumber: this.selectedPendingPlayer.jerseyNumber,
+        handedness: this.selectedPendingPlayer.handedness,
+        height: this.selectedPendingPlayer.height,
+        weight: this.selectedPendingPlayer.weight,
+        fightTendency: this.selectedPendingPlayer.fight,
+        origin: this.selectedPendingPlayer.origin,
+        hair: this.selectedPendingPlayer.hair,
+        beard: this.selectedPendingPlayer.beard,
+        stickTapeColor: this.selectedPendingPlayer.tape,
+        race: this.selectedPendingPlayer.ethnicity,
+        twitch: this.selectedPendingPlayer.twitch,
+        referralSource: this.selectedPendingPlayer.referral,
+        invitedBy: this.selectedPendingPlayer.invitedBy,
+        age: this.selectedPendingPlayer.age,
+        userId: this.selectedPendingPlayer.userId,
+        teamId: 'none',
+        status: 'active',
+        createdDate: new Date()
+      });
+
+      // Create attributes document
+      await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), this.playerAttributes);
+
+      // Add creation to player history
+      await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
+        action: 'created',
+        teamId: 'none',
+        timestamp: new Date(),
+        details: 'Player approved and entered the league'
+      });
+
+      // Remove from pending players
+      await deleteDoc(doc(this.firestore, `pendingPlayers/${this.selectedPendingPlayer.id}`));
+
+      // Refresh the lists
+      await this.loadPendingPlayers();
+      await this.loadNewPlayers();
+
+      this.closePlayerApprovalModal();
+      this.success = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created!`;
+      setTimeout(() => this.success = '', 3000);
+    } catch (error) {
+      console.error('Error approving player:', error);
+      this.error = 'Failed to approve player';
+      setTimeout(() => this.error = '', 3000);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async rejectPlayer(player: any) {
+    if (!confirm(`Are you sure you want to reject ${player.firstName} ${player.lastName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    this.loading = true;
+    try {
+      // Remove from pending players
+      await deleteDoc(doc(this.firestore, `pendingPlayers/${player.id}`));
+
+      // Refresh the list
+      await this.loadPendingPlayers();
+
+      this.success = `${player.firstName} ${player.lastName} has been rejected.`;
+      setTimeout(() => this.success = '', 3000);
+    } catch (error) {
+      console.error('Error rejecting player:', error);
+      this.error = 'Failed to reject player';
+      setTimeout(() => this.error = '', 3000);
+    } finally {
+      this.loading = false;
+    }
   }
 
   async loadNewPlayers() {
