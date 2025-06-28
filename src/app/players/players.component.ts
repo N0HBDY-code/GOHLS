@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { PlayerManagerComponent } from '../player-manager/player-manager.compone
   templateUrl: './players.component.html',
   styleUrls: ['./players.component.css']
 })
-export class PlayersComponent implements OnInit {
+export class PlayersComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private auth: Auth = inject(Auth);
   private router: Router = inject(Router);
@@ -27,6 +27,9 @@ export class PlayersComponent implements OnInit {
   showCreateForm = false;
 
   filteredArchetypes: string[] = [];
+
+  // Event listener for player retirement
+  private retirementListener?: () => void;
 
   playerForm = {
     firstName: '',
@@ -57,8 +60,22 @@ export class PlayersComponent implements OnInit {
       return;
     }
 
+    // Set up event listener for player retirement
+    this.retirementListener = () => {
+      console.log('Player retirement event received, refreshing status...');
+      this.refreshPlayerStatus();
+    };
+    window.addEventListener('playerRetired', this.retirementListener);
+
     await this.checkPlayerStatus(user.uid);
     this.loading = false;
+  }
+
+  ngOnDestroy() {
+    // Clean up event listener
+    if (this.retirementListener) {
+      window.removeEventListener('playerRetired', this.retirementListener);
+    }
   }
 
   async checkPlayerStatus(userId: string) {
@@ -71,7 +88,8 @@ export class PlayersComponent implements OnInit {
       // Check for players in the main players collection first
       const playerQuery = query(
         collection(this.firestore, 'players'),
-        where('userId', '==', userId)
+        where('userId', '==', userId),
+        where('status', 'in', ['active', 'retired']) // Only check for active or retired players
       );
       const playerSnapshot = await getDocs(playerQuery);
       

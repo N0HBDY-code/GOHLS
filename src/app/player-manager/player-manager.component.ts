@@ -413,35 +413,44 @@ export class PlayerManagerComponent implements OnInit {
 
     if (!this.player?.id) return;
 
-    // Add retirement to player history
-    const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
-    await addDoc(historyRef, {
-      action: 'retired',
-      teamId: this.player.teamId,
-      timestamp: new Date(),
-      details: 'Player announced retirement from professional hockey'
-    });
-
-    // Update player status
-    const playerRef = doc(this.firestore, `players/${this.player.id}`);
-    await updateDoc(playerRef, {
-      status: 'retired',
-      retiredDate: new Date(),
-      teamId: 'retired'
-    });
-
-    // Remove from team roster if on a team
-    if (this.player.teamId && this.player.teamId !== 'none') {
-      const rosterRef = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}`);
-      await updateDoc(rosterRef, {
-        status: 'retired',
-        retiredDate: new Date()
+    try {
+      // Add retirement to player history
+      const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
+      await addDoc(historyRef, {
+        action: 'retired',
+        teamId: this.player.teamId,
+        timestamp: new Date(),
+        details: 'Player announced retirement from professional hockey'
       });
-    }
 
-    this.showRetireModal = false;
-    this.player.status = 'retired';
-    alert('Your player has been retired. Thank you for your service to the league!');
+      // Update player status
+      const playerRef = doc(this.firestore, `players/${this.player.id}`);
+      await updateDoc(playerRef, {
+        status: 'retired',
+        retiredDate: new Date(),
+        teamId: 'retired'
+      });
+
+      // Remove from team roster if on a team
+      if (this.player.teamId && this.player.teamId !== 'none') {
+        const rosterRef = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}`);
+        await updateDoc(rosterRef, {
+          status: 'retired',
+          retiredDate: new Date()
+        });
+      }
+
+      this.showRetireModal = false;
+      this.player.status = 'retired';
+      
+      // Emit an event to parent component to refresh status
+      window.dispatchEvent(new CustomEvent('playerRetired'));
+      
+      alert('Your player has been retired. Thank you for your service to the league!');
+    } catch (error) {
+      console.error('Error retiring player:', error);
+      alert('Failed to retire player. Please try again.');
+    }
   }
 
   getTotalStats() {
