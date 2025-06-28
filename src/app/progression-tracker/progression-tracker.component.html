@@ -1,136 +1,247 @@
-<div class="card mb-4 p-3 border-primary">
-  <h4 class="mb-3">Progression System Settings</h4>
-
-  <div class="mb-3">
-    <label for="weekSelect" class="form-label">Select Progression Week</label>
-    <select id="weekSelect" class="form-select w-auto"
-            [(ngModel)]="selectedWeek"
-            (change)="updateProgressionSettings()">
-      <option *ngFor="let week of progressionWeeks" [value]="week">Week {{ week }}</option>
-    </select>
-  </div>
-
-  <div class="form-check form-switch">
-    <input class="form-check-input" type="checkbox" id="progressionToggle"
-           [(ngModel)]="progressionsOpen"
-           (change)="updateProgressionSettings()">
-    <label class="form-check-label" for="progressionToggle">
-      Progressions {{ progressionsOpen ? 'Open' : 'Closed' }}
-    </label>
-  </div>
-</div>
-
 <div class="container mt-4">
-  <h2 class="mb-3">Progression Tracker</h2>
+  <!-- Page Title -->
+  <h2 class="page-title">
+    <i class="fas fa-chart-line me-3"></i>Progression Tracker
+  </h2>
 
-  <!-- Team Selection Dropdown -->
-  <div class="mb-3">
-    <label for="teamSelect" class="form-label">Select Team</label>
-    <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="loadRoster()">
-      <option value="">-- Choose a Team --</option>
-      <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-    </select>
-  </div>
+  <!-- Progression System Settings -->
+  <div class="card settings-card mb-4">
+    <div class="card-body">
+      <h4>
+        <div class="settings-icon">
+          <i class="fas fa-cog"></i>
+        </div>
+        Progression System Settings
+      </h4>
 
-  <!-- Loading Indicator -->
-  <div *ngIf="loading" class="text-center my-4">
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading...</span>
+      <div class="row align-items-end">
+        <div class="col-md-4">
+          <label for="weekSelect" class="form-label">
+            <i class="fas fa-calendar-week me-2"></i>Select Progression Week
+          </label>
+          <select id="weekSelect" class="form-select"
+                  [(ngModel)]="selectedWeek"
+                  (change)="updateProgressionSettings()">
+            <option *ngFor="let week of progressionWeeks" [value]="week">Week {{ week }}</option>
+          </select>
+        </div>
+
+        <div class="col-md-4">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="progressionToggle"
+                   [(ngModel)]="progressionsOpen"
+                   (change)="updateProgressionSettings()">
+            <label class="form-check-label" for="progressionToggle">
+              <i class="fas fa-toggle-on me-2"></i>
+              Progressions {{ progressionsOpen ? 'Open' : 'Closed' }}
+            </label>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="status-indicator">
+            <div class="status-dot" [class.processed]="progressionsOpen" [class.na]="!progressionsOpen"></div>
+            <span class="badge" 
+                  [class.bg-success]="progressionsOpen"
+                  [class.bg-secondary]="!progressionsOpen">
+              {{ progressionsOpen ? 'ACCEPTING SUBMISSIONS' : 'SUBMISSIONS CLOSED' }}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Logo -->
-  <div *ngIf="selectedTeam">
-    <div class="d-flex align-items-center gap-3 mb-3">
+  <hr class="section-divider">
+
+  <!-- Team Selection -->
+  <div class="card team-selection-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fas fa-users me-2"></i>Team Selection
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <label for="teamSelect" class="form-label">Select Team to Manage</label>
+          <select id="teamSelect" class="form-select" [(ngModel)]="selectedTeamId" (change)="loadRoster()">
+            <option value="">-- Choose a Team --</option>
+            <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+          </select>
+        </div>
+        <div class="col-md-4 text-end">
+          <div *ngIf="loading" class="d-flex align-items-center justify-content-end">
+            <div class="spinner-border me-2" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="text-muted">Loading roster...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Team Info Display -->
+  <div *ngIf="selectedTeam" class="team-info">
+    <div class="d-flex align-items-center gap-3">
       <img *ngIf="selectedTeam.logoUrl"
            [src]="selectedTeam.logoUrl"
            alt="Team Logo"
            width="80"
            height="80"
-           class="rounded border" />
-      <h4 class="mb-0">{{ selectedTeam.name }}</h4>
+           class="team-logo" />
+      <div>
+        <h4 class="team-name mb-1">{{ selectedTeam.name }}</h4>
+        <p class="text-muted mb-0">
+          <i class="fas fa-users me-1"></i>{{ roster.length }} players
+          <span class="mx-2">•</span>
+          <i class="fas fa-calendar me-1"></i>Week {{ selectedWeek }}
+        </p>
+      </div>
     </div>
   </div>
 
-  <!-- Roster Table -->
-  <div *ngIf="!loading && roster.length > 0">
-    <table class="table table-bordered table-hover">
-      <thead class="table-light">
-        <tr>
-          <th>Name</th>
-          <th>Number</th>
-          <th>Position</th>
-          <th>Submitted Progression</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let player of roster">
-          <td>{{ player.name }}</td>
-          <td>{{ player.number }}</td>
-          <td>{{ player.position }}</td>
-          <td>{{ player.progression }}</td>
-          <td>
-            <span [ngClass]="{
-              'badge bg-secondary': player.status === 'N/A',
-              'badge bg-warning text-dark': player.status === 'pending',
-              'badge bg-success': player.status === 'processed'
-            }">
-              {{ player.status }}
-            </span>
-          </td>
-          <td>
-            <button class="btn btn-sm btn-success"
-                    (click)="markAsProcessed(player.id, player.progressionDocId!)"
-                    [disabled]="player.status === 'processed' || !player.progressionDocId">
-              Mark as Processed
-            </button>
-            <button class="btn btn-sm btn-outline-info ms-2"
-                    (click)="showAttributes(player.id, player.progression)"
-                    [disabled]="player.progression === 'Not submitted'">
-              View Attributes
-            </button>
-            <button class="btn btn-sm btn-outline-danger ms-2"
-                    (click)="undoProcessed(player.id, player.progressionDocId!)"
-                    [disabled]="player.status !== 'processed'">
-              Undo
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <!-- Roster Management Table -->
+  <div *ngIf="!loading && roster.length > 0" class="card roster-card">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fas fa-clipboard-list me-2"></i>Player Progression Management
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th><i class="fas fa-user me-1"></i>Player Name</th>
+              <th><i class="fas fa-hashtag me-1"></i>Number</th>
+              <th><i class="fas fa-map-marker-alt me-1"></i>Position</th>
+              <th><i class="fas fa-dumbbell me-1"></i>Training Program</th>
+              <th><i class="fas fa-flag me-1"></i>Status</th>
+              <th><i class="fas fa-tools me-1"></i>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of roster" 
+                [class.status-processed]="player.status === 'processed'"
+                [class.status-pending]="player.status === 'pending'"
+                [class.status-na]="player.status === 'N/A'">
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="status-dot me-2" 
+                       [class.processed]="player.status === 'processed'"
+                       [class.pending]="player.status === 'pending'"
+                       [class.na]="player.status === 'N/A'"></div>
+                  <strong>{{ player.name }}</strong>
+                </div>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark">#{{ player.number }}</span>
+              </td>
+              <td>
+                <span class="badge bg-primary">{{ player.position }}</span>
+              </td>
+              <td>
+                <span *ngIf="player.progression !== 'Not submitted'" class="text-success">
+                  <i class="fas fa-check-circle me-1"></i>{{ player.progression }}
+                </span>
+                <span *ngIf="player.progression === 'Not submitted'" class="text-muted">
+                  <i class="fas fa-minus-circle me-1"></i>Not submitted
+                </span>
+              </td>
+              <td>
+                <span class="badge" 
+                      [class.bg-secondary]="player.status === 'N/A'"
+                      [class.bg-warning]="player.status === 'pending'"
+                      [class.bg-success]="player.status === 'processed'">
+                  {{ player.status }}
+                </span>
+              </td>
+              <td>
+                <div class="btn-group" role="group">
+                  <button class="btn btn-sm btn-success"
+                          (click)="markAsProcessed(player.id, player.progressionDocId!)"
+                          [disabled]="player.status === 'processed' || !player.progressionDocId"
+                          title="Mark as processed">
+                    <i class="fas fa-check me-1"></i>Process
+                  </button>
+                  <button class="btn btn-sm btn-outline-info"
+                          (click)="showAttributes(player.id, player.progression)"
+                          [disabled]="player.progression === 'Not submitted'"
+                          title="View player attributes">
+                    <i class="fas fa-eye me-1"></i>Attributes
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger"
+                          (click)="undoProcessed(player.id, player.progressionDocId!)"
+                          [disabled]="player.status !== 'processed'"
+                          title="Undo processing">
+                    <i class="fas fa-undo me-1"></i>Undo
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- Attribute Display Table -->
-  <div *ngIf="showAttributesPlayerId">
-    <h5 class="mt-4">
-      Attributes for 
-      <span>
-        {{ getPlayerNameById(showAttributesPlayerId) }}
-      </span>
-    </h5>
-  
-    <table class="table table-bordered table-sm">
-      <thead>
-        <tr>
-          <th *ngFor="let attr of attributeDisplayOrder">{{ attr }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td *ngFor="let attr of attributeDisplayOrder"
-              [ngClass]="{ 'text-success fw-bold': affectedAttributes.includes(attr) }">
-            {{ selectedPlayerAttributes[attr] !== undefined ? selectedPlayerAttributes[attr] : '-' }}
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div *ngIf="showAttributesPlayerId" class="card mt-4">
+    <div class="card-header bg-info text-white">
+      <h5 class="mb-0">
+        <i class="fas fa-chart-bar me-2"></i>
+        Player Attributes: {{ getPlayerNameById(showAttributesPlayerId) }}
+      </h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th *ngFor="let attr of attributeDisplayOrder" class="text-center">{{ attr }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td *ngFor="let attr of attributeDisplayOrder" 
+                  class="text-center"
+                  [class.text-success]="affectedAttributes.includes(attr)"
+                  [class.fw-bold]="affectedAttributes.includes(attr)">
+                <span *ngIf="affectedAttributes.includes(attr)" class="badge bg-success me-1">
+                  <i class="fas fa-arrow-up"></i>
+                </span>
+                {{ selectedPlayerAttributes[attr] !== undefined ? selectedPlayerAttributes[attr] : '-' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer bg-light">
+        <small class="text-muted">
+          <i class="fas fa-info-circle me-1"></i>
+          <span class="badge bg-success me-1"><i class="fas fa-arrow-up"></i></span>
+          Highlighted attributes will be affected by the selected training program
+        </small>
+      </div>
+    </div>
   </div>
-  
 
-  <!-- No players message -->
-  <div *ngIf="!loading && roster.length === 0 && selectedTeamId">
-    <p class="text-muted">No players found for this team.</p>
+  <!-- Empty State Messages -->
+  <div *ngIf="!loading && roster.length === 0 && selectedTeamId" class="card">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-users fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">No Players Found</h5>
+      <p class="text-muted">This team doesn't have any players in their roster yet.</p>
+    </div>
+  </div>
+
+  <div *ngIf="!selectedTeamId" class="card">
+    <div class="card-body text-center py-5">
+      <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">Select a Team</h5>
+      <p class="text-muted">Choose a team from the dropdown above to manage player progressions.</p>
+    </div>
   </div>
 </div>
