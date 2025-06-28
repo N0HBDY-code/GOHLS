@@ -19,8 +19,10 @@ export class PlayerManagerComponent implements OnInit {
   private router: Router = inject(Router);
 
   player: any = null;
+  pendingPlayer: any = null;
   teamName: string = '';
   loading = true;
+  isPendingPlayer = false;
 
   trainingType: string = '';
   tempTrainingType: string = '';
@@ -89,21 +91,20 @@ export class PlayerManagerComponent implements OnInit {
     // Load progression settings first
     await this.loadProgressionSettings();
 
+    // First check for active player
     const playerQuery = query(
       collection(this.firestore, 'players'),
-      where('userId', '==', user.uid)
+      where('userId', '==', user.uid),
+      where('status', '==', 'active')
     );
-    const snapshot = await getDocs(playerQuery);
-    if (!snapshot.empty) {
-      this.player = snapshot.docs[0].data();
-      this.player.id = snapshot.docs[0].id;
+    const playerSnapshot = await getDocs(playerQuery);
+    
+    if (!playerSnapshot.empty) {
+      // Active player found
+      this.player = playerSnapshot.docs[0].data();
+      this.player.id = playerSnapshot.docs[0].id;
+      this.isPendingPlayer = false;
       
-      // Check if player is retired
-      if (this.player.status === 'retired') {
-        this.loading = false;
-        return;
-      }
-
       this.setTrainingOptions(this.player.position);
       await this.loadPlayerAttributes();
       await this.loadPlayerHistory();
@@ -122,7 +123,22 @@ export class PlayerManagerComponent implements OnInit {
           this.teamName = `${city} ${mascot}`.trim();
         }
       }
+    } else {
+      // No active player, check for pending player
+      const pendingQuery = query(
+        collection(this.firestore, 'pendingPlayers'),
+        where('userId', '==', user.uid),
+        where('status', '==', 'pending')
+      );
+      const pendingSnapshot = await getDocs(pendingQuery);
+      
+      if (!pendingSnapshot.empty) {
+        this.pendingPlayer = pendingSnapshot.docs[0].data();
+        this.pendingPlayer.id = pendingSnapshot.docs[0].id;
+        this.isPendingPlayer = true;
+      }
     }
+    
     this.loading = false;
   }
 

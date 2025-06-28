@@ -16,23 +16,6 @@
   </div>
 </div>
 
-<!-- Show pending player message -->
-<div *ngIf="!loading && hasPendingPlayer && !showCreateForm" class="container mt-4">
-  <div class="alert alert-warning text-center">
-    <h4><i class="fas fa-clock me-2"></i>Player Pending Approval</h4>
-    <p class="mb-3">{{ pendingPlayerName }} has been submitted for approval by league management.</p>
-    <p class="mb-3">
-      <small class="text-muted">
-        You will be notified once your player has been reviewed and approved. 
-        This process typically takes 24-48 hours.
-      </small>
-    </p>
-    <button class="btn btn-outline-primary" (click)="refreshPlayerStatus()">
-      <i class="fas fa-sync-alt me-2"></i>Check Status
-    </button>
-  </div>
-</div>
-
 <!-- Show player creation form -->
 <div *ngIf="!loading && showCreateForm">
   <div class="container mt-4">
@@ -167,7 +150,7 @@
   </div>
 </div>
 
-<!-- Player Manager -->
-<div *ngIf="!loading && hasActivePlayer">
+<!-- Player Manager for Active or Pending Players -->
+<div *ngIf="!loading && (hasActivePlayer || hasPendingPlayer)">
   <app-player-manager></app-player-manager>
 </div>

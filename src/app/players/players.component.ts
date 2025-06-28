@@ -203,12 +203,12 @@ export class PlayersComponent implements OnInit, OnDestroy {
         userDisplayName: user.displayName
       });
 
-      // Update component state immediately
+      // Update component state immediately to show pending player
       this.resetAllStates();
       this.hasPendingPlayer = true;
       this.pendingPlayerName = `${this.playerForm.firstName} ${this.playerForm.lastName}`;
 
-      alert('Your player has been submitted for approval! You will be notified once it has been reviewed by league management.');
+      alert('Your player has been submitted for approval! You can now view your pending player below.');
     } catch (error) {
       console.error('Error submitting player:', error);
       alert('Failed to submit player. Please try again.');
