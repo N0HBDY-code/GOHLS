@@ -131,18 +131,19 @@ export class TeamsComponent {
   async addTeam() {
     if (!this.canManageTeams) return;
 
-    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision || !this.selectedLeague) {
-      alert('All fields are required.');
+    // Check required fields (logo is now optional)
+    if (!this.city || !this.mascot || !this.selectedConference || !this.selectedDivision || !this.selectedLeague) {
+      alert('City, Mascot, League, Conference, and Division are required.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async () => {
+    // Function to create and save team
+    const createTeam = async (logoUrl?: string) => {
       const newTeam: Team = {
         city: this.city,
         mascot: this.mascot,
         logoFile: this.logoFile,
-        logoUrl: reader.result as string,
+        logoUrl: logoUrl || '', // Empty string if no logo
         conference: this.selectedConference,
         division: this.selectedDivision,
         league: this.selectedLeague,
@@ -164,20 +165,35 @@ export class TeamsComponent {
         tertiaryColor: newTeam.tertiaryColor
       });
 
-      this.city = '';
-      this.mascot = '';
-      this.logoFile = null;
-      this.selectedConference = '';
-      this.selectedDivision = '';
-      this.selectedLeague = '';
-      this.primaryColor = '#000000';
-      this.secondaryColor = '#FFFFFF';
-      this.tertiaryColor = '#808080';
-      this.showAddTeamForm = false;
+      // Reset form
+      this.resetForm();
       await this.loadTeams();
     };
 
-    reader.readAsDataURL(this.logoFile);
+    // If logo file is provided, read it and create team with logo
+    if (this.logoFile) {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        await createTeam(reader.result as string);
+      };
+      reader.readAsDataURL(this.logoFile);
+    } else {
+      // Create team without logo
+      await createTeam();
+    }
+  }
+
+  private resetForm() {
+    this.city = '';
+    this.mascot = '';
+    this.logoFile = null;
+    this.selectedConference = '';
+    this.selectedDivision = '';
+    this.selectedLeague = '';
+    this.primaryColor = '#000000';
+    this.secondaryColor = '#FFFFFF';
+    this.tertiaryColor = '#808080';
+    this.showAddTeamForm = false;
   }
 
   async deleteTeam(id: string) {
