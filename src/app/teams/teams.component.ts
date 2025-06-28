@@ -1,8 +1,9 @@
 import { Component } from '@angular/core';
 import { Firestore, collection, addDoc, getDocs, doc, deleteDoc, updateDoc } from '@angular/fire/firestore';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../auth.service';
+import { CommonModule } from '@angular/common';
 
 interface Team {
   id?: string;
@@ -12,6 +13,15 @@ interface Team {
   logoUrl?: string;
   conference: string;
   division: string;
+  league: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  tertiaryColor?: string;
+}
+
+interface Conference {
+  name: string;
+  divisions: string[];
 }
 
 @Component({
@@ -27,12 +37,29 @@ export class TeamsComponent {
   logoFile: File | null = null;
   selectedConference = '';
   selectedDivision = '';
+  selectedLeague = '';
   teams: Team[] = [];
+  canManageTeams = false;
+  primaryColor = '#000000';
+  secondaryColor = '#FFFFFF';
+  tertiaryColor = '#808080';
+  showAddTeamForm = false;
+  currentLeagueView: 'major' | 'minor' = 'major';
 
   showEditTeamModal = false;
   editTeamData?: Team;
 
-  conferences = [
+  // Conference Management
+  showAddConferenceForm = false;
+  newConferenceName = '';
+  
+  // Division Management
+  showAddDivisionForm = false;
+  selectedConferenceForDivision = '';
+  newDivisionName = '';
+
+  // Separate conference structures for each league
+  majorLeagueConferences: Conference[] = [
     {
       name: 'Mr. Hockey Conference',
       divisions: ['Europe Division', 'Great Lakes Division', 'Atlantic Division']
@@ -43,14 +70,46 @@ export class TeamsComponent {
     }
   ];
 
-  constructor(private firestore: Firestore, private router: Router) {
+  minorLeagueConferences: Conference[] = [
+    {
+      name: 'Development Conference',
+      divisions: ['Eastern Development', 'Western Development', 'Central Development']
+    },
+    {
+      name: 'Prospect Conference',
+      divisions: ['Northern Prospects', 'Southern Prospects', 'Coastal Prospects']
+    }
+  ];
+
+  constructor(
+    private firestore: Firestore, 
+    private router: Router,
+    private authService: AuthService
+  ) {
     this.loadTeams();
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageTeams = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
+  }
+
+  get conferences(): Conference[] {
+    return this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+  }
+
+  get availableConferences(): Conference[] {
+    return this.selectedLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
   }
 
   async loadTeams() {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
-    this.teams = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+    this.teams = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      league: doc.data()['league'] || 'major' // Default to major league for existing teams
+    } as Team));
   }
 
   onFileSelected(event: any) {
@@ -63,8 +122,16 @@ export class TeamsComponent {
     }
   }
 
+  onLeagueChange() {
+    // Reset conference and division when league changes
+    this.selectedConference = '';
+    this.selectedDivision = '';
+  }
+
   async addTeam() {
-    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision) {
+    if (!this.canManageTeams) return;
+
+    if (!this.city || !this.mascot || !this.logoFile || !this.selectedConference || !this.selectedDivision || !this.selectedLeague) {
       alert('All fields are required.');
       return;
     }
@@ -77,7 +144,11 @@ export class TeamsComponent {
         logoFile: this.logoFile,
         logoUrl: reader.result as string,
         conference: this.selectedConference,
-        division: this.selectedDivision
+        division: this.selectedDivision,
+        league: this.selectedLeague,
+        primaryColor: this.primaryColor,
+        secondaryColor: this.secondaryColor,
+        tertiaryColor: this.tertiaryColor
       };
 
       await addDoc(collection(this.firestore, 'teams'), {
@@ -86,7 +157,11 @@ export class TeamsComponent {
         logoUrl: newTeam.logoUrl,
         conference: newTeam.conference,
         division: newTeam.division,
-        name: `${newTeam.city} ${newTeam.mascot}`
+        league: newTeam.league,
+        name: `${newTeam.city} ${newTeam.mascot}`,
+        primaryColor: newTeam.primaryColor,
+        secondaryColor: newTeam.secondaryColor,
+        tertiaryColor: newTeam.tertiaryColor
       });
 
       this.city = '';
@@ -94,6 +169,11 @@ export class TeamsComponent {
       this.logoFile = null;
       this.selectedConference = '';
       this.selectedDivision = '';
+      this.selectedLeague = '';
+      this.primaryColor = '#000000';
+      this.secondaryColor = '#FFFFFF';
+      this.tertiaryColor = '#808080';
+      this.showAddTeamForm = false;
       await this.loadTeams();
     };
 
@@ -101,6 +181,14 @@ export class TeamsComponent {
   }
 
   async deleteTeam(id: string) {
+    if (!this.canManageTeams) return;
+
+    const team = this.teams.find(t => t.id === id);
+    if (!team) return;
+
+    const confirmMessage = `Are you sure you want to delete ${team.city} ${team.mascot}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+
     await deleteDoc(doc(this.firestore, `teams/${id}`));
     await this.loadTeams();
   }
@@ -109,24 +197,40 @@ export class TeamsComponent {
     this.router.navigate(['/teams', teamId]);
   }
 
-  getTeamsByDivision(conference: string, division: string): Team[] {
-    return this.teams.filter(t => t.conference === conference && t.division === division);
+  getTeamsByDivisionAndLeague(conference: string, division: string, league: string): Team[] {
+    return this.teams.filter(t => 
+      t.conference === conference && 
+      t.division === division && 
+      (t.league || 'major') === league
+    );
   }
 
   openEditTeamModal(team: Team) {
-    this.editTeamData = { ...team, logoFile: null }; // reset logoFile
+    if (!this.canManageTeams) return;
+    this.editTeamData = { 
+      ...team, 
+      logoFile: null,
+      league: team.league || 'major',
+      primaryColor: team.primaryColor || '#000000',
+      secondaryColor: team.secondaryColor || '#FFFFFF',
+      tertiaryColor: team.tertiaryColor || '#808080'
+    };
     this.showEditTeamModal = true;
   }
 
   async saveTeamChanges() {
-    if (!this.editTeamData?.id) return;
+    if (!this.canManageTeams || !this.editTeamData?.id) return;
 
     const updates: any = {
       city: this.editTeamData.city,
       mascot: this.editTeamData.mascot,
       conference: this.editTeamData.conference,
       division: this.editTeamData.division,
-      name: `${this.editTeamData.city} ${this.editTeamData.mascot}`
+      league: this.editTeamData.league,
+      name: `${this.editTeamData.city} ${this.editTeamData.mascot}`,
+      primaryColor: this.editTeamData.primaryColor,
+      secondaryColor: this.editTeamData.secondaryColor,
+      tertiaryColor: this.editTeamData.tertiaryColor
     };
 
     if (this.editTeamData.logoFile) {
@@ -148,7 +252,76 @@ export class TeamsComponent {
   }
 
   getDivisionsForConference(confName: string): string[] {
-    const conf = this.conferences.find(c => c.name === confName);
+    const currentConferences = this.editTeamData?.league === 'minor' ? this.minorLeagueConferences : this.majorLeagueConferences;
+    const conf = currentConferences.find(c => c.name === confName);
     return conf?.divisions ?? [];
+  }
+
+  addConference() {
+    if (!this.canManageTeams || !this.newConferenceName.trim()) return;
+    
+    const targetConferences = this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    
+    targetConferences.push({
+      name: this.newConferenceName,
+      divisions: []
+    });
+    
+    this.newConferenceName = '';
+    this.showAddConferenceForm = false;
+  }
+
+  addDivision() {
+    if (!this.canManageTeams || !this.newDivisionName.trim() || !this.selectedConferenceForDivision) return;
+    
+    const targetConferences = this.currentLeagueView === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    const conference = targetConferences.find(c => c.name === this.selectedConferenceForDivision);
+    
+    if (conference) {
+      conference.divisions.push(this.newDivisionName);
+    }
+    
+    this.newDivisionName = '';
+    this.selectedConferenceForDivision = '';
+    this.showAddDivisionForm = false;
+  }
+
+  deleteConference(conferenceName: string) {
+    if (!this.canManageTeams) return;
+    
+    const currentLeague = this.currentLeagueView;
+    if (this.teams.some(t => t.conference === conferenceName && (t.league || 'major') === currentLeague)) {
+      alert('Cannot delete conference with existing teams');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete the ${conferenceName} from ${currentLeague} league? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+    
+    if (currentLeague === 'major') {
+      this.majorLeagueConferences = this.majorLeagueConferences.filter(c => c.name !== conferenceName);
+    } else {
+      this.minorLeagueConferences = this.minorLeagueConferences.filter(c => c.name !== conferenceName);
+    }
+  }
+
+  deleteDivision(conferenceName: string, divisionName: string) {
+    if (!this.canManageTeams) return;
+    
+    const currentLeague = this.currentLeagueView;
+    if (this.teams.some(t => t.conference === conferenceName && t.division === divisionName && (t.league || 'major') === currentLeague)) {
+      alert('Cannot delete division with existing teams');
+      return;
+    }
+
+    const confirmMessage = `Are you sure you want to delete the ${divisionName} from ${conferenceName} in ${currentLeague} league? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) return;
+    
+    const targetConferences = currentLeague === 'major' ? this.majorLeagueConferences : this.minorLeagueConferences;
+    const conference = targetConferences.find(c => c.name === conferenceName);
+    
+    if (conference) {
+      conference.divisions = conference.divisions.filter(d => d !== divisionName);
+    }
   }
 }

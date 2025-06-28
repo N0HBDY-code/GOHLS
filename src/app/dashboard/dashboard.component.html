@@ -21,14 +21,4 @@
       </div>
     </div>
   </div>
-
-  <div *ngFor="let game of games$ | async" class="mb-2">
-    <div class="card">
-      <div class="card-body">
-        <h5 class="card-title">{{ game.name || 'Untitled Game' }}</h5>
-        <p class="card-text">Date: {{ game.date?.toDate() | date }}</p>
-        <p class="card-text">Score: {{ game.totalPoints }}</p>
-      </div>
-    </div>
-  </div>
 </div>

@@ -1,16 +1,22 @@
 import { Component, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
 import {
   Firestore,
   collection,
   getDocs,
   addDoc,
   doc,
-  setDoc,
+  query,
+  where,
+  deleteDoc,
   getDoc,
-  deleteDoc
+  setDoc,
+  updateDoc,
+  orderBy
 } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -22,14 +28,20 @@ interface Team {
 
 interface Game {
   id?: string;
-  teamAId: string;
-  teamBId: string;
-  date: string;
-  homeTeam: string;
-  awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  week: number;
+  day: string;
+  season: number;
+  isRival: boolean;
+  homeTeam?: string;
+  awayTeam?: string;
   homeLogo?: string;
   awayLogo?: string;
   tags?: string[];
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
 }
 
 @Component({
@@ -37,149 +49,253 @@ interface Game {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './games.component.html',
-  styleUrl: './games.component.css'
+  styleUrls: ['./games.component.css']
 })
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
-  schedule: Game[] = [];
-  selectedTeamId: string = '';
-  opponent: string = '';
-  date: string = '';
+  currentSeason = 1;
+  tempSeason = 1;
+  editingSeason = false;
+  loading = false;
+  isClearing = false;
+  selectedWeek = 1;
+  activeWeeks: number[] = [];
+  weekSchedule: Map<number, Game[]> = new Map();
+  gamesCache = new Map<string, Game>();
+  canManageGames = false;
+  canManageSeason = false;
+  isDeveloper = false;
 
-  weeks = 10;
-  daysPerWeek = 3;
-  gamesPerDay = 3;
-  intraDivGames = 2;
-  intraConfGames = 1;
-  interConfGames = 1;
+  newGame: {
+    homeTeamId: string;
+    awayTeamId: string;
+    week: number;
+    day: number;
+    season: number;
+    isRival: boolean;
+  } = {
+    homeTeamId: '',
+    awayTeamId: '',
+    week: 1,
+    day: 1,
+    season: 1,
+    isRival: false
+  };
 
-  constructor(private firestore: Firestore) {}
+  constructor(
+    private firestore: Firestore, 
+    private router: Router,
+    private authService: AuthService
+  ) {}
 
   async ngOnInit() {
-    const snapshot = await getDocs(collection(this.firestore, 'teams'));
+    // Subscribe to role changes
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageGames = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+      this.canManageSeason = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+      this.isDeveloper = roles.includes('developer');
+    });
+
+    const teamsRef = collection(this.firestore, 'teams');
+    const snapshot = await getDocs(teamsRef);
     this.teams = snapshot.docs.map(doc => ({
       id: doc.id,
-      name: doc.data()['name'] || 'Unnamed',
-      conference: doc.data()['conference'] || 'Unknown',
-      division: doc.data()['division'] || 'Unknown',
-      logoUrl: doc.data()['logoUrl'] || ''
-    }));
+      ...doc.data()
+    } as Team));
+
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
+    }
   }
 
-  async onTeamSelect() {
-    if (!this.selectedTeamId) return;
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    const snapshot = await getDocs(gamesRef);
-    this.schedule = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Game));
+  async loadActiveWeeks() {
+    const gamesQuery = query(
+      collection(this.firestore, 'games'),
+      where('season', '==', this.currentSeason)
+    );
+    
+    const snapshot = await getDocs(gamesQuery);
+    const weeks = new Set(snapshot.docs.map(doc => doc.data()['week']));
+    this.activeWeeks = Array.from(weeks).sort((a, b) => a - b);
   }
 
-  async createGame() {
-    if (!this.selectedTeamId || !this.opponent || !this.date) {
+  async onWeekChange(week: number) {
+    this.selectedWeek = week;
+    await this.loadWeek(week);
+  }
+
+  async loadWeek(weekNumber: number) {
+    if (this.loading) return;
+    
+    this.loading = true;
+    try {
+      const gamesQuery = query(
+        collection(this.firestore, 'games'),
+        where('season', '==', this.currentSeason),
+        where('week', '==', weekNumber)
+      );
+
+      const snapshot = await getDocs(gamesQuery);
+      const weekGames = await Promise.all(
+        snapshot.docs.map(async doc => {
+          const gameData = doc.data();
+          const homeTeam = this.teams.find(t => t.id === gameData['homeTeamId']);
+          const awayTeam = this.teams.find(t => t.id === gameData['awayTeamId']);
+          
+          return {
+            id: doc.id,
+            ...gameData,
+            homeTeam: homeTeam?.name || 'Unknown Team',
+            awayTeam: awayTeam?.name || 'Unknown Team',
+            homeLogo: homeTeam?.logoUrl,
+            awayLogo: awayTeam?.logoUrl,
+            tags: gameData['tags'] || [],
+            homeScore: gameData['homeScore'],
+            awayScore: gameData['awayScore'],
+            period: gameData['period']
+          } as Game;
+        })
+      );
+
+      this.weekSchedule.set(weekNumber, weekGames);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  getWeekSchedule(week: number): Game[] | undefined {
+    return this.weekSchedule.get(week);
+  }
+
+  getDays(games: Game[] | undefined): string[] {
+    if (!games) return [];
+    const days = new Set(games.map(g => g.day));
+    return Array.from(days).sort();
+  }
+
+  getGamesForDay(games: Game[] | undefined, day: string): Game[] {
+    if (!games) return [];
+    return games.filter(g => g.day === day);
+  }
+
+  formatDay(day: number): string {
+    return `D${day}`;
+  }
+
+  hasScore(game: Game): boolean {
+    return (game.homeScore !== undefined && game.homeScore !== null) || 
+           (game.awayScore !== undefined && game.awayScore !== null) ||
+           (game.period !== undefined && game.period !== null);
+  }
+
+  async addGame() {
+    if (!this.canManageGames) return;
+
+    if (!this.newGame.homeTeamId || !this.newGame.awayTeamId || !this.newGame.day) {
       alert('Please fill in all required fields');
       return;
     }
 
+    const homeTeam = this.teams.find(t => t.id === this.newGame.homeTeamId);
+    const awayTeam = this.teams.find(t => t.id === this.newGame.awayTeamId);
+    
+    if (!homeTeam || !awayTeam) return;
+
+    const tags: string[] = [];
+    if (this.newGame.isRival) {
+      tags.push('rival');
+    } else if (homeTeam.division === awayTeam.division) {
+      tags.push('division');
+    } else if (homeTeam.conference === awayTeam.conference) {
+      tags.push('conference');
+    }
+
     const gameData = {
-      opponent: this.opponent,
-      date: this.date,
-      createdAt: new Date()
+      ...this.newGame,
+      day: this.formatDay(this.newGame.day),
+      season: this.currentSeason,
+      tags
     };
 
-    const gamesRef = collection(this.firestore, `teams/${this.selectedTeamId}/games`);
-    await addDoc(gamesRef, gameData);
+    const gameRef = await addDoc(collection(this.firestore, 'games'), gameData);
+    const gameId = gameRef.id;
 
-    // Reset form
-    this.opponent = '';
-    this.date = '';
+    await Promise.all([
+      setDoc(doc(this.firestore, `teams/${homeTeam.id}/games/${gameId}`), {
+        ...gameData,
+        isHome: true,
+        opponent: awayTeam.name,
+        opponentId: awayTeam.id
+      }),
+      setDoc(doc(this.firestore, `teams/${awayTeam.id}/games/${gameId}`), {
+        ...gameData,
+        isHome: false,
+        opponent: homeTeam.name,
+        opponentId: homeTeam.id
+      })
+    ]);
 
-    // Refresh games list
-    await this.onTeamSelect();
+    this.newGame = {
+      homeTeamId: '',
+      awayTeamId: '',
+      week: this.newGame.week,
+      day: 1,
+      season: this.currentSeason,
+      isRival: false
+    };
+
+    await this.loadActiveWeeks();
+    await this.loadWeek(this.selectedWeek);
   }
 
-  async generateSchedule() {
-    const schedule: Game[] = [];
-    const allDates: string[] = [];
-    const today = new Date();
+  async clearAllGames() {
+    if (!this.isDeveloper) return;
 
-    for (let w = 0; w < this.weeks; w++) {
-      for (let d = 0; d < this.daysPerWeek; d++) {
-        const date = new Date(today);
-        date.setDate(today.getDate() + (w * 7) + d);
-        allDates.push(date.toISOString().split('T')[0]);
-      }
+    if (!confirm('Are you sure you want to clear all games? This cannot be undone.')) {
+      return;
     }
 
-    const matchups = new Set<string>();
-    const getKey = (a: string, b: string) => [a, b].sort().join('-');
-    const getRandomDate = (): string => {
-      let attempts = 0;
-      while (attempts++ < 100) {
-        const date = allDates[Math.floor(Math.random() * allDates.length)];
-        const count = schedule.filter(g => g.date === date).length;
-        if (count < this.gamesPerDay) return date;
+    this.isClearing = true;
+    try {
+      const gamesQuery = query(
+        collection(this.firestore, 'games'),
+        where('season', '==', this.currentSeason)
+      );
+      
+      const snapshot = await getDocs(gamesQuery);
+      
+      for (const doc of snapshot.docs) {
+        await deleteDoc(doc.ref);
       }
-      return allDates[0];
-    };
 
-    const canPlay = (team: string, date: string) => {
-      return !schedule.some(g => (g.homeTeam === team || g.awayTeam === team) && g.date === date);
-    };
-
-    const attemptSchedule = (groupA: Team[], groupB: Team[], gamesPer: number, isCross = false) => {
-      for (const teamA of groupA) {
-        const pool = isCross ? groupB : groupB.filter(t => t.id !== teamA.id);
-        for (const teamB of pool) {
-          const key = getKey(teamA.id, teamB.id);
-          if (matchups.has(key)) continue;
-
-          for (let i = 0; i < gamesPer; i++) {
-            const date = getRandomDate();
-            if (canPlay(teamA.name, date) && canPlay(teamB.name, date)) {
-              const home = Math.random() < 0.5 ? teamA : teamB;
-              const away = home.id === teamA.id ? teamB : teamA;
-              schedule.push({
-                teamAId: teamA.id,
-                teamBId: teamB.id,
-                date,
-                homeTeam: home.name,
-                awayTeam: away.name,
-                homeLogo: home.logoUrl,
-                awayLogo: away.logoUrl,
-                tags: teamA.division === teamB.division && teamA.conference === teamB.conference ? ['rivalry'] : []
-              });
-            }
-          }
-          matchups.add(key);
-        }
-      }
-    };
-
-    const conferences = [...new Set(this.teams.map(t => t.conference))];
-
-    for (const conf of conferences) {
-      const confTeams = this.teams.filter(t => t.conference === conf);
-      const divisions = [...new Set(confTeams.map(t => t.division))];
-      for (const div of divisions) {
-        const divTeams = confTeams.filter(t => t.division === div);
-        attemptSchedule(divTeams, divTeams, this.intraDivGames);
-      }
-      for (let i = 0; i < divisions.length; i++) {
-        for (let j = i + 1; j < divisions.length; j++) {
-          const divA = confTeams.filter(t => t.division === divisions[i]);
-          const divB = confTeams.filter(t => t.division === divisions[j]);
-          attemptSchedule(divA, divB, this.intraConfGames);
-        }
-      }
+      this.weekSchedule.clear();
+      this.activeWeeks = [];
+      this.selectedWeek = 1;
+    } finally {
+      this.isClearing = false;
     }
+  }
 
-    for (let i = 0; i < conferences.length; i++) {
-      for (let j = i + 1; j < conferences.length; j++) {
-        const confA = this.teams.filter(t => t.conference === conferences[i]);
-        const confB = this.teams.filter(t => t.conference === conferences[j]);
-        attemptSchedule(confA, confB, this.interConfGames, true);
-      }
+  async saveSeason() {
+    if (!this.canManageSeason) return;
+
+    this.currentSeason = this.tempSeason;
+    this.editingSeason = false;
+    await this.loadActiveWeeks();
+    if (this.activeWeeks.length > 0) {
+      this.selectedWeek = this.activeWeeks[0];
+      await this.loadWeek(this.selectedWeek);
     }
+  }
 
-    this.schedule = schedule.sort((a, b) => a.date.localeCompare(b.date));
+  viewGame(game: Game) {
+    if (!game.id || !game.homeTeamId) return;
+    this.router.navigate(['/games', game.homeTeamId, game.id]);
   }
 }

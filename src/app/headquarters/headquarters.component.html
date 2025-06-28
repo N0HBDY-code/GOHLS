@@ -1,0 +1,206 @@
+<div class="container mt-4">
+  <div class="row">
+    <div class="col-md-12">
+      <!-- New Players Section -->
+      <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+          <h4 class="mb-0">
+            <i class="fas fa-user-plus me-2"></i>New Players Awaiting Assignment
+            <span class="badge bg-dark ms-2">{{ newPlayers.length }}</span>
+          </h4>
+        </div>
+        <div class="card-body">
+          <div *ngIf="loadingNewPlayers" class="text-center">
+            <div class="spinner-border text-warning"></div>
+            <p>Loading new players...</p>
+          </div>
+
+          <div *ngIf="!loadingNewPlayers && newPlayers.length === 0" class="text-center text-muted">
+            <i class="fas fa-check-circle fa-3x mb-3"></i>
+            <p>No new players awaiting assignment</p>
+          </div>
+
+          <div *ngFor="let player of newPlayers" class="card mb-3 border-warning">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-4">
+                  <h5 class="mb-1">{{ player.firstName }} {{ player.lastName }}</h5>
+                  <p class="text-muted mb-1">{{ player.position }} • {{ player.archetype }}</p>
+                  <small class="text-muted">Created: {{ player.createdDate?.toDate?.() | date:'medium' }}</small>
+                </div>
+                <div class="col-md-3">
+                  <div class="row text-center">
+                    <div class="col-4">
+                      <small class="text-muted">Age</small>
+                      <div class="fw-bold">{{ player.age }}</div>
+                    </div>
+                    <div class="col-4">
+                      <small class="text-muted">Height</small>
+                      <div class="fw-bold">{{ player.height }}"</div>
+                    </div>
+                    <div class="col-4">
+                      <small class="text-muted">Weight</small>
+                      <div class="fw-bold">{{ player.weight }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <select class="form-select" [(ngModel)]="player.selectedTeamId">
+                    <option value="">Select Team</option>
+                    <optgroup label="Major League">
+                      <option *ngFor="let team of majorLeagueTeams" [value]="team.id">
+                        {{ team.name }}
+                      </option>
+                    </optgroup>
+                    <optgroup label="Minor League">
+                      <option *ngFor="let team of minorLeagueTeams" [value]="team.id">
+                        {{ team.name }}
+                      </option>
+                    </optgroup>
+                  </select>
+                </div>
+                <div class="col-md-2">
+                  <button class="btn btn-success w-100" 
+                          (click)="assignPlayerToTeam(player)"
+                          [disabled]="!player.selectedTeamId || loading">
+                    <i class="fas fa-check me-1"></i>Assign
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Role Management Card -->
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Role Management</h4>
+        </div>
+        <div class="card-body">
+          <!-- Search Form -->
+          <div class="input-group mb-3">
+            <input 
+              type="text" 
+              class="form-control" 
+              [(ngModel)]="searchUsername" 
+              placeholder="Enter username"
+              [disabled]="loading"
+            >
+            <button 
+              class="btn btn-primary" 
+              (click)="searchUser()"
+              [disabled]="loading"
+            >
+              <span *ngIf="loading" class="spinner-border spinner-border-sm me-1"></span>
+              Search
+            </button>
+          </div>
+
+          <!-- Error/Success Messages -->
+          <div *ngIf="error" class="alert alert-danger">{{ error }}</div>
+          <div *ngIf="success" class="alert alert-success">{{ success }}</div>
+
+          <!-- User Details -->
+          <div *ngIf="selectedUser" class="card mt-3">
+            <div class="card-body">
+              <h6>User: {{ selectedUser.displayName }}</h6>
+              <p class="text-muted mb-3">Email: {{ selectedUser.email }}</p>
+
+              <!-- Current Roles -->
+              <div class="mb-3">
+                <strong>Current Roles:</strong>
+                <div class="mt-2">
+                  <span *ngFor="let role of selectedUser.roles" 
+                        class="badge bg-secondary me-2 mb-2">
+                    {{ role }}
+                    <button class="btn btn-sm text-white ms-1" 
+                            (click)="removeRole(role)"
+                            [disabled]="loading">
+                      ×
+                    </button>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Add Role -->
+              <div class="mt-3">
+                <div class="input-group">
+                  <select class="form-select" [(ngModel)]="selectedRole" [disabled]="loading">
+                    <option value="">Select role to add...</option>
+                    <option *ngFor="let role of availableRoles" 
+                            [value]="role"
+                            [disabled]="selectedUser.roles.includes(role)">
+                      {{ role }}
+                    </option>
+                  </select>
+                  <button class="btn btn-success" 
+                          (click)="addRole()"
+                          [disabled]="!selectedRole || loading">
+                    Add Role
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trade Approval Card -->
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">Trade Approvals</h4>
+        </div>
+        <div class="card-body">
+          <div *ngIf="loadingTrades" class="text-center">
+            <div class="spinner-border text-primary"></div>
+            <p>Loading trades...</p>
+          </div>
+
+          <div *ngIf="!loadingTrades && pendingTrades.length === 0" class="text-center text-muted">
+            No trades pending approval
+          </div>
+
+          <div *ngFor="let trade of pendingTrades" class="card mb-3">
+            <div class="card-body">
+              <h5 class="card-title">Trade Proposal</h5>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <h6>{{ getTeamName(trade.fromTeamId) }} offers:</h6>
+                  <ul class="list-unstyled">
+                    <li *ngFor="let playerId of trade.playersOffered">
+                      {{ getPlayerName(playerId) }}
+                    </li>
+                  </ul>
+                </div>
+                
+                <div class="col-md-6">
+                  <h6>{{ getTeamName(trade.toTeamId) }} offers:</h6>
+                  <ul class="list-unstyled">
+                    <li *ngFor="let playerId of trade.playersRequested">
+                      {{ getPlayerName(playerId) }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="mt-3 d-flex gap-2">
+                <button class="btn btn-success" 
+                        (click)="approveTrade(trade)"
+                        [disabled]="loading">
+                  Approve Trade
+                </button>
+                <button class="btn btn-danger" 
+                        (click)="denyTrade(trade)"
+                        [disabled]="loading">
+                  Deny Trade
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

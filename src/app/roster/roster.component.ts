@@ -1,9 +1,7 @@
 import { Component, Input, OnInit, NgZone } from '@angular/core';
-import { Firestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, updateDoc, query, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, addDoc, deleteDoc, doc, getDoc, getDocs, updateDoc, query, orderBy, limit, startAfter, DocumentData, QueryDocumentSnapshot, setDoc } from '@angular/fire/firestore';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { getDocsFromServer } from 'firebase/firestore';
-import { setDoc } from 'firebase/firestore';
 
 interface Player {
   id?: string;
@@ -19,9 +17,15 @@ interface Player {
   handedness?: string;
   age?: number;
   rookie?: boolean;
-  overall?: number;
   teamId: string;
   teamName?: string;
+  attributes?: Record<string, number>;
+  overall?: number;
+  salary?: number;
+  contractYears?: number;
+  capHit?: number;
+  signingBonus?: number;
+  performanceBonus?: number;
 }
 
 @Component({
@@ -39,13 +43,23 @@ export class RosterComponent implements OnInit {
   selectedPlayerId: string = '';
   lastPlayerDoc: QueryDocumentSnapshot<DocumentData> | null = null;
   playerPageSize = 5;
+  currentView: 'general' | 'attributes' | 'finances' = 'general';
+  teamCapSpace: number = 85000000; // Default cap space
 
-  // Edit mode
-  editModeId: string | null = null;
-  editFirstName = '';
-  editLastName = '';
-  editPosition = '';
-  editNumber: number | null = null;
+  skaterAttributes = [
+    'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
+    'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
+    'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
+    'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
+    'STK CHK'
+  ];
+
+  goalieAttributes = [
+    'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
+    'AGILITY', 'CONSIS', 'PK CHK', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
+    'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
+    'DRBLTY', 'VISION'
+  ];
 
   constructor(private firestore: Firestore, private ngZone: NgZone) {}
 
@@ -54,17 +68,69 @@ export class RosterComponent implements OnInit {
     await this.loadAvailablePlayers();
   }
 
+  get hasSkaters() {
+    return this.players.some(p => p.position !== 'G');
+  }
+
+  get hasGoalies() {
+    return this.players.some(p => p.position === 'G');
+  }
+
+  getSkaters() {
+    return this.players.filter(p => p.position !== 'G');
+  }
+
+  getGoalies() {
+    return this.players.filter(p => p.position === 'G');
+  }
+
+  formatCurrency(value: number | undefined): string {
+    if (!value) return '0';
+    return value.toLocaleString('en-US');
+  }
+
+  calculateOverall(player: Player): number {
+    if (!player.attributes) return 0;
+    
+    const attributes = player.position === 'G' ? this.goalieAttributes : this.skaterAttributes;
+    const values = attributes.map(attr => player.attributes?.[attr] || 0);
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+  }
+
   async loadPlayers() {
     const rosterRef = collection(this.firestore, `teams/${this.teamId}/roster`);
     const q = query(rosterRef, orderBy('firstName'), limit(this.playerPageSize));
     const snapshot = await getDocs(q);
     this.players = await Promise.all(snapshot.docs.map(async docSnap => {
-      const data = docSnap.data() as any;
+      const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
-        ...data,
-        number: data.jerseyNumber // map jerseyNumber to number
+        firstName: data['firstName'] || '',
+        lastName: data['lastName'] || '',
+        position: data['position'] || '',
+        number: data['jerseyNumber'] || 0,
+        teamId: data['teamId'] || '',
+        archetype: data['archetype'],
+        height: data['height'],
+        weight: data['weight'],
+        handedness: data['handedness'],
+        age: data['age'],
+        rookie: data['rookie'],
+        expiration: data['expiration'],
+        noTradeClause: data['noTradeClause'],
+        salary: data['salary'],
+        contractYears: data['contractYears'],
+        capHit: data['capHit'],
+        signingBonus: data['signingBonus'],
+        performanceBonus: data['performanceBonus']
       };
+
+      // Load attributes
+      const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
+      if (attributesSnap.exists()) {
+        player.attributes = attributesSnap.data() as Record<string, number>;
+        player.overall = this.calculateOverall(player);
+      }
 
       if (data['teamId']) {
         const teamSnap = await getDoc(doc(this.firestore, `teams/${data['teamId']}`));
@@ -86,8 +152,8 @@ export class RosterComponent implements OnInit {
   }
 
   async loadAvailablePlayers() {
-    const allPlayersSnap = await getDocsFromServer(collection(this.firestore, 'players'));
-    const rosterSnap = await getDocsFromServer(collection(this.firestore, `teams/${this.teamId}/roster`));
+    const allPlayersSnap = await getDocs(collection(this.firestore, 'players'));
+    const rosterSnap = await getDocs(collection(this.firestore, `teams/${this.teamId}/roster`));
 
     const rosterIds = new Set(rosterSnap.docs.map(doc => doc.id));
 
@@ -100,8 +166,11 @@ export class RosterComponent implements OnInit {
         const data = doc.data() as any;
         return {
           id: doc.id,
-          ...data,
-          number: data.jerseyNumber // map jerseyNumber to number
+          firstName: data['firstName'] || '',
+          lastName: data['lastName'] || '',
+          position: data['position'] || '',
+          number: data['jerseyNumber'] || 0,
+          teamId: data['teamId'] || ''
         } as Player;
       });
   }
@@ -112,27 +181,29 @@ export class RosterComponent implements OnInit {
     const q = query(rosterRef, orderBy('firstName'), startAfter(this.lastPlayerDoc), limit(this.playerPageSize));
     const snapshot = await getDocs(q);
     const nextPlayers = await Promise.all(snapshot.docs.map(async docSnap => {
-      const data = docSnap.data() as any;
+      const data = docSnap.data();
       const player: Player = {
         id: docSnap.id,
-        ...data,
-        number: data.jerseyNumber // map jerseyNumber to number
+        firstName: data['firstName'] || '',
+        lastName: data['lastName'] || '',
+        position: data['position'] || '',
+        number: data['jerseyNumber'] || 0,
+        teamId: data['teamId'] || '',
+        attributes: {},
+        salary: data['salary'],
+        contractYears: data['contractYears'],
+        capHit: data['capHit'],
+        signingBonus: data['signingBonus'],
+        performanceBonus: data['performanceBonus']
       };
 
-      if (data['teamId']) {
-        const teamSnap = await getDoc(doc(this.firestore, `teams/${data['teamId']}`));
-        player.teamName = teamSnap.exists() ? teamSnap.data()['name'] : 'Unknown';
-      } else {
-        const globalPlayerSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}`));
-        const globalData = globalPlayerSnap.data();
-        if (globalData?.['teamId']) {
-          const teamSnap = await getDoc(doc(this.firestore, `teams/${globalData['teamId']}`));
-          player.teamId = globalData['teamId'];
-          player.teamName = teamSnap.exists() ? teamSnap.data()['name'] : 'Unknown';
-        } else {
-          player.teamId = 'none';
-        }
+      // Load attributes
+      const attributesSnap = await getDoc(doc(this.firestore, `players/${docSnap.id}/meta/attributes`));
+      if (attributesSnap.exists()) {
+        player.attributes = attributesSnap.data() as Record<string, number>;
+        player.overall = this.calculateOverall(player);
       }
+
       return player;
     }));
     this.players = [...this.players, ...nextPlayers];
@@ -140,16 +211,16 @@ export class RosterComponent implements OnInit {
   }
 
   async addPlayer() {
+    if (!this.selectedPlayerId) return;
+
     const selected = this.availablePlayers.find(p => p.id === this.selectedPlayerId);
     if (!selected || !selected.id) return;
 
     const rosterDoc = doc(this.firestore, `teams/${this.teamId}/roster/${selected.id}`);
-    await setDoc(rosterDoc, selected);
-
-    const globalPlayerDoc = doc(this.firestore, `players/${selected.id}`);
-    await updateDoc(globalPlayerDoc, {
+    await updateDoc(doc(this.firestore, `players/${selected.id}`), {
       teamId: this.teamId
     });
+    await setDoc(rosterDoc, selected);
 
     this.selectedPlayerId = '';
     this.ngZone.run(() => {
@@ -169,36 +240,5 @@ export class RosterComponent implements OnInit {
     this.availablePlayers = this.availablePlayers.filter(p => p.id !== playerId);
 
     await this.loadAvailablePlayers();
-  }
-
-  startEdit(player: Player) {
-    this.editModeId = player.id!;
-    this.editFirstName = player.firstName || '';
-    this.editLastName = player.lastName || '';
-    this.editPosition = player.position;
-    this.editNumber = player.number;
-  }
-
-  cancelEdit() {
-    this.editModeId = null;
-    this.editFirstName = '';
-    this.editLastName = '';
-    this.editPosition = '';
-    this.editNumber = null;
-  }
-
-  async updatePlayer() {
-    if (!this.editModeId) return;
-    const playerDoc = doc(this.firestore, `teams/${this.teamId}/roster/${this.editModeId}`);
-    await updateDoc(playerDoc, {
-      firstName: this.editFirstName,
-      lastName: this.editLastName,
-      position: this.editPosition,
-      number: this.editNumber
-    });
-    this.cancelEdit();
-    this.ngZone.run(() => {
-      this.loadPlayers();
-    });
   }
 }

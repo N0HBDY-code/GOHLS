@@ -11,17 +11,16 @@ import { Router } from '@angular/router';
   styleUrl: './login.component.css'
 })
 export class LoginComponent {
-
   private authService = inject(AuthService);
   private router = inject(Router);
 
-  email = '';
+  username = '';
   password = '';
   errorMessage = '';
 
   login() {
-    if (this.email === '') {
-      alert('Please enter your email');
+    if (this.username === '') {
+      alert('Please enter your username');
       return;
     }
 
@@ -30,15 +29,13 @@ export class LoginComponent {
       return;
     }
 
-    this.authService.login(this.email, this.password)
+    this.authService.login(this.username, this.password)
       .then(() => {
-        // Success: redirect to dashboard
         this.router.navigate(['/dashboard']);
-        this.email = '';
+        this.username = '';
         this.password = '';
       })
       .catch(err => {
-        // Error: show message
         console.error('Login failed:', err);
         alert('Login failed: ' + err.message);
       });

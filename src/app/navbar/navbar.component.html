@@ -29,13 +29,10 @@
             <a class="nav-link" routerLink="/analytics">Analytics</a>
           </li>
           <li class="nav-item">
-            <a class="nav-link" routerLink="/reports">Reports</a>
-          </li>
-          <li class="nav-item">
             <a class="nav-link" routerLink="/player">Player</a>
           </li>
           <li class="nav-item" *ngIf="viewAsRoles.includes('developer') || viewAsRoles.includes('commissioner')">
-            <a class="nav-link" routerLink="/role-management">Role Management</a>
+            <a class="nav-link" routerLink="/headquarters">Headquarters</a>
           </li>
           <li class="nav-item" *ngIf="canSeeProgression">
             <a class="nav-link" routerLink="/progression-tracker">Progressions</a>
@@ -57,4 +54,3 @@
       </div>
     </div>
   </nav>
-  

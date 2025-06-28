@@ -15,8 +15,7 @@ import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { map } from 'rxjs/operators';
 
 export interface UserInfo {
-  fname: string;
-  lname: string;
+  username: string;
   email: string;
   password: string;
 }
@@ -57,19 +56,18 @@ export class AuthService {
   }
 
   setViewAsRole(role: string | null) {
-    console.log('Switching view to:', role); // debug
     this.viewAsRoleSubject.next(role);
   }
 
   async register(userInfo: UserInfo) {
     const userCred = await createUserWithEmailAndPassword(this.auth, userInfo.email, userInfo.password);
     await updateProfile(userCred.user, {
-      displayName: `${userInfo.fname} ${userInfo.lname}`
+      displayName: userInfo.username
     });
 
     await setDoc(doc(this.firestore, 'users', userCred.user.uid), {
       uid: userCred.user.uid,
-      displayName: `${userInfo.fname} ${userInfo.lname}`,
+      displayName: userInfo.username,
       email: userInfo.email,
       roles: ['viewer'] // default role
     });
@@ -79,17 +77,29 @@ export class AuthService {
     return userCred.user;
   }
 
-  login(email: string, password: string) {
-    return signInWithEmailAndPassword(this.auth, email, password).then(async userCredential => {
-      this.userSubject.next(userCredential.user);
+  login(username: string, password: string) {
+    // First get the email associated with the username
+    return this.getUserEmailByUsername(username).then(email => {
+      if (!email) {
+        throw new Error('Username not found');
+      }
+      return signInWithEmailAndPassword(this.auth, email, password).then(async userCredential => {
+        this.userSubject.next(userCredential.user);
 
-      const snapshot = await getDoc(doc(this.firestore, 'users', userCredential.user.uid));
-      const data = snapshot.data();
-      const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
-      this.rolesSubject.next(roles);
+        const snapshot = await getDoc(doc(this.firestore, 'users', userCredential.user.uid));
+        const data = snapshot.data();
+        const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
+        this.rolesSubject.next(roles);
 
-      return userCredential.user;
+        return userCredential.user;
+      });
     });
+  }
+
+  private async getUserEmailByUsername(username: string): Promise<string | null> {
+    const usersRef = doc(this.firestore, 'usernames', username);
+    const snapshot = await getDoc(usersRef);
+    return snapshot.exists() ? snapshot.data()['email'] : null;
   }
 
   forgotPassword(email: string) {
