@@ -86,7 +86,12 @@ export class PlayerManagerComponent implements OnInit {
 
   async ngOnInit() {
     const user = this.auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      this.loading = false;
+      return;
+    }
+
+    console.log('PlayerManager: Initializing for user:', user.uid);
 
     // Load progression settings first
     await this.loadProgressionSettings();
@@ -101,6 +106,7 @@ export class PlayerManagerComponent implements OnInit {
     
     if (!playerSnapshot.empty) {
       // Active player found
+      console.log('PlayerManager: Found active player');
       this.player = playerSnapshot.docs[0].data();
       this.player.id = playerSnapshot.docs[0].id;
       this.isPendingPlayer = false;
@@ -125,6 +131,7 @@ export class PlayerManagerComponent implements OnInit {
       }
     } else {
       // No active player, check for pending player
+      console.log('PlayerManager: No active player, checking for pending...');
       const pendingQuery = query(
         collection(this.firestore, 'pendingPlayers'),
         where('userId', '==', user.uid),
@@ -133,9 +140,12 @@ export class PlayerManagerComponent implements OnInit {
       const pendingSnapshot = await getDocs(pendingQuery);
       
       if (!pendingSnapshot.empty) {
+        console.log('PlayerManager: Found pending player');
         this.pendingPlayer = pendingSnapshot.docs[0].data();
         this.pendingPlayer.id = pendingSnapshot.docs[0].id;
         this.isPendingPlayer = true;
+      } else {
+        console.log('PlayerManager: No pending player found either');
       }
     }
     
