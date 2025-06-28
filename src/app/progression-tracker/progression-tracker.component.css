@@ -1,34 +1,37 @@
-/* Dark theme styling for progression tracker */
+/* Light theme styling for progression tracker with consistent headers */
 .container {
   max-width: 1200px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  padding: 2rem 0;
 }
 
 /* Page title */
 .page-title {
-  color: #ffffff;
+  color: #212529;
   font-weight: 700;
   margin-bottom: 2rem;
   font-size: 2rem;
 }
 
-/* All cards use dark theme */
+/* All cards use light theme with consistent headers */
 .card {
-  background-color: #1a1a1a;
-  border: 1px solid #333;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
   border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   transition: all 0.3s ease;
-  color: white;
+  color: #212529;
 }
 
 .card:hover {
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
 }
 
 .card-header {
   background: linear-gradient(45deg, #1a237e, #283593);
   color: white;
-  border-bottom: 1px solid #333;
+  border-bottom: 1px solid #dee2e6;
   border-radius: 12px 12px 0 0;
   padding: 1.5rem;
 }
@@ -42,7 +45,7 @@
 
 .card-body {
   padding: 1.5rem;
-  background-color: #1a1a1a;
+  background-color: #ffffff;
 }
 
 /* Settings card */
@@ -78,29 +81,33 @@
   font-size: 1rem;
 }
 
-/* Form controls - dark theme */
+/* Form controls - light theme */
 .form-label {
   font-weight: 600;
-  color: #ffffff;
+  color: #495057;
   margin-bottom: 0.75rem;
   font-size: 0.95rem;
 }
 
 .form-select {
   border-radius: 8px;
-  border: 2px solid #333;
+  border: 2px solid #ced4da;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   transition: all 0.2s ease;
-  background-color: #2a2a2a;
-  color: white;
+  background-color: #ffffff;
+  color: #495057;
 }
 
 .form-select:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
   outline: none;
-  background-color: #333;
+  background-color: #ffffff;
+}
+
+.settings-card .form-label {
+  color: white;
 }
 
 .settings-card .form-select {
@@ -142,8 +149,8 @@
 
 /* Team selection card */
 .team-selection-card {
-  background-color: #1a1a1a;
-  border: 1px solid #333;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
 }
 
 .team-selection-card .card-header {
@@ -152,31 +159,31 @@
 
 /* Team info display */
 .team-info {
-  background: #2a2a2a;
+  background: #f8f9fa;
   padding: 1.5rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
   border-left: 4px solid #28a745;
-  color: white;
+  color: #495057;
 }
 
 .team-logo {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .team-name {
-  color: #ffffff;
+  color: #212529;
   font-weight: 600;
   font-size: 1.5rem;
 }
 
-/* Table styling - dark theme */
+/* Table styling - light theme */
 .table {
   margin-bottom: 0;
   font-size: 0.95rem;
-  color: white;
-  background-color: #1a1a1a;
+  color: #495057;
+  background-color: #ffffff;
 }
 
 .table thead th {
@@ -196,18 +203,18 @@
 .table tbody td {
   padding: 1rem 0.75rem;
   vertical-align: middle;
-  border-bottom: 1px solid #333;
-  background-color: #1a1a1a;
-  color: white;
+  border-bottom: 1px solid #dee2e6;
+  background-color: #ffffff;
+  color: #495057;
 }
 
 .table tbody tr:hover {
-  background-color: #2a2a2a !important;
+  background-color: #f8f9fa !important;
   transition: background-color 0.2s ease;
 }
 
 .table tbody tr:hover td {
-  background-color: #2a2a2a !important;
+  background-color: #f8f9fa !important;
 }
 
 /* Status badges */
@@ -234,8 +241,9 @@
 }
 
 .badge.bg-light {
-  background-color: #333 !important;
-  color: white !important;
+  background-color: #f8f9fa !important;
+  color: #495057 !important;
+  border: 1px solid #dee2e6;
 }
 
 .badge.bg-primary {
@@ -307,9 +315,9 @@
   color: #667eea;
 }
 
-/* Text colors for dark theme */
+/* Text colors for light theme */
 .text-muted {
-  color: #adb5bd !important;
+  color: #6c757d !important;
 }
 
 .text-success {
@@ -380,12 +388,12 @@
 
 .roster-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 /* Empty state styling */
 .card-body.text-center {
-  color: #adb5bd;
+  color: #6c757d;
 }
 
 .fa-3x {
@@ -438,7 +446,7 @@
 .progress {
   height: 8px;
   border-radius: 4px;
-  background-color: #333;
+  background-color: #e9ecef;
   overflow: hidden;
 }
 
@@ -449,7 +457,7 @@
 
 /* Card footer styling */
 .card-footer {
-  background-color: #2a2a2a !important;
-  border-top: 1px solid #333;
-  color: #adb5bd;
+  background-color: #f8f9fa !important;
+  border-top: 1px solid #dee2e6;
+  color: #6c757d;
 }
