@@ -487,7 +487,7 @@ export class HeadquartersComponent implements OnInit {
     } catch (error) {
       console.error('Error removing role:', error);
       this.error = 'Failed to remove role';
-      setTimeout () => this.error = '', 3000);
+      setTimeout(() => this.error = '', 3000);
     } finally {
       this.loading = false;
     }
