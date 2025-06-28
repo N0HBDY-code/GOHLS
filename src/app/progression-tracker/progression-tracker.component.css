@@ -106,20 +106,35 @@
   background-color: #ffffff;
 }
 
+/* Fix dropdown options visibility */
+.form-select option {
+  background-color: #ffffff !important;
+  color: #495057 !important;
+  padding: 0.5rem;
+}
+
 .settings-card .form-label {
   color: white;
 }
 
 .settings-card .form-select {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.95);
   border: 2px solid rgba(255, 255, 255, 0.3);
-  color: white;
+  color: #495057;
 }
 
 .settings-card .form-select:focus {
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: #ffffff;
   border-color: rgba(255, 255, 255, 0.8);
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
+  color: #495057;
+}
+
+/* Ensure dropdown options are always visible */
+.settings-card .form-select option {
+  background-color: #ffffff !important;
+  color: #495057 !important;
+  padding: 0.5rem;
 }
 
 /* Switch styling */
