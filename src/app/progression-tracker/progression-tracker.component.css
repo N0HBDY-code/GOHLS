@@ -1,19 +1,34 @@
-/* Modern card styling */
+/* Dark theme styling for progression tracker */
+.container {
+  max-width: 1200px;
+}
+
+/* Page title */
+.page-title {
+  color: #ffffff;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  font-size: 2rem;
+}
+
+/* All cards use dark theme */
 .card {
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e9ecef;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
   border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
+  color: white;
 }
 
 .card:hover {
-  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.4);
 }
 
 .card-header {
   background: linear-gradient(45deg, #1a237e, #283593);
   color: white;
-  border-bottom: none;
+  border-bottom: 1px solid #333;
   border-radius: 12px 12px 0 0;
   padding: 1.5rem;
 }
@@ -22,15 +37,17 @@
 .card-header h5 {
   margin-bottom: 0;
   font-weight: 600;
+  color: white;
 }
 
 .card-body {
   padding: 1.5rem;
+  background-color: #1a1a1a;
 }
 
-/* Settings card styling */
+/* Settings card */
 .settings-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
   color: white;
   border: none;
   margin-bottom: 2rem;
@@ -38,6 +55,7 @@
 
 .settings-card .card-body {
   padding: 2rem;
+  background: transparent;
 }
 
 .settings-card h4 {
@@ -60,41 +78,39 @@
   font-size: 1rem;
 }
 
-/* Form controls */
+/* Form controls - dark theme */
 .form-label {
   font-weight: 600;
-  color: #495057;
+  color: #ffffff;
   margin-bottom: 0.75rem;
   font-size: 0.95rem;
 }
 
-.settings-card .form-label {
-  color: white;
-  font-weight: 500;
-}
-
 .form-select {
   border-radius: 8px;
-  border: 2px solid #e9ecef;
+  border: 2px solid #333;
   padding: 0.75rem 1rem;
   font-size: 0.95rem;
   transition: all 0.2s ease;
-  background-color: white;
+  background-color: #2a2a2a;
+  color: white;
 }
 
 .form-select:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
   outline: none;
+  background-color: #333;
 }
 
 .settings-card .form-select {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.1);
   border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
 }
 
 .settings-card .form-select:focus {
-  background-color: white;
+  background-color: rgba(255, 255, 255, 0.15);
   border-color: rgba(255, 255, 255, 0.8);
   box-shadow: 0 0 0 0.2rem rgba(255, 255, 255, 0.25);
 }
@@ -124,10 +140,10 @@
   color: white;
 }
 
-/* Team selection */
+/* Team selection card */
 .team-selection-card {
-  background: white;
-  border: 1px solid #e9ecef;
+  background-color: #1a1a1a;
+  border: 1px solid #333;
 }
 
 .team-selection-card .card-header {
@@ -136,28 +152,31 @@
 
 /* Team info display */
 .team-info {
-  background: #f8f9fa;
+  background: #2a2a2a;
   padding: 1.5rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
   border-left: 4px solid #28a745;
+  color: white;
 }
 
 .team-logo {
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .team-name {
-  color: #495057;
+  color: #ffffff;
   font-weight: 600;
   font-size: 1.5rem;
 }
 
-/* Table styling */
+/* Table styling - dark theme */
 .table {
   margin-bottom: 0;
   font-size: 0.95rem;
+  color: white;
+  background-color: #1a1a1a;
 }
 
 .table thead th {
@@ -177,12 +196,18 @@
 .table tbody td {
   padding: 1rem 0.75rem;
   vertical-align: middle;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #333;
+  background-color: #1a1a1a;
+  color: white;
 }
 
 .table tbody tr:hover {
-  background-color: #f8f9fa;
+  background-color: #2a2a2a !important;
   transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover td {
+  background-color: #2a2a2a !important;
 }
 
 /* Status badges */
@@ -206,6 +231,15 @@
 
 .badge.bg-success {
   background-color: #198754 !important;
+}
+
+.badge.bg-light {
+  background-color: #333 !important;
+  color: white !important;
+}
+
+.badge.bg-primary {
+  background-color: #0d6efd !important;
 }
 
 /* Action buttons */
@@ -273,6 +307,91 @@
   color: #667eea;
 }
 
+/* Text colors for dark theme */
+.text-muted {
+  color: #adb5bd !important;
+}
+
+.text-success {
+  color: #198754 !important;
+}
+
+/* Status indicator improvements */
+.status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.status-dot.processed {
+  background-color: #198754;
+}
+
+.status-dot.pending {
+  background-color: #ffc107;
+}
+
+.status-dot.na {
+  background-color: #6c757d;
+}
+
+/* Table row highlighting for different statuses */
+.table tbody tr.status-processed {
+  background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.table tbody tr.status-pending {
+  background-color: rgba(255, 193, 7, 0.1) !important;
+}
+
+.table tbody tr.status-na {
+  background-color: rgba(108, 117, 125, 0.1) !important;
+}
+
+/* Enhanced visual hierarchy */
+.section-divider {
+  height: 2px;
+  background: linear-gradient(90deg, #667eea, #764ba2);
+  border: none;
+  margin: 2rem 0;
+  border-radius: 1px;
+}
+
+/* Animation for status changes */
+.badge {
+  transition: all 0.3s ease;
+}
+
+.badge:hover {
+  transform: scale(1.05);
+}
+
+/* Card hover effects */
+.roster-card {
+  transition: all 0.3s ease;
+}
+
+.roster-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Empty state styling */
+.card-body.text-center {
+  color: #adb5bd;
+}
+
+.fa-3x {
+  color: #6c757d;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .card-body {
@@ -310,76 +429,16 @@
   }
 }
 
-/* Enhanced visual hierarchy */
-.container {
-  max-width: 1200px;
-}
-
-.page-title {
-  color: #495057;
-  font-weight: 700;
-  margin-bottom: 2rem;
-  font-size: 2rem;
-}
-
-.section-divider {
-  height: 2px;
-  background: linear-gradient(90deg, #667eea, #764ba2);
-  border: none;
-  margin: 2rem 0;
-  border-radius: 1px;
-}
-
-/* Animation for status changes */
-.badge {
-  transition: all 0.3s ease;
-}
-
-.badge:hover {
-  transform: scale(1.05);
-}
-
-/* Table row highlighting for different statuses */
-.table tbody tr.status-processed {
-  background-color: rgba(25, 135, 84, 0.05);
-}
-
-.table tbody tr.status-pending {
-  background-color: rgba(255, 193, 7, 0.05);
-}
-
-.table tbody tr.status-na {
-  background-color: rgba(108, 117, 125, 0.05);
-}
-
-/* Enhanced form styling */
-.form-floating {
-  position: relative;
-}
-
-.form-floating > .form-control,
-.form-floating > .form-select {
-  height: calc(3.5rem + 2px);
-  padding: 1rem 0.75rem;
-}
-
-.form-floating > label {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  padding: 1rem 0.75rem;
-  pointer-events: none;
-  border: 1px solid transparent;
-  transform-origin: 0 0;
-  transition: opacity 0.1s ease-in-out, transform 0.1s ease-in-out;
+/* Icon styling */
+.fas {
+  margin-right: 0.5rem;
 }
 
 /* Progress indicators */
 .progress {
   height: 8px;
   border-radius: 4px;
-  background-color: #e9ecef;
+  background-color: #333;
   overflow: hidden;
 }
 
@@ -388,47 +447,9 @@
   transition: width 0.6s ease;
 }
 
-/* Icon styling */
-.fas {
-  margin-right: 0.5rem;
-}
-
-.text-muted {
-  color: #6c757d !important;
-}
-
-/* Card hover effects */
-.roster-card {
-  transition: all 0.3s ease;
-}
-
-.roster-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-}
-
-/* Status indicator improvements */
-.status-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.status-dot.processed {
-  background-color: #198754;
-}
-
-.status-dot.pending {
-  background-color: #ffc107;
-}
-
-.status-dot.na {
-  background-color: #6c757d;
+/* Card footer styling */
+.card-footer {
+  background-color: #2a2a2a !important;
+  border-top: 1px solid #333;
+  color: #adb5bd;
 }
