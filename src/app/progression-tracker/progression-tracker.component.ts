@@ -16,6 +16,7 @@ import {
 } from '@angular/fire/firestore';
 import { ProgressionService } from '../services/progression.service';
 import { getDefaultAttributes } from '../services/progression-defaults';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-progression-tracker',
@@ -27,20 +28,25 @@ import { getDefaultAttributes } from '../services/progression-defaults';
 export class ProgressionTrackerComponent implements OnInit {
   private firestore = inject(Firestore);
   private progressionService = inject(ProgressionService);
+  private authService = inject(AuthService);
 
   teams: { id: string, name: string, logoUrl?: string }[] = [];
   selectedTeamId: string = '';
   roster: any[] = [];
   loading = false;
 
+  // Permission control
+  canManageWeeks = false;
+
   // Current progression settings (what players see)
   currentProgressionWeek: number = 1;
+  tempProgressionWeek: number = 1; // For editing
   progressionsOpen: boolean = true;
-  progressionWeeks: number[] = Array.from({ length: 20 }, (_, i) => i + 1);
+  isEditingWeek = false;
+  weekSaving = false;
 
   // Management view settings (what progression tracker sees)
   viewingWeek: number = 1;
-  viewingWeeks: number[] = Array.from({ length: 20 }, (_, i) => i + 1);
   currentSeason: number = new Date().getFullYear();
 
   conferences = [
@@ -60,6 +66,13 @@ export class ProgressionTrackerComponent implements OnInit {
   newTeam = { city: '', mascot: '', logoUrl: '' };
 
   async ngOnInit() {
+    // Check permissions first
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageWeeks = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
+
     await this.loadProgressionSettings();
     this.viewingWeek = this.currentProgressionWeek; // Default to current week
 
@@ -130,6 +143,86 @@ export class ProgressionTrackerComponent implements OnInit {
     console.log(`📅 Viewing week changed to: ${this.viewingWeek}`);
     if (this.selectedTeamId) {
       await this.loadRoster();
+    }
+  }
+
+  startEditingWeek() {
+    if (!this.canManageWeeks) return;
+    this.tempProgressionWeek = this.currentProgressionWeek;
+    this.isEditingWeek = true;
+  }
+
+  cancelEditingWeek() {
+    this.isEditingWeek = false;
+    this.tempProgressionWeek = this.currentProgressionWeek;
+  }
+
+  async saveProgressionWeek() {
+    if (!this.canManageWeeks || this.weekSaving) return;
+
+    // Validate week number
+    if (this.tempProgressionWeek < 1 || this.tempProgressionWeek > 100) {
+      alert('Week number must be between 1 and 100');
+      return;
+    }
+
+    this.weekSaving = true;
+    
+    try {
+      const settingsRef = doc(this.firestore, 'progressionSettings/config');
+      const previousWeek = this.currentProgressionWeek;
+      
+      await setDoc(settingsRef, {
+        week: this.tempProgressionWeek,
+        open: this.progressionsOpen
+      }, { merge: true });
+
+      this.currentProgressionWeek = this.tempProgressionWeek;
+      this.isEditingWeek = false;
+
+      // If week changed, emit event for player components
+      if (previousWeek !== this.currentProgressionWeek) {
+        console.log(`📅 Current progression week changed from ${previousWeek} to ${this.currentProgressionWeek}`);
+        
+        window.dispatchEvent(new CustomEvent('weekChanged', {
+          detail: {
+            previousWeek: previousWeek,
+            newWeek: this.currentProgressionWeek
+          }
+        }));
+
+        // Update viewing week to match current week by default
+        this.viewingWeek = this.currentProgressionWeek;
+        
+        // Reload roster if team is selected
+        if (this.selectedTeamId) {
+          await this.loadRoster();
+        }
+      }
+
+      console.log(`✅ Progression week updated to ${this.currentProgressionWeek}`);
+    } catch (error) {
+      console.error('Error updating progression week:', error);
+      alert('Failed to update progression week. Please try again.');
+    } finally {
+      this.weekSaving = false;
+    }
+  }
+
+  async toggleProgressionsOpen() {
+    if (!this.canManageWeeks) return;
+
+    try {
+      const settingsRef = doc(this.firestore, 'progressionSettings/config');
+      await setDoc(settingsRef, {
+        week: this.currentProgressionWeek,
+        open: this.progressionsOpen
+      }, { merge: true });
+
+      console.log(`✅ Progressions ${this.progressionsOpen ? 'opened' : 'closed'} for week ${this.currentProgressionWeek}`);
+    } catch (error) {
+      console.error('Error updating progression status:', error);
+      alert('Failed to update progression status. Please try again.');
     }
   }
 
@@ -231,44 +324,16 @@ export class ProgressionTrackerComponent implements OnInit {
     if (snap.exists()) {
       const data = snap.data();
       this.currentProgressionWeek = data['week'] ?? 1;
+      this.tempProgressionWeek = this.currentProgressionWeek;
       this.progressionsOpen = data['open'] ?? true;
     } else {
       this.currentProgressionWeek = 1;
+      this.tempProgressionWeek = 1;
       this.progressionsOpen = true;
       await setDoc(settingsRef, {
         week: this.currentProgressionWeek,
         open: this.progressionsOpen
       });
-    }
-  }
-
-  async updateCurrentProgressionSettings() {
-    const settingsRef = doc(this.firestore, 'progressionSettings/config');
-    const previousWeek = this.currentProgressionWeek;
-    
-    await setDoc(settingsRef, {
-      week: this.currentProgressionWeek,
-      open: this.progressionsOpen
-    }, { merge: true });
-
-    // If week changed, emit event for player components
-    if (previousWeek !== this.currentProgressionWeek) {
-      console.log(`📅 Current progression week changed from ${previousWeek} to ${this.currentProgressionWeek}`);
-      
-      window.dispatchEvent(new CustomEvent('weekChanged', {
-        detail: {
-          previousWeek: previousWeek,
-          newWeek: this.currentProgressionWeek
-        }
-      }));
-
-      // Update viewing week to match current week by default
-      this.viewingWeek = this.currentProgressionWeek;
-      
-      // Reload roster if team is selected
-      if (this.selectedTeamId) {
-        await this.loadRoster();
-      }
     }
   }
 

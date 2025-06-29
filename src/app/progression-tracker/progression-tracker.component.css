@@ -97,6 +97,19 @@
   color: #6c757d;
 }
 
+/* Week display styling */
+.week-display {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.week-display .badge {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+}
+
 /* Form controls */
 .form-label {
   font-weight: 500;
@@ -105,6 +118,7 @@
   font-size: 0.9rem;
 }
 
+.form-control,
 .form-select {
   border-radius: 6px;
   border: 1px solid #ced4da;
@@ -115,11 +129,18 @@
   color: #495057;
 }
 
+.form-control:focus,
 .form-select:focus {
   border-color: #80bdff;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
   outline: none;
   background-color: #ffffff;
+}
+
+.form-control-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 4px;
 }
 
 .form-select option {
@@ -132,12 +153,14 @@
   color: #495057;
 }
 
+.settings-card .form-control,
 .settings-card .form-select {
   background-color: #ffffff;
   border: 1px solid #ced4da;
   color: #495057;
 }
 
+.settings-card .form-control:focus,
 .settings-card .form-select:focus {
   background-color: #ffffff;
   border-color: #80bdff;
@@ -314,6 +337,18 @@
   border-color: #1e7e34;
 }
 
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+  background: transparent;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
 .btn-outline-info {
   color: #17a2b8;
   border-color: #17a2b8;
@@ -348,6 +383,11 @@
   width: 1.5rem;
   height: 1.5rem;
   color: #6c757d;
+}
+
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
 }
 
 /* Text colors */
@@ -437,6 +477,25 @@
   border-left: 3px solid #2196f3;
 }
 
+/* Week management specific styles */
+.week-management-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.week-input {
+  width: 80px;
+}
+
+.permission-notice {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .card-body {
@@ -471,6 +530,18 @@
   
   .btn-group .btn {
     width: 100%;
+  }
+
+  .week-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .week-management-controls {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
 

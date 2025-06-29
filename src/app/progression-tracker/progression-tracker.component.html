@@ -16,22 +16,68 @@
     </div>
     <div class="card-body">
       <div class="row align-items-end">
-        <div class="col-md-4">
-          <label for="currentWeekSelect" class="form-label">
+        <!-- Week Management - Only for Developers/Commissioners -->
+        <div class="col-md-4" *ngIf="canManageWeeks">
+          <label class="form-label">
             <i class="fas fa-calendar-week me-1"></i>Current Progression Week
           </label>
-          <select id="currentWeekSelect" class="form-select"
-                  [(ngModel)]="currentProgressionWeek"
-                  (change)="updateCurrentProgressionSettings()">
-            <option *ngFor="let week of progressionWeeks" [value]="week">Week {{ week }}</option>
-          </select>
+          
+          <!-- Display Mode -->
+          <div *ngIf="!isEditingWeek" class="d-flex align-items-center gap-2">
+            <div class="week-display">
+              <span class="badge bg-primary fs-6 px-3 py-2">Week {{ currentProgressionWeek }}</span>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm" 
+                    (click)="startEditingWeek()"
+                    title="Edit week number">
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
+
+          <!-- Edit Mode -->
+          <div *ngIf="isEditingWeek" class="d-flex align-items-center gap-2">
+            <input type="number" 
+                   class="form-control form-control-sm" 
+                   style="width: 80px;"
+                   [(ngModel)]="tempProgressionWeek"
+                   min="1" 
+                   max="100"
+                   [disabled]="weekSaving">
+            <button class="btn btn-success btn-sm" 
+                    (click)="saveProgressionWeek()"
+                    [disabled]="weekSaving || tempProgressionWeek < 1"
+                    title="Save week number">
+              <span *ngIf="weekSaving" class="spinner-border spinner-border-sm me-1"></span>
+              <i *ngIf="!weekSaving" class="fas fa-check"></i>
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" 
+                    (click)="cancelEditingWeek()"
+                    [disabled]="weekSaving"
+                    title="Cancel editing">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
         </div>
 
-        <div class="col-md-4">
+        <!-- Read-only week display for non-managers -->
+        <div class="col-md-4" *ngIf="!canManageWeeks">
+          <label class="form-label">
+            <i class="fas fa-calendar-week me-1"></i>Current Progression Week
+          </label>
+          <div class="week-display">
+            <span class="badge bg-primary fs-6 px-3 py-2">Week {{ currentProgressionWeek }}</span>
+            <small class="d-block text-muted mt-1">
+              <i class="fas fa-lock me-1"></i>Week management restricted to developers/commissioners
+            </small>
+          </div>
+        </div>
+
+        <!-- Progressions Open/Closed Toggle -->
+        <div class="col-md-4" *ngIf="canManageWeeks">
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="progressionToggle"
                    [(ngModel)]="progressionsOpen"
-                   (change)="updateCurrentProgressionSettings()">
+                   (change)="toggleProgressionsOpen()">
             <label class="form-check-label" for="progressionToggle">
               <i class="fas fa-toggle-on me-1"></i>
               Progressions {{ progressionsOpen ? 'Open' : 'Closed' }}
@@ -39,6 +85,22 @@
           </div>
         </div>
 
+        <!-- Read-only status for non-managers -->
+        <div class="col-md-4" *ngIf="!canManageWeeks">
+          <label class="form-label">
+            <i class="fas fa-flag me-1"></i>Progression Status
+          </label>
+          <div class="status-indicator">
+            <div class="status-dot" [class.processed]="progressionsOpen" [class.na]="!progressionsOpen"></div>
+            <span class="badge" 
+                  [class.bg-success]="progressionsOpen"
+                  [class.bg-secondary]="!progressionsOpen">
+              {{ progressionsOpen ? 'OPEN' : 'CLOSED' }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Status Display -->
         <div class="col-md-4">
           <div class="status-indicator">
             <div class="status-dot" [class.processed]="progressionsOpen" [class.na]="!progressionsOpen"></div>
@@ -49,6 +111,12 @@
             </span>
           </div>
         </div>
+      </div>
+
+      <!-- Permission Notice -->
+      <div *ngIf="!canManageWeeks" class="alert alert-info mt-3">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Note:</strong> You can view and manage player progressions, but only developers and commissioners can change the current progression week and open/close submissions.
       </div>
     </div>
   </div>
@@ -66,11 +134,14 @@
           <label for="viewingWeekSelect" class="form-label">
             <i class="fas fa-search me-1"></i>View Progressions for Week
           </label>
-          <select id="viewingWeekSelect" class="form-select"
-                  [(ngModel)]="viewingWeek"
-                  (change)="onViewingWeekChange()">
-            <option *ngFor="let week of viewingWeeks" [value]="week">Week {{ week }}</option>
-          </select>
+          <input type="number" 
+                 id="viewingWeekSelect"
+                 class="form-control"
+                 [(ngModel)]="viewingWeek"
+                 (change)="onViewingWeekChange()"
+                 min="1" 
+                 max="100"
+                 placeholder="Enter week number">
         </div>
         <div class="col-md-6">
           <div class="alert alert-info mb-0">
