@@ -184,86 +184,94 @@ export class DraftComponent implements OnInit {
       if (snapshot.empty && this.canManageDraft) {
         // Create initial draft class if none exist
         await this.createInitialDraftClass(currentSeason);
-        await this.loadDraftClasses(); // Reload after creation
+        // Reload after creation
+        const newSnapshot = await getDocs(classesRef);
+        this.processDraftClasses(newSnapshot);
         return;
       }
       
-      // Process draft classes
-      this.draftClasses = await Promise.all(snapshot.docs.map(async doc => {
-        const data = doc.data() as any;
-        
-        // Load players for this draft class
-        const playersQuery = query(
-          collection(this.firestore, 'players'),
-          where('draftClass', '==', data['season']),
-          orderBy('draftRank', 'asc')
-        );
-        
-        const playersSnapshot = await getDocs(playersQuery);
-        const players = await Promise.all(playersSnapshot.docs.map(async playerDoc => {
-          const playerData = playerDoc.data() as any;
-          
-          // Get overall rating from attributes
-          let overall = 50;
-          try {
-            const attributesRef = firestoreDoc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
-            const attributesSnap = await getDoc(attributesRef);
-            if (attributesSnap.exists()) {
-              const attrData = attributesSnap.data() as any;
-              overall = attrData['OVERALL'] || 50;
-            }
-          } catch (error) {
-            console.error('Error loading player attributes:', error);
-          }
-          
-          // Get team name if drafted
-          let draftedTeamName = undefined;
-          if (playerData['draftedBy']) {
-            const teamRef = firestoreDoc(this.firestore, `teams/${playerData['draftedBy']}`);
-            const teamSnap = await getDoc(teamRef);
-            if (teamSnap.exists()) {
-              const teamData = teamSnap.data() as any;
-              draftedTeamName = `${teamData['city']} ${teamData['mascot']}`;
-            }
-          }
-          
-          return {
-            id: playerDoc.id,
-            firstName: playerData['firstName'] || '',
-            lastName: playerData['lastName'] || '',
-            position: playerData['position'] || '',
-            archetype: playerData['archetype'] || '',
-            age: playerData['age'] || 19,
-            overall,
-            draftRank: playerData['draftRank'],
-            draftedBy: playerData['draftedBy'],
-            draftedTeamName,
-            draftRound: playerData['draftRound'],
-            draftPick: playerData['draftPick'],
-            draftSeason: playerData['draftSeason']
-          };
-        }));
-        
-        return {
-          season: data['season'],
-          players,
-          status: data['status'] || 'upcoming',
-          startDate: data['startDate'],
-          endDate: data['endDate']
-        };
-      }));
+      // Process existing draft classes
+      await this.processDraftClasses(snapshot);
       
-      // Sort draft classes by season (newest first)
-      this.draftClasses.sort((a, b) => b.season - a.season);
-      
-      // Set selected draft class to the most recent one
-      if (this.draftClasses.length > 0) {
-        this.selectedDraftClass = this.draftClasses[0];
-      }
     } catch (error) {
       console.error('Error loading draft classes:', error);
     } finally {
       this.loadingClasses = false;
+    }
+  }
+
+  private async processDraftClasses(snapshot: any) {
+    // Process draft classes
+    this.draftClasses = await Promise.all(snapshot.docs.map(async (doc: any) => {
+      const data = doc.data() as any;
+      
+      // Load players for this draft class
+      const playersQuery = query(
+        collection(this.firestore, 'players'),
+        where('draftClass', '==', data['season']),
+        orderBy('draftRank', 'asc')
+      );
+      
+      const playersSnapshot = await getDocs(playersQuery);
+      const players = await Promise.all(playersSnapshot.docs.map(async playerDoc => {
+        const playerData = playerDoc.data() as any;
+        
+        // Get overall rating from attributes
+        let overall = 50;
+        try {
+          const attributesRef = firestoreDoc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
+          const attributesSnap = await getDoc(attributesRef);
+          if (attributesSnap.exists()) {
+            const attrData = attributesSnap.data() as any;
+            overall = attrData['OVERALL'] || 50;
+          }
+        } catch (error) {
+          console.error('Error loading player attributes:', error);
+        }
+        
+        // Get team name if drafted
+        let draftedTeamName = undefined;
+        if (playerData['draftedBy']) {
+          const teamRef = firestoreDoc(this.firestore, `teams/${playerData['draftedBy']}`);
+          const teamSnap = await getDoc(teamRef);
+          if (teamSnap.exists()) {
+            const teamData = teamSnap.data() as any;
+            draftedTeamName = `${teamData['city']} ${teamData['mascot']}`;
+          }
+        }
+        
+        return {
+          id: playerDoc.id,
+          firstName: playerData['firstName'] || '',
+          lastName: playerData['lastName'] || '',
+          position: playerData['position'] || '',
+          archetype: playerData['archetype'] || '',
+          age: playerData['age'] || 19,
+          overall,
+          draftRank: playerData['draftRank'],
+          draftedBy: playerData['draftedBy'],
+          draftedTeamName,
+          draftRound: playerData['draftRound'],
+          draftPick: playerData['draftPick'],
+          draftSeason: playerData['draftSeason']
+        };
+      }));
+      
+      return {
+        season: data['season'],
+        players,
+        status: data['status'] || 'upcoming',
+        startDate: data['startDate'],
+        endDate: data['endDate']
+      };
+    }));
+    
+    // Sort draft classes by season (newest first)
+    this.draftClasses.sort((a, b) => b.season - a.season);
+    
+    // Set selected draft class to the most recent one
+    if (this.draftClasses.length > 0) {
+      this.selectedDraftClass = this.draftClasses[0];
     }
   }
   
