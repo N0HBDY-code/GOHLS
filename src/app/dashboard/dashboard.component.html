@@ -1,22 +1,249 @@
-
-<div class="container mt-5">
-  <div class="row justify-content-center mb-4">
-    <div class="col-md-6">
-      <div class="card bg-light shadow text-center">
-        <div class="card-body">
-          <h4 class="card-title">Welcome to the Sports Dashboard</h4>
-          <p class="card-text">Live game data and user info will appear below.</p>
+<div class="container-fluid mt-4">
+  <!-- Hero Section with Twitch Stream -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="hero-section">
+        <div class="row align-items-center">
+          <div class="col-lg-8">
+            <div class="twitch-container">
+              <div class="twitch-header">
+                <div class="d-flex align-items-center justify-content-between">
+                  <div class="d-flex align-items-center">
+                    <div class="live-indicator">
+                      <span class="live-dot"></span>
+                      <span class="live-text">LIVE</span>
+                    </div>
+                    <h2 class="stream-title">GOHLS Official Stream</h2>
+                  </div>
+                  <a href="https://www.twitch.tv/gohls_official" 
+                     target="_blank" 
+                     class="btn btn-twitch">
+                    <i class="fab fa-twitch me-2"></i>Watch on Twitch
+                  </a>
+                </div>
+              </div>
+              <div class="twitch-embed">
+                <iframe 
+                  src="https://player.twitch.tv/?channel=gohls_official&parent=localhost&parent=127.0.0.1&parent=stackblitz.com&parent=webcontainer.io&autoplay=false&muted=false"
+                  height="400"
+                  width="100%"
+                  allowfullscreen="true"
+                  scrolling="no"
+                  frameborder="0">
+                </iframe>
+              </div>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="welcome-card">
+              <div class="card-body text-center">
+                <div class="welcome-icon">
+                  <i class="fas fa-hockey-puck"></i>
+                </div>
+                <h3 class="welcome-title">Welcome to GOHLS</h3>
+                <p class="welcome-text">
+                  The premier online hockey simulation league. Watch live games, 
+                  track your player's progress, and compete for the championship!
+                </p>
+                <div class="quick-stats">
+                  <div class="stat-item">
+                    <div class="stat-number">{{ totalPlayers }}</div>
+                    <div class="stat-label">Active Players</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-number">{{ totalTeams }}</div>
+                    <div class="stat-label">Teams</div>
+                  </div>
+                  <div class="stat-item">
+                    <div class="stat-number">{{ currentSeason }}</div>
+                    <div class="stat-label">Season</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row mb-4 justify-content-center">
-    <div class="col-md-6">
-      <div class="card text-white bg-dark shadow text-center">
-        <div class="card-body">
-          <h4 class="card-title">Live Game Date</h4>
-          <p class="card-text fs-5">{{ today | date:'fullDate' }} - {{ today | date:'shortTime' }}</p>
+  <!-- Today's Games Section -->
+  <div class="row mb-4" *ngIf="todaysGames.length > 0">
+    <div class="col-12">
+      <div class="section-card">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-calendar-day me-2"></i>Today's Games
+          </h4>
+          <span class="badge bg-primary">{{ todaysGames.length }} Games</span>
+        </div>
+        <div class="games-grid">
+          <div *ngFor="let game of todaysGames" class="game-card">
+            <div class="game-header">
+              <span class="game-time">{{ game.time || 'TBD' }}</span>
+              <span class="game-status" [ngClass]="getGameStatusClass(game.status)">
+                {{ game.status || 'Scheduled' }}
+              </span>
+            </div>
+            <div class="game-matchup">
+              <div class="team away-team">
+                <img *ngIf="game.awayLogo" [src]="game.awayLogo" [alt]="game.awayTeam" class="team-logo-small">
+                <span class="team-name">{{ game.awayTeam }}</span>
+                <span class="team-score" *ngIf="game.awayScore !== undefined">{{ game.awayScore }}</span>
+              </div>
+              <div class="vs-divider">
+                <span *ngIf="game.awayScore === undefined">VS</span>
+                <span *ngIf="game.awayScore !== undefined">-</span>
+              </div>
+              <div class="team home-team">
+                <span class="team-score" *ngIf="game.homeScore !== undefined">{{ game.homeScore }}</span>
+                <span class="team-name">{{ game.homeTeam }}</span>
+                <img *ngIf="game.homeLogo" [src]="game.homeLogo" [alt]="game.homeTeam" class="team-logo-small">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Grid -->
+  <div class="row">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+      <!-- Recent Transactions -->
+      <div class="section-card mb-4">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-exchange-alt me-2"></i>Recent Transactions
+          </h4>
+          <a href="/analytics" class="btn btn-outline-primary btn-sm">View All</a>
+        </div>
+        <div class="transaction-list">
+          <div *ngFor="let transaction of recentTransactions" class="transaction-item">
+            <div class="transaction-icon" [ngClass]="getTransactionIconClass(transaction.type)">
+              <i [class]="getTransactionIcon(transaction.type)"></i>
+            </div>
+            <div class="transaction-content">
+              <div class="transaction-title">{{ transaction.title }}</div>
+              <div class="transaction-details">{{ transaction.details }}</div>
+              <div class="transaction-time">{{ transaction.timestamp | date:'short' }}</div>
+            </div>
+            <div class="transaction-badge">
+              <span class="badge" [ngClass]="getTransactionBadgeClass(transaction.type)">
+                {{ transaction.type }}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="recentTransactions.length === 0" class="empty-state">
+          <i class="fas fa-inbox fa-2x text-muted mb-2"></i>
+          <p class="text-muted">No recent transactions</p>
+        </div>
+      </div>
+
+      <!-- League News/Updates -->
+      <div class="section-card">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-newspaper me-2"></i>League Updates
+          </h4>
+        </div>
+        <div class="news-list">
+          <div *ngFor="let news of leagueNews" class="news-item">
+            <div class="news-date">
+              <div class="date-day">{{ news.date | date:'dd' }}</div>
+              <div class="date-month">{{ news.date | date:'MMM' }}</div>
+            </div>
+            <div class="news-content">
+              <h6 class="news-title">{{ news.title }}</h6>
+              <p class="news-summary">{{ news.summary }}</p>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="leagueNews.length === 0" class="empty-state">
+          <i class="fas fa-newspaper fa-2x text-muted mb-2"></i>
+          <p class="text-muted">No recent news</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+      <!-- Newest Players -->
+      <div class="section-card mb-4">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-user-plus me-2"></i>Newest Players
+          </h4>
+          <span class="badge bg-success">{{ newestPlayers.length }}</span>
+        </div>
+        <div class="player-list">
+          <div *ngFor="let player of newestPlayers" class="player-item">
+            <div class="player-avatar">
+              {{ player.firstName?.charAt(0) }}{{ player.lastName?.charAt(0) }}
+            </div>
+            <div class="player-info">
+              <div class="player-name">{{ player.firstName }} {{ player.lastName }}</div>
+              <div class="player-details">
+                <span class="position-badge">{{ player.position }}</span>
+                <span class="team-name" *ngIf="player.teamName">{{ player.teamName }}</span>
+                <span class="team-name text-muted" *ngIf="!player.teamName">Free Agent</span>
+              </div>
+              <div class="player-time">{{ player.createdDate | date:'short' }}</div>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="newestPlayers.length === 0" class="empty-state">
+          <i class="fas fa-user-plus fa-2x text-muted mb-2"></i>
+          <p class="text-muted">No new players</p>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="section-card">
+        <div class="section-header">
+          <h4 class="section-title">
+            <i class="fas fa-link me-2"></i>Quick Links
+          </h4>
+        </div>
+        <div class="quick-links">
+          <a href="/teams" class="quick-link-item">
+            <div class="quick-link-icon">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="quick-link-content">
+              <div class="quick-link-title">Teams</div>
+              <div class="quick-link-desc">Browse all teams</div>
+            </div>
+          </a>
+          <a href="/analytics" class="quick-link-item">
+            <div class="quick-link-icon">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="quick-link-content">
+              <div class="quick-link-title">Standings</div>
+              <div class="quick-link-desc">League standings</div>
+            </div>
+          </a>
+          <a href="/games" class="quick-link-item">
+            <div class="quick-link-icon">
+              <i class="fas fa-calendar"></i>
+            </div>
+            <div class="quick-link-content">
+              <div class="quick-link-title">Schedule</div>
+              <div class="quick-link-desc">Game schedule</div>
+            </div>
+          </a>
+          <a href="/player" class="quick-link-item">
+            <div class="quick-link-icon">
+              <i class="fas fa-user"></i>
+            </div>
+            <div class="quick-link-content">
+              <div class="quick-link-title">My Player</div>
+              <div class="quick-link-desc">Player management</div>
+            </div>
+          </a>
         </div>
       </div>
     </div>

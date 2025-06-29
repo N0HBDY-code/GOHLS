@@ -3,6 +3,7 @@ import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -24,6 +25,19 @@ interface Team {
 export class HeadquartersComponent implements OnInit {
   private firestore = inject(Firestore);
   private tradeService = inject(TradeService);
+  private authService = inject(AuthService);
+
+  // Permission control
+  canManageSeasons = false;
+
+  // Season Management (moved from games component)
+  currentSeason = new Date().getFullYear();
+  tempSeason = new Date().getFullYear();
+  editingSeason = false;
+
+  // Game Day Management
+  gameWeek = 1;
+  gameDay = 'D1';
 
   // Role Management
   searchUsername = '';
@@ -82,12 +96,94 @@ export class HeadquartersComponent implements OnInit {
   ];
 
   async ngOnInit() {
+    // Check permissions
+    this.authService.effectiveRoles.subscribe(roles => {
+      this.canManageSeasons = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+    });
+
     await Promise.all([
+      this.loadSeasonSettings(),
+      this.loadGameSettings(),
       this.loadPendingTrades(),
       this.loadNewPlayers(),
       this.loadTeams(),
       this.loadPendingPlayers()
     ]);
+  }
+
+  // Season Management Methods
+  async loadSeasonSettings() {
+    try {
+      const settingsRef = doc(this.firestore, 'seasonSettings/current');
+      const settingsSnap = await getDoc(settingsRef);
+      
+      if (settingsSnap.exists()) {
+        this.currentSeason = settingsSnap.data()['season'] || new Date().getFullYear();
+        this.tempSeason = this.currentSeason;
+      }
+    } catch (error) {
+      console.error('Error loading season settings:', error);
+    }
+  }
+
+  async saveSeason() {
+    if (!this.canManageSeasons) return;
+
+    try {
+      const settingsRef = doc(this.firestore, 'seasonSettings/current');
+      await setDoc(settingsRef, {
+        season: this.tempSeason,
+        lastUpdated: new Date()
+      });
+
+      this.currentSeason = this.tempSeason;
+      this.editingSeason = false;
+      
+      this.success = `Season updated to ${this.currentSeason}`;
+      setTimeout(() => this.success = '', 3000);
+    } catch (error) {
+      console.error('Error saving season:', error);
+      this.error = 'Failed to update season';
+      setTimeout(() => this.error = '', 3000);
+    }
+  }
+
+  // Game Day Management Methods
+  async loadGameSettings() {
+    try {
+      const settingsRef = doc(this.firestore, 'gameSettings/current');
+      const settingsSnap = await getDoc(settingsRef);
+      
+      if (settingsSnap.exists()) {
+        const data = settingsSnap.data();
+        this.gameWeek = data['week'] || 1;
+        this.gameDay = data['day'] || 'D1';
+      }
+    } catch (error) {
+      console.error('Error loading game settings:', error);
+    }
+  }
+
+  async saveGameSettings() {
+    if (!this.canManageSeasons) return;
+
+    try {
+      const settingsRef = doc(this.firestore, 'gameSettings/current');
+      await setDoc(settingsRef, {
+        week: this.gameWeek,
+        day: this.gameDay,
+        lastUpdated: new Date()
+      });
+
+      this.success = `Game lineup updated to Week ${this.gameWeek}, ${this.gameDay}`;
+      setTimeout(() => this.success = '', 3000);
+    } catch (error) {
+      console.error('Error saving game settings:', error);
+      this.error = 'Failed to update game settings';
+      setTimeout(() => this.error = '', 3000);
+    }
   }
 
   async loadPendingPlayers() {

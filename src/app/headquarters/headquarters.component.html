@@ -1,6 +1,97 @@
 <div class="container mt-4">
   <div class="row">
     <div class="col-md-12">
+      <!-- Season and Game Management Section -->
+      <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+          <h4 class="mb-0">
+            <i class="fas fa-calendar-alt me-2"></i>Season & Game Management
+          </h4>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <!-- Season Management -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">
+                    <i class="fas fa-trophy me-1"></i>Current Season
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="mb-3">
+                    <label class="form-label">Season Year</label>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge bg-primary fs-6 px-3 py-2">{{ currentSeason }}</span>
+                      <button *ngIf="canManageSeasons && !editingSeason" 
+                              class="btn btn-outline-secondary btn-sm"
+                              (click)="editingSeason = true">
+                        <i class="fas fa-edit"></i>
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div *ngIf="editingSeason && canManageSeasons" class="d-flex gap-2">
+                    <input type="number" 
+                           class="form-control" 
+                           style="width: 100px"
+                           [(ngModel)]="tempSeason" 
+                           min="2020">
+                    <button class="btn btn-primary" (click)="saveSeason()">Save</button>
+                    <button class="btn btn-outline-secondary" (click)="editingSeason = false">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Game Day Management -->
+            <div class="col-md-6">
+              <div class="card">
+                <div class="card-header">
+                  <h6 class="mb-0">
+                    <i class="fas fa-calendar-day me-1"></i>Today's Game Lineup
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row">
+                    <div class="col-6">
+                      <label class="form-label">Week</label>
+                      <input type="number" 
+                             class="form-control" 
+                             [(ngModel)]="gameWeek" 
+                             min="1"
+                             [disabled]="!canManageSeasons">
+                    </div>
+                    <div class="col-6">
+                      <label class="form-label">Day</label>
+                      <select class="form-select" 
+                              [(ngModel)]="gameDay"
+                              [disabled]="!canManageSeasons">
+                        <option value="D1">Day 1</option>
+                        <option value="D2">Day 2</option>
+                        <option value="D3">Day 3</option>
+                        <option value="D4">Day 4</option>
+                        <option value="D5">Day 5</option>
+                        <option value="D6">Day 6</option>
+                        <option value="D7">Day 7</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button *ngIf="canManageSeasons" 
+                          class="btn btn-success mt-3 w-100" 
+                          (click)="saveGameSettings()">
+                    <i class="fas fa-save me-1"></i>Update Game Lineup
+                  </button>
+                  <div *ngIf="!canManageSeasons" class="alert alert-info mt-3 mb-0">
+                    <i class="fas fa-lock me-1"></i>Game management restricted to developers/commissioners
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Pending Player Approvals Section -->
       <div class="card mb-4">
         <div class="card-header bg-info text-white">

@@ -32,7 +32,6 @@ interface Game {
   awayTeamId: string;
   week: number;
   day: string;
-  season: number;
   isRival: boolean;
   homeTeam?: string;
   awayTeam?: string;
@@ -53,9 +52,6 @@ interface Game {
 })
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
-  currentSeason = 1;
-  tempSeason = 1;
-  editingSeason = false;
   loading = false;
   isClearing = false;
   selectedWeek = 1;
@@ -63,7 +59,6 @@ export class GamesComponent implements OnInit {
   weekSchedule: Map<number, Game[]> = new Map();
   gamesCache = new Map<string, Game>();
   canManageGames = false;
-  canManageSeason = false;
   isDeveloper = false;
 
   newGame: {
@@ -71,14 +66,12 @@ export class GamesComponent implements OnInit {
     awayTeamId: string;
     week: number;
     day: number;
-    season: number;
     isRival: boolean;
   } = {
     homeTeamId: '',
     awayTeamId: '',
     week: 1,
     day: 1,
-    season: 1,
     isRival: false
   };
 
@@ -92,9 +85,6 @@ export class GamesComponent implements OnInit {
     // Subscribe to role changes
     this.authService.effectiveRoles.subscribe(roles => {
       this.canManageGames = roles.some(role => 
-        ['developer', 'commissioner'].includes(role)
-      );
-      this.canManageSeason = roles.some(role => 
         ['developer', 'commissioner'].includes(role)
       );
       this.isDeveloper = roles.includes('developer');
@@ -115,9 +105,14 @@ export class GamesComponent implements OnInit {
   }
 
   async loadActiveWeeks() {
+    // Load current season from headquarters settings
+    const seasonRef = doc(this.firestore, 'seasonSettings/current');
+    const seasonSnap = await getDoc(seasonRef);
+    const currentSeason = seasonSnap.exists() ? seasonSnap.data()['season'] : new Date().getFullYear();
+
     const gamesQuery = query(
       collection(this.firestore, 'games'),
-      where('season', '==', this.currentSeason)
+      where('season', '==', currentSeason)
     );
     
     const snapshot = await getDocs(gamesQuery);
@@ -135,9 +130,14 @@ export class GamesComponent implements OnInit {
     
     this.loading = true;
     try {
+      // Load current season from headquarters settings
+      const seasonRef = doc(this.firestore, 'seasonSettings/current');
+      const seasonSnap = await getDoc(seasonRef);
+      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['season'] : new Date().getFullYear();
+
       const gamesQuery = query(
         collection(this.firestore, 'games'),
-        where('season', '==', this.currentSeason),
+        where('season', '==', currentSeason),
         where('week', '==', weekNumber)
       );
 
@@ -207,6 +207,11 @@ export class GamesComponent implements OnInit {
     
     if (!homeTeam || !awayTeam) return;
 
+    // Load current season from headquarters settings
+    const seasonRef = doc(this.firestore, 'seasonSettings/current');
+    const seasonSnap = await getDoc(seasonRef);
+    const currentSeason = seasonSnap.exists() ? seasonSnap.data()['season'] : new Date().getFullYear();
+
     const tags: string[] = [];
     if (this.newGame.isRival) {
       tags.push('rival');
@@ -219,7 +224,7 @@ export class GamesComponent implements OnInit {
     const gameData = {
       ...this.newGame,
       day: this.formatDay(this.newGame.day),
-      season: this.currentSeason,
+      season: currentSeason,
       tags
     };
 
@@ -246,7 +251,6 @@ export class GamesComponent implements OnInit {
       awayTeamId: '',
       week: this.newGame.week,
       day: 1,
-      season: this.currentSeason,
       isRival: false
     };
 
@@ -263,9 +267,14 @@ export class GamesComponent implements OnInit {
 
     this.isClearing = true;
     try {
+      // Load current season from headquarters settings
+      const seasonRef = doc(this.firestore, 'seasonSettings/current');
+      const seasonSnap = await getDoc(seasonRef);
+      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['season'] : new Date().getFullYear();
+
       const gamesQuery = query(
         collection(this.firestore, 'games'),
-        where('season', '==', this.currentSeason)
+        where('season', '==', currentSeason)
       );
       
       const snapshot = await getDocs(gamesQuery);
@@ -279,18 +288,6 @@ export class GamesComponent implements OnInit {
       this.selectedWeek = 1;
     } finally {
       this.isClearing = false;
-    }
-  }
-
-  async saveSeason() {
-    if (!this.canManageSeason) return;
-
-    this.currentSeason = this.tempSeason;
-    this.editingSeason = false;
-    await this.loadActiveWeeks();
-    if (this.activeWeeks.length > 0) {
-      this.selectedWeek = this.activeWeeks[0];
-      await this.loadWeek(this.selectedWeek);
     }
   }
 
