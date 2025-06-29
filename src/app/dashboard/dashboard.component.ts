@@ -6,42 +6,34 @@ import { User } from 'firebase/auth';
 import { Subscription, Observable } from 'rxjs';
 import { Firestore, collection, getDocs, doc, getDoc, query, orderBy, limit, where } from '@angular/fire/firestore';
 
-interface Game {
-  id: string;
-  homeTeam: string;
-  awayTeam: string;
-  homeLogo?: string;
-  awayLogo?: string;
-  homeScore?: number;
-  awayScore?: number;
-  time?: string;
-  status?: string;
-  week: number;
-  day: string;
-}
-
-interface Transaction {
-  id: string;
-  type: 'trade' | 'signing' | 'retirement';
-  title: string;
-  details: string;
-  timestamp: Date;
-}
-
 interface Player {
   id: string;
   firstName: string;
   lastName: string;
   position: string;
+  archetype: string;
+  age: number;
+  createdDate: any;
+  teamId: string;
   teamName?: string;
-  createdDate: Date;
 }
 
-interface NewsItem {
+interface Transaction {
   id: string;
-  title: string;
-  summary: string;
-  date: Date;
+  type: 'trade' | 'signing' | 'retirement';
+  description: string;
+  timestamp: any;
+  playersInvolved: string[];
+}
+
+interface GameLineup {
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamLogo?: string;
+  awayTeamLogo?: string;
+  week: number;
+  day: string;
+  time?: string;
 }
 
 @Component({
@@ -54,36 +46,28 @@ interface NewsItem {
 export class DashboardComponent implements OnInit, OnDestroy {
   user: User | null = null;
   private userSub!: Subscription;
+  today: Date = new Date();
   
-  // Dashboard data
-  todaysGames: Game[] = [];
-  recentTransactions: Transaction[] = [];
+  // New dashboard data
   newestPlayers: Player[] = [];
-  leagueNews: NewsItem[] = [];
-  
-  // Stats
-  totalPlayers = 0;
-  totalTeams = 0;
-  currentSeason = new Date().getFullYear();
-  
-  // Game lineup settings (controlled from headquarters)
-  currentGameWeek = 1;
-  currentGameDay = 'D1';
-  
-  loading = true;
+  recentTransactions: Transaction[] = [];
+  todaysGames: GameLineup[] = [];
+  loadingPlayers = false;
+  loadingTransactions = false;
+  loadingGames = false;
 
-  constructor(
-    private authService: AuthService, 
-    private firestore: Firestore
-  ) {}
+  constructor(private authService: AuthService, private firestore: Firestore) {}
 
-  async ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.userSub = this.authService.currentUser.subscribe(user => {
       this.user = user;
     });
 
-    await this.loadDashboardData();
-    this.loading = false;
+    await Promise.all([
+      this.loadNewestPlayers(),
+      this.loadRecentTransactions(),
+      this.loadTodaysGames()
+    ]);
   }
 
   ngOnDestroy(): void {
@@ -92,47 +76,144 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  async loadDashboardData() {
+  async loadNewestPlayers(): Promise<void> {
+    this.loadingPlayers = true;
     try {
-      await Promise.all([
-        this.loadGameLineup(),
-        this.loadRecentTransactions(),
-        this.loadNewestPlayers(),
-        this.loadLeagueNews(),
-        this.loadStats()
-      ]);
+      const playersRef = collection(this.firestore, 'players');
+      const q = query(
+        playersRef, 
+        where('status', '==', 'active'),
+        orderBy('createdDate', 'desc'), 
+        limit(5)
+      );
+      const snapshot = await getDocs(q);
+      
+      this.newestPlayers = await Promise.all(
+        snapshot.docs.map(async (playerDoc) => {
+          const data = playerDoc.data();
+          let teamName = 'Free Agent';
+          
+          if (data['teamId'] && data['teamId'] !== 'none') {
+            const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
+            const teamSnap = await getDoc(teamRef);
+            if (teamSnap.exists()) {
+              const teamData = teamSnap.data();
+              teamName = `${teamData['city']} ${teamData['mascot']}`;
+            }
+          }
+          
+          return {
+            id: playerDoc.id,
+            firstName: data['firstName'] || '',
+            lastName: data['lastName'] || '',
+            position: data['position'] || '',
+            archetype: data['archetype'] || '',
+            age: data['age'] || 19,
+            createdDate: data['createdDate'],
+            teamId: data['teamId'] || 'none',
+            teamName
+          };
+        })
+      );
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
+      console.error('Error loading newest players:', error);
+    } finally {
+      this.loadingPlayers = false;
     }
   }
 
-  async loadGameLineup() {
+  async loadRecentTransactions(): Promise<void> {
+    this.loadingTransactions = true;
     try {
-      // Load game lineup settings from headquarters
-      const settingsRef = doc(this.firestore, 'gameSettings/current');
+      // Load recent player history entries for transactions
+      const allTransactions: Transaction[] = [];
+      
+      // Get recent player history entries
+      const playersRef = collection(this.firestore, 'players');
+      const playersSnapshot = await getDocs(playersRef);
+      
+      for (const playerDoc of playersSnapshot.docs) {
+        const historyRef = collection(this.firestore, `players/${playerDoc.id}/history`);
+        const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(3));
+        const historySnapshot = await getDocs(historyQuery);
+        
+        for (const historyDoc of historySnapshot.docs) {
+          const historyData = historyDoc.data();
+          const playerData = playerDoc.data();
+          
+          if (['signed', 'traded', 'retired'].includes(historyData['action'])) {
+            let description = '';
+            const playerName = `${playerData['firstName']} ${playerData['lastName']}`;
+            
+            switch (historyData['action']) {
+              case 'signed':
+                description = `${playerName} signed with a team`;
+                break;
+              case 'traded':
+                description = `${playerName} was traded`;
+                break;
+              case 'retired':
+                description = `${playerName} announced retirement`;
+                break;
+            }
+            
+            allTransactions.push({
+              id: historyDoc.id,
+              type: historyData['action'] as 'trade' | 'signing' | 'retirement',
+              description,
+              timestamp: historyData['timestamp'],
+              playersInvolved: [playerDoc.id]
+            });
+          }
+        }
+      }
+      
+      // Sort all transactions by timestamp and take the 10 most recent
+      this.recentTransactions = allTransactions
+        .sort((a, b) => {
+          const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp);
+          const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp);
+          return bTime.getTime() - aTime.getTime();
+        })
+        .slice(0, 10);
+        
+    } catch (error) {
+      console.error('Error loading recent transactions:', error);
+    } finally {
+      this.loadingTransactions = false;
+    }
+  }
+
+  async loadTodaysGames(): Promise<void> {
+    this.loadingGames = true;
+    try {
+      // Get current game schedule settings from headquarters
+      const settingsRef = doc(this.firestore, 'gameScheduleSettings/current');
       const settingsSnap = await getDoc(settingsRef);
       
-      if (settingsSnap.exists()) {
-        const settings = settingsSnap.data();
-        this.currentGameWeek = settings['week'] || 1;
-        this.currentGameDay = settings['day'] || 'D1';
+      if (!settingsSnap.exists()) {
+        this.todaysGames = [];
+        return;
       }
-
-      // Load today's games based on current settings
-      const gamesQuery = query(
-        collection(this.firestore, 'games'),
-        where('week', '==', this.currentGameWeek),
-        where('day', '==', this.currentGameDay),
-        where('season', '==', this.currentSeason)
-      );
       
-      const gamesSnap = await getDocs(gamesQuery);
+      const settings = settingsSnap.data();
+      const currentWeek = settings['week'] || 1;
+      const currentDay = settings['day'] || 'D1';
+      
+      // Load games for the current week and day
+      const gamesRef = collection(this.firestore, 'games');
+      const gamesQuery = query(
+        gamesRef,
+        where('week', '==', currentWeek),
+        where('day', '==', currentDay)
+      );
+      const gamesSnapshot = await getDocs(gamesQuery);
       
       this.todaysGames = await Promise.all(
-        gamesSnap.docs.map(async (gameDoc) => {
+        gamesSnapshot.docs.map(async (gameDoc) => {
           const gameData = gameDoc.data();
           
-          // Load team data for logos and names
+          // Get team information
           const [homeTeamSnap, awayTeamSnap] = await Promise.all([
             getDoc(doc(this.firestore, `teams/${gameData['homeTeamId']}`)),
             getDoc(doc(this.firestore, `teams/${gameData['awayTeamId']}`))
@@ -142,218 +223,54 @@ export class DashboardComponent implements OnInit, OnDestroy {
           const awayTeamData = awayTeamSnap.exists() ? awayTeamSnap.data() : {};
           
           return {
-            id: gameDoc.id,
-            homeTeam: `${homeTeamData['city']} ${homeTeamData['mascot']}` || 'Unknown Team',
-            awayTeam: `${awayTeamData['city']} ${awayTeamData['mascot']}` || 'Unknown Team',
-            homeLogo: homeTeamData['logoUrl'],
-            awayLogo: awayTeamData['logoUrl'],
-            homeScore: gameData['homeScore'],
-            awayScore: gameData['awayScore'],
-            time: gameData['time'],
-            status: gameData['status'] || 'Scheduled',
+            homeTeam: `${homeTeamData['city']} ${homeTeamData['mascot']}`,
+            awayTeam: `${awayTeamData['city']} ${awayTeamData['mascot']}`,
+            homeTeamLogo: homeTeamData['logoUrl'],
+            awayTeamLogo: awayTeamData['logoUrl'],
             week: gameData['week'],
-            day: gameData['day']
-          } as Game;
+            day: gameData['day'],
+            time: gameData['time'] || 'TBD'
+          };
         })
       );
     } catch (error) {
-      console.error('Error loading game lineup:', error);
-      this.todaysGames = [];
+      console.error('Error loading today\'s games:', error);
+    } finally {
+      this.loadingGames = false;
     }
   }
 
-  async loadRecentTransactions() {
-    try {
-      // Load recent player history entries for transactions
-      const playersRef = collection(this.firestore, 'players');
-      const playersSnap = await getDocs(playersRef);
-      
-      const allTransactions: Transaction[] = [];
-      
-      for (const playerDoc of playersSnap.docs) {
-        const playerData = playerDoc.data();
-        const historyRef = collection(this.firestore, `players/${playerDoc.id}/history`);
-        const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(3));
-        const historySnap = await getDocs(historyQuery);
-        
-        for (const historyDoc of historySnap.docs) {
-          const historyData = historyDoc.data();
-          const action = historyData['action'];
-          
-          if (['traded', 'signed', 'retired'].includes(action)) {
-            let type: 'trade' | 'signing' | 'retirement';
-            let title: string;
-            let details: string;
-            
-            switch (action) {
-              case 'traded':
-                type = 'trade';
-                title = `${playerData['firstName']} ${playerData['lastName']} Traded`;
-                details = `Player moved to new team`;
-                break;
-              case 'signed':
-                type = 'signing';
-                title = `${playerData['firstName']} ${playerData['lastName']} Signed`;
-                details = `Player joined the league`;
-                break;
-              case 'retired':
-                type = 'retirement';
-                title = `${playerData['firstName']} ${playerData['lastName']} Retired`;
-                details = `Player announced retirement`;
-                break;
-              default:
-                continue;
-            }
-            
-            allTransactions.push({
-              id: historyDoc.id,
-              type,
-              title,
-              details,
-              timestamp: historyData['timestamp']?.toDate() || new Date()
-            });
-          }
-        }
-      }
-      
-      // Sort by timestamp and take the 10 most recent
-      this.recentTransactions = allTransactions
-        .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-        .slice(0, 10);
-        
-    } catch (error) {
-      console.error('Error loading recent transactions:', error);
-      this.recentTransactions = [];
-    }
-  }
-
-  async loadNewestPlayers() {
-    try {
-      const playersQuery = query(
-        collection(this.firestore, 'players'),
-        where('status', '==', 'active'),
-        orderBy('createdDate', 'desc'),
-        limit(5)
-      );
-      
-      const playersSnap = await getDocs(playersQuery);
-      
-      this.newestPlayers = await Promise.all(
-        playersSnap.docs.map(async (playerDoc) => {
-          const playerData = playerDoc.data();
-          let teamName = '';
-          
-          if (playerData['teamId'] && playerData['teamId'] !== 'none') {
-            const teamSnap = await getDoc(doc(this.firestore, `teams/${playerData['teamId']}`));
-            if (teamSnap.exists()) {
-              const teamData = teamSnap.data();
-              teamName = `${teamData['city']} ${teamData['mascot']}`;
-            }
-          }
-          
-          return {
-            id: playerDoc.id,
-            firstName: playerData['firstName'],
-            lastName: playerData['lastName'],
-            position: playerData['position'],
-            teamName,
-            createdDate: playerData['createdDate']?.toDate() || new Date()
-          } as Player;
-        })
-      );
-    } catch (error) {
-      console.error('Error loading newest players:', error);
-      this.newestPlayers = [];
-    }
-  }
-
-  async loadLeagueNews() {
-    try {
-      // For now, create some sample news items
-      // In a real implementation, this would come from a news collection
-      this.leagueNews = [
-        {
-          id: '1',
-          title: 'Season Playoffs Approaching',
-          summary: 'Teams are making their final push for playoff positioning as we enter the final weeks of the regular season.',
-          date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000) // 1 day ago
-        },
-        {
-          id: '2',
-          title: 'New Player Registrations Open',
-          summary: 'The league is now accepting new player registrations for the upcoming season. Submit your application today!',
-          date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000) // 3 days ago
-        },
-        {
-          id: '3',
-          title: 'Trade Deadline Extended',
-          summary: 'Due to popular demand, the trade deadline has been extended by one week to allow teams more time to make moves.',
-          date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000) // 5 days ago
-        }
-      ];
-    } catch (error) {
-      console.error('Error loading league news:', error);
-      this.leagueNews = [];
-    }
-  }
-
-  async loadStats() {
-    try {
-      const [playersSnap, teamsSnap] = await Promise.all([
-        getDocs(query(collection(this.firestore, 'players'), where('status', '==', 'active'))),
-        getDocs(collection(this.firestore, 'teams'))
-      ]);
-      
-      this.totalPlayers = playersSnap.docs.length;
-      this.totalTeams = teamsSnap.docs.length;
-    } catch (error) {
-      console.error('Error loading stats:', error);
-      this.totalPlayers = 0;
-      this.totalTeams = 0;
-    }
-  }
-
-  // Helper methods for styling
-  getGameStatusClass(status?: string): string {
-    switch (status?.toLowerCase()) {
-      case 'live':
-      case 'in progress':
-        return 'live';
-      case 'final':
-      case 'completed':
-        return 'final';
-      default:
-        return 'scheduled';
+  getTimeAgo(timestamp: any): string {
+    const date = timestamp?.toDate?.() || new Date(timestamp);
+    const now = new Date();
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
+    const diffInDays = Math.floor(diffInHours / 24);
+    
+    if (diffInDays > 0) {
+      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+    } else if (diffInHours > 0) {
+      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    } else {
+      return 'Less than an hour ago';
     }
   }
 
   getTransactionIcon(type: string): string {
     switch (type) {
-      case 'trade':
-        return 'fas fa-exchange-alt';
-      case 'signing':
-        return 'fas fa-pen-nib';
-      case 'retirement':
-        return 'fas fa-medal';
-      default:
-        return 'fas fa-info-circle';
+      case 'trade': return 'fas fa-exchange-alt';
+      case 'signing': return 'fas fa-pen-nib';
+      case 'retirement': return 'fas fa-medal';
+      default: return 'fas fa-info-circle';
     }
   }
 
-  getTransactionIconClass(type: string): string {
-    return type;
-  }
-
-  getTransactionBadgeClass(type: string): string {
+  getTransactionColor(type: string): string {
     switch (type) {
-      case 'trade':
-        return 'bg-primary';
-      case 'signing':
-        return 'bg-success';
-      case 'retirement':
-        return 'bg-warning';
-      default:
-        return 'bg-secondary';
+      case 'trade': return 'text-primary';
+      case 'signing': return 'text-success';
+      case 'retirement': return 'text-warning';
+      default: return 'text-muted';
     }
   }
 }

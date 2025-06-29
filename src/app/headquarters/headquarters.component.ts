@@ -1,9 +1,8 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
-import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -25,19 +24,11 @@ interface Team {
 export class HeadquartersComponent implements OnInit {
   private firestore = inject(Firestore);
   private tradeService = inject(TradeService);
-  private authService = inject(AuthService);
 
-  // Permission control
-  canManageSeasons = false;
-
-  // Season Management (moved from games component)
-  currentSeason = new Date().getFullYear();
-  tempSeason = new Date().getFullYear();
-  editingSeason = false;
-
-  // Game Day Management
-  gameWeek = 1;
-  gameDay = 'D1';
+  // Game Schedule Settings
+  currentSeason = 1;
+  currentWeek = 1;
+  currentDay = 'D1';
 
   // Role Management
   searchUsername = '';
@@ -59,32 +50,6 @@ export class HeadquartersComponent implements OnInit {
   majorLeagueTeams: Team[] = [];
   minorLeagueTeams: Team[] = [];
 
-  // Pending Player Approvals - separate state management
-  pendingPlayers: any[] = [];
-  loadingPendingPlayers = false;
-  showPlayerApprovalModal = false;
-  selectedPendingPlayer: any = null;
-  playerAttributes: Record<string, number> = {};
-  playerApprovalLoading = false;
-  playerApprovalError = '';
-  playerApprovalSuccess = '';
-
-  // Attribute lists - updated to include OVERALL
-  skaterAttributes = [
-    'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
-    'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
-    'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
-    'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
-    'STK CHK', 'OVERALL'
-  ];
-
-  goalieAttributes = [
-    'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
-    'AGILITY', 'CONSIS', 'PK CTRL', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
-    'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
-    'DRBLTY', 'VISION', 'OVERALL'
-  ];
-
   availableRoles = [
     'viewer',
     'developer',
@@ -96,255 +61,49 @@ export class HeadquartersComponent implements OnInit {
   ];
 
   async ngOnInit() {
-    // Check permissions
-    this.authService.effectiveRoles.subscribe(roles => {
-      this.canManageSeasons = roles.some(role => 
-        ['developer', 'commissioner'].includes(role)
-      );
-    });
-
     await Promise.all([
-      this.loadSeasonSettings(),
-      this.loadGameSettings(),
+      this.loadScheduleSettings(),
       this.loadPendingTrades(),
       this.loadNewPlayers(),
-      this.loadTeams(),
-      this.loadPendingPlayers()
+      this.loadTeams()
     ]);
   }
 
-  // Season Management Methods
-  async loadSeasonSettings() {
+  async loadScheduleSettings() {
     try {
-      const settingsRef = doc(this.firestore, 'seasonSettings/current');
-      const settingsSnap = await getDoc(settingsRef);
-      
-      if (settingsSnap.exists()) {
-        this.currentSeason = settingsSnap.data()['season'] || new Date().getFullYear();
-        this.tempSeason = this.currentSeason;
-      }
-    } catch (error) {
-      console.error('Error loading season settings:', error);
-    }
-  }
-
-  async saveSeason() {
-    if (!this.canManageSeasons) return;
-
-    try {
-      const settingsRef = doc(this.firestore, 'seasonSettings/current');
-      await setDoc(settingsRef, {
-        season: this.tempSeason,
-        lastUpdated: new Date()
-      });
-
-      this.currentSeason = this.tempSeason;
-      this.editingSeason = false;
-      
-      this.success = `Season updated to ${this.currentSeason}`;
-      setTimeout(() => this.success = '', 3000);
-    } catch (error) {
-      console.error('Error saving season:', error);
-      this.error = 'Failed to update season';
-      setTimeout(() => this.error = '', 3000);
-    }
-  }
-
-  // Game Day Management Methods
-  async loadGameSettings() {
-    try {
-      const settingsRef = doc(this.firestore, 'gameSettings/current');
+      const settingsRef = doc(this.firestore, 'gameScheduleSettings/current');
       const settingsSnap = await getDoc(settingsRef);
       
       if (settingsSnap.exists()) {
         const data = settingsSnap.data();
-        this.gameWeek = data['week'] || 1;
-        this.gameDay = data['day'] || 'D1';
+        this.currentSeason = data['season'] || 1;
+        this.currentWeek = data['week'] || 1;
+        this.currentDay = data['day'] || 'D1';
       }
     } catch (error) {
-      console.error('Error loading game settings:', error);
+      console.error('Error loading schedule settings:', error);
     }
   }
 
-  async saveGameSettings() {
-    if (!this.canManageSeasons) return;
-
+  async updateScheduleSettings() {
+    this.loading = true;
     try {
-      const settingsRef = doc(this.firestore, 'gameSettings/current');
+      const settingsRef = doc(this.firestore, 'gameScheduleSettings/current');
       await setDoc(settingsRef, {
-        week: this.gameWeek,
-        day: this.gameDay,
+        season: this.currentSeason,
+        week: this.currentWeek,
+        day: this.currentDay,
         lastUpdated: new Date()
       });
-
-      this.success = `Game lineup updated to Week ${this.gameWeek}, ${this.gameDay}`;
+      
+      this.success = 'Schedule settings updated successfully';
       setTimeout(() => this.success = '', 3000);
     } catch (error) {
-      console.error('Error saving game settings:', error);
-      this.error = 'Failed to update game settings';
+      console.error('Error updating schedule settings:', error);
+      this.error = 'Failed to update schedule settings';
       setTimeout(() => this.error = '', 3000);
-    }
-  }
-
-  async loadPendingPlayers() {
-    this.loadingPendingPlayers = true;
-    try {
-      const playersRef = collection(this.firestore, 'pendingPlayers');
-      const q = query(playersRef, where('status', '==', 'pending'));
-      const snapshot = await getDocs(q);
-      
-      this.pendingPlayers = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-    } catch (error) {
-      console.error('Error loading pending players:', error);
-      this.playerApprovalError = 'Failed to load pending players';
-      setTimeout(() => this.playerApprovalError = '', 3000);
     } finally {
-      this.loadingPendingPlayers = false;
-    }
-  }
-
-  openPlayerApprovalModal(player: any) {
-    this.selectedPendingPlayer = player;
-    this.showPlayerApprovalModal = true;
-    this.playerApprovalError = '';
-    this.playerApprovalSuccess = '';
-    
-    // Initialize attributes with default values
-    if (player.position === 'G') {
-      this.playerAttributes = {};
-      this.goalieAttributes.forEach(attr => {
-        this.playerAttributes[attr] = 66; // Default value
-      });
-    } else {
-      this.playerAttributes = {};
-      this.skaterAttributes.forEach(attr => {
-        this.playerAttributes[attr] = 66; // Default value
-      });
-    }
-  }
-
-  closePlayerApprovalModal() {
-    this.showPlayerApprovalModal = false;
-    this.selectedPendingPlayer = null;
-    this.playerAttributes = {};
-    this.playerApprovalError = '';
-    this.playerApprovalSuccess = '';
-  }
-
-  async approvePlayer() {
-    if (!this.selectedPendingPlayer) return;
-
-    this.playerApprovalLoading = true;
-    this.playerApprovalError = '';
-    this.playerApprovalSuccess = '';
-
-    try {
-      console.log('🎯 Approving player:', this.selectedPendingPlayer.firstName, this.selectedPendingPlayer.lastName);
-      
-      // Create the player document
-      const playerRef = await addDoc(collection(this.firestore, 'players'), {
-        firstName: this.selectedPendingPlayer.firstName,
-        lastName: this.selectedPendingPlayer.lastName,
-        callName: this.selectedPendingPlayer.gamertag,
-        position: this.selectedPendingPlayer.position,
-        archetype: this.selectedPendingPlayer.archetype,
-        jerseyNumber: this.selectedPendingPlayer.jerseyNumber,
-        handedness: this.selectedPendingPlayer.handedness,
-        height: this.selectedPendingPlayer.height,
-        weight: this.selectedPendingPlayer.weight,
-        fightTendency: this.selectedPendingPlayer.fight,
-        origin: this.selectedPendingPlayer.origin,
-        hair: this.selectedPendingPlayer.hair,
-        beard: this.selectedPendingPlayer.beard,
-        stickTapeColor: this.selectedPendingPlayer.tape,
-        race: this.selectedPendingPlayer.ethnicity,
-        twitch: this.selectedPendingPlayer.twitch,
-        referralSource: this.selectedPendingPlayer.referral,
-        invitedBy: this.selectedPendingPlayer.invitedBy,
-        age: this.selectedPendingPlayer.age,
-        userId: this.selectedPendingPlayer.userId,
-        teamId: 'none',
-        status: 'active',
-        createdDate: new Date()
-      });
-
-      console.log('✅ Player created with ID:', playerRef.id);
-
-      // Create attributes document
-      await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), this.playerAttributes);
-      console.log('📊 Attributes set for player');
-
-      // Add creation to player history
-      await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
-        action: 'created',
-        teamId: 'none',
-        timestamp: new Date(),
-        details: 'Player approved and entered the league'
-      });
-      console.log('📝 Player history added');
-
-      // Remove from pending players
-      await deleteDoc(doc(this.firestore, `pendingPlayers/${this.selectedPendingPlayer.id}`));
-      console.log('🗑️ Removed from pending players');
-
-      // Emit event to notify other components
-      console.log('📡 Emitting player approval event...');
-      window.dispatchEvent(new CustomEvent('playerApproved', {
-        detail: {
-          playerId: playerRef.id,
-          userId: this.selectedPendingPlayer.userId,
-          playerName: `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName}`
-        }
-      }));
-
-      // Refresh the lists
-      await Promise.all([
-        this.loadPendingPlayers(),
-        this.loadNewPlayers()
-      ]);
-
-      this.playerApprovalSuccess = `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName} has been approved and created successfully!`;
-      
-      // Close modal after short delay
-      setTimeout(() => {
-        this.closePlayerApprovalModal();
-      }, 2000);
-
-    } catch (error) {
-      console.error('❌ Error approving player:', error);
-      this.playerApprovalError = 'Failed to approve player. Please try again.';
-    } finally {
-      this.playerApprovalLoading = false;
-    }
-  }
-
-  async rejectPlayer(player: any) {
-    if (!confirm(`Are you sure you want to reject ${player.firstName} ${player.lastName}? This action cannot be undone.`)) {
-      return;
-    }
-
-    this.playerApprovalLoading = true;
-    this.playerApprovalError = '';
-    this.playerApprovalSuccess = '';
-
-    try {
-      // Remove from pending players
-      await deleteDoc(doc(this.firestore, `pendingPlayers/${player.id}`));
-
-      // Refresh the list
-      await this.loadPendingPlayers();
-
-      this.playerApprovalSuccess = `${player.firstName} ${player.lastName} has been rejected.`;
-      setTimeout(() => this.playerApprovalSuccess = '', 3000);
-    } catch (error) {
-      console.error('Error rejecting player:', error);
-      this.playerApprovalError = 'Failed to reject player';
-      setTimeout(() => this.playerApprovalError = '', 3000);
-    } finally {
-      this.playerApprovalLoading = false;
+      this.loading = false;
     }
   }
 
