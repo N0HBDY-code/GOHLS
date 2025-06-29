@@ -10,7 +10,9 @@ import {
   CollectionReference,
   getDoc,
   setDoc,
-  addDoc
+  addDoc,
+  query,
+  where
 } from '@angular/fire/firestore';
 import { ProgressionService } from '../services/progression.service';
 import { getDefaultAttributes } from '../services/progression-defaults';
@@ -31,10 +33,15 @@ export class ProgressionTrackerComponent implements OnInit {
   roster: any[] = [];
   loading = false;
 
-  selectedWeek: number = 1;
+  // Current progression settings (what players see)
+  currentProgressionWeek: number = 1;
   progressionsOpen: boolean = true;
   progressionWeeks: number[] = Array.from({ length: 20 }, (_, i) => i + 1);
-  previousWeek: number = 1;
+
+  // Management view settings (what progression tracker sees)
+  viewingWeek: number = 1;
+  viewingWeeks: number[] = Array.from({ length: 20 }, (_, i) => i + 1);
+  currentSeason: number = new Date().getFullYear();
 
   conferences = [
     {
@@ -54,6 +61,7 @@ export class ProgressionTrackerComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadProgressionSettings();
+    this.viewingWeek = this.currentProgressionWeek; // Default to current week
 
     const snapshot = await getDocs(collection(this.firestore, 'teams'));
     this.teams = snapshot.docs.map(doc => {
@@ -82,14 +90,15 @@ export class ProgressionTrackerComponent implements OnInit {
     const playerDocs = playersSnap.docs;
     for (const playerDoc of playerDocs) {
       const data = playerDoc.data();
-      const progressionSnap = await getDocs(collection(this.firestore, `teams/${this.selectedTeamId}/roster/${playerDoc.id}/progression`));
       
-      // Find progression for current week
-      const currentWeekProgression = progressionSnap.docs.find(doc => {
-        const progressionData = doc.data();
-        return progressionData['week'] === this.selectedWeek && 
-               progressionData['season'] === new Date().getFullYear();
-      });
+      // Load progression data for the viewing week (not current week)
+      const progressionQuery = query(
+        collection(this.firestore, `players/${playerDoc.id}/progressions`),
+        where('week', '==', this.viewingWeek),
+        where('season', '==', this.currentSeason)
+      );
+      const progressionSnap = await getDocs(progressionQuery);
+      const progression = progressionSnap.docs[0]?.data();
 
       const globalPlayerRef = doc(this.firestore, `players/${playerDoc.id}`);
       const globalPlayerSnap = await getDoc(globalPlayerRef);
@@ -107,9 +116,9 @@ export class ProgressionTrackerComponent implements OnInit {
         number: data['jerseyNumber'],
         position: data['position'],
         age: globalPlayerData['age'] || 19,
-        progression: currentWeekProgression?.data()?.['training'] || 'Not submitted',
-        status: currentWeekProgression?.data()?.['status'] || 'N/A',
-        progressionDocId: currentWeekProgression?.id || null,
+        progression: progression?.['training'] || 'Not submitted',
+        status: progression?.['status'] || 'N/A',
+        progressionDocId: progressionSnap.docs[0]?.id || null,
         overall: globalPlayerData['overall'] ?? 'N/A'
       });
     }
@@ -117,22 +126,37 @@ export class ProgressionTrackerComponent implements OnInit {
     this.loading = false;
   }
 
+  async onViewingWeekChange() {
+    console.log(`📅 Viewing week changed to: ${this.viewingWeek}`);
+    if (this.selectedTeamId) {
+      await this.loadRoster();
+    }
+  }
+
   async markAsProcessed(playerId: string, docId: string) {
     if (!this.selectedTeamId || !docId) return;
 
-    const teamProgressionRef = doc(this.firestore, `teams/${this.selectedTeamId}/roster/${playerId}/progression/${docId}`);
-    await updateDoc(teamProgressionRef, { status: 'processed' });
-
+    // Update both player and team progression records
     const playerProgressionRef = doc(this.firestore, `players/${playerId}/progressions/${docId}`);
     await updateDoc(playerProgressionRef, { status: 'processed' });
 
-    const progressionSnap = await getDoc(teamProgressionRef);
+    // Also update team roster progression if it exists
+    const teamProgressionRef = doc(this.firestore, `teams/${this.selectedTeamId}/roster/${playerId}/progression/${docId}`);
+    try {
+      await updateDoc(teamProgressionRef, { status: 'processed' });
+    } catch (error) {
+      console.log('Team progression record not found, skipping update');
+    }
+
+    // Get progression details for applying changes
+    const progressionSnap = await getDoc(playerProgressionRef);
     const training = progressionSnap.data()?.['training'];
 
     const playerSnap = await getDoc(doc(this.firestore, `players/${playerId}`));
     const age = playerSnap.data()?.['age'] || 19;
 
-    await this.progressionService.applyProgression(playerId, training, age, this.selectedWeek);
+    // Apply progression using the specific week
+    await this.progressionService.applyProgression(playerId, training, age, this.viewingWeek);
 
     await this.loadRoster();
   }
@@ -140,11 +164,27 @@ export class ProgressionTrackerComponent implements OnInit {
   async undoProcessed(playerId: string, docId: string) {
     if (!this.selectedTeamId || !docId) return;
 
-    const teamProgressionRef = doc(this.firestore, `teams/${this.selectedTeamId}/roster/${playerId}/progression/${docId}`);
-    await updateDoc(teamProgressionRef, { status: 'pending' });
-
+    // Get progression details before undoing
     const playerProgressionRef = doc(this.firestore, `players/${playerId}/progressions/${docId}`);
+    const progressionSnap = await getDoc(playerProgressionRef);
+    const training = progressionSnap.data()?.['training'];
+
+    const playerSnap = await getDoc(doc(this.firestore, `players/${playerId}`));
+    const age = playerSnap.data()?.['age'] || 19;
+
+    // Undo the progression changes
+    await this.progressionService.undoProgression(playerId, training, age, this.viewingWeek);
+
+    // Update status back to pending
     await updateDoc(playerProgressionRef, { status: 'pending' });
+
+    // Also update team roster progression if it exists
+    const teamProgressionRef = doc(this.firestore, `teams/${this.selectedTeamId}/roster/${playerId}/progression/${docId}`);
+    try {
+      await updateDoc(teamProgressionRef, { status: 'pending' });
+    } catch (error) {
+      console.log('Team progression record not found, skipping update');
+    }
 
     await this.loadRoster();
   }
@@ -190,45 +230,42 @@ export class ProgressionTrackerComponent implements OnInit {
 
     if (snap.exists()) {
       const data = snap.data();
-      this.previousWeek = this.selectedWeek;
-      this.selectedWeek = data['week'] ?? 1;
+      this.currentProgressionWeek = data['week'] ?? 1;
       this.progressionsOpen = data['open'] ?? true;
     } else {
-      this.selectedWeek = 1;
+      this.currentProgressionWeek = 1;
       this.progressionsOpen = true;
       await setDoc(settingsRef, {
-        week: this.selectedWeek,
+        week: this.currentProgressionWeek,
         open: this.progressionsOpen
       });
     }
   }
 
-  async updateProgressionSettings() {
+  async updateCurrentProgressionSettings() {
     const settingsRef = doc(this.firestore, 'progressionSettings/config');
-    
-    // Check if week changed
-    const weekChanged = this.previousWeek !== this.selectedWeek;
+    const previousWeek = this.currentProgressionWeek;
     
     await setDoc(settingsRef, {
-      week: this.selectedWeek,
+      week: this.currentProgressionWeek,
       open: this.progressionsOpen
     }, { merge: true });
 
-    // If week changed, emit event and reload roster
-    if (weekChanged) {
-      console.log(`📅 Week changed from ${this.previousWeek} to ${this.selectedWeek}`);
+    // If week changed, emit event for player components
+    if (previousWeek !== this.currentProgressionWeek) {
+      console.log(`📅 Current progression week changed from ${previousWeek} to ${this.currentProgressionWeek}`);
       
-      // Emit week change event for player components to listen to
       window.dispatchEvent(new CustomEvent('weekChanged', {
         detail: {
-          previousWeek: this.previousWeek,
-          newWeek: this.selectedWeek
+          previousWeek: previousWeek,
+          newWeek: this.currentProgressionWeek
         }
       }));
 
-      this.previousWeek = this.selectedWeek;
+      // Update viewing week to match current week by default
+      this.viewingWeek = this.currentProgressionWeek;
       
-      // Reload roster to show data for new week
+      // Reload roster if team is selected
       if (this.selectedTeamId) {
         await this.loadRoster();
       }

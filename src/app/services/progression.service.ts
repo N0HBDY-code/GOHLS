@@ -9,7 +9,7 @@ export class ProgressionService {
 
   private trainingMap: Record<string, string[]> = {
     'Speed Skating': ['SPEED', 'ACCEL', 'AGILITY'],
-    'Distance Skating': ['ENDUR', 'BALANCE', 'DURABILITY'],
+    'Distance Skating': ['ENDUR', 'BALANCE', 'DRBLTY'],
     'Stick Handling': ['PK CTRL', 'DEKE', 'HND EYE'],
     'MMA': ['BODY CHK', 'STRENGTH', 'AGGRE', 'FIGHTING'],
     'Marksmanship': ['WRI PWR', 'SLAP PWR', 'PASSING'],
@@ -20,7 +20,7 @@ export class ProgressionService {
     'Shots Low': ['GLV LOW', 'STK LOW', '5 HOLE'],
     'Side to Sides': ['SPEED', 'AGILITY', 'POISE'],
     'Puck Skills': ['PK CTRL', 'PASSING', 'PK PL FRQ'],
-    'Laps in Pads': ['ENDUR', 'DURABILITY', 'AGGRE'],
+    'Laps in Pads': ['ENDUR', 'DRBLTY', 'AGGRE'],
     'Positioning': ['BRK AWAY', 'ANGLES'],
     'Under Pressure': ['RBD CTRL', 'RECOV']
   };
@@ -42,13 +42,16 @@ export class ProgressionService {
 
     const attributes = attrSnap.data();
     const fields = this.trainingMap[training];
+    if (!fields) return; // Skip if training not found
+
     const delta = this.getAttributeDelta(age, week);
 
     const updatedAttributes: Record<string, any> = {};
 
     for (const attr of fields) {
       const current = attributes[attr] || 0;
-      updatedAttributes[attr] = current + delta;
+      // Ensure attributes stay within bounds (40-99)
+      updatedAttributes[attr] = Math.max(40, Math.min(99, current + delta));
     }
 
     await updateDoc(attrRef, updatedAttributes);
@@ -61,13 +64,16 @@ export class ProgressionService {
 
     const attributes = attrSnap.data();
     const fields = this.trainingMap[training];
+    if (!fields) return; // Skip if training not found
+
     const delta = this.getAttributeDelta(age, week);
 
     const updatedAttributes: Record<string, any> = {};
 
     for (const attr of fields) {
       const current = attributes[attr] || 0;
-      updatedAttributes[attr] = current - delta;
+      // Ensure attributes stay within bounds (40-99)
+      updatedAttributes[attr] = Math.max(40, Math.min(99, current - delta));
     }
 
     await updateDoc(attrRef, updatedAttributes);

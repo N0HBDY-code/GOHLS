@@ -48,7 +48,7 @@
   background-color: #ffffff;
 }
 
-/* Settings card */
+/* Settings card - current progression */
 .settings-card {
   background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
   color: white;
@@ -68,6 +68,16 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+/* Management card - viewing settings */
+.management-card {
+  background-color: #ffffff;
+  border: 2px solid #28a745;
+}
+
+.management-card .card-header {
+  background: linear-gradient(45deg, #28a745, #20c997);
 }
 
 .settings-icon {
@@ -169,7 +179,7 @@
 }
 
 .team-selection-card .card-header {
-  background: linear-gradient(45deg, #28a745, #20c997);
+  background: linear-gradient(45deg, #6f42c1, #e83e8c);
 }
 
 /* Team info display */
@@ -413,6 +423,19 @@
 
 .fa-3x {
   color: #6c757d;
+}
+
+/* Alert styling */
+.alert {
+  border: none;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+}
+
+.alert-info {
+  background-color: #e7f3ff;
+  color: #055160;
+  border-left: 4px solid #0dcaf0;
 }
 
 /* Responsive design */

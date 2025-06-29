@@ -4,24 +4,24 @@
     <i class="fas fa-chart-line me-3"></i>Progression Tracker
   </h2>
 
-  <!-- Progression System Settings -->
+  <!-- Current Progression System Settings -->
   <div class="card settings-card mb-4">
     <div class="card-body">
       <h4>
         <div class="settings-icon">
           <i class="fas fa-cog"></i>
         </div>
-        Progression System Settings
+        Current Progression Settings (What Players See)
       </h4>
 
       <div class="row align-items-end">
         <div class="col-md-4">
-          <label for="weekSelect" class="form-label">
-            <i class="fas fa-calendar-week me-2"></i>Select Progression Week
+          <label for="currentWeekSelect" class="form-label">
+            <i class="fas fa-calendar-week me-2"></i>Current Progression Week
           </label>
-          <select id="weekSelect" class="form-select"
-                  [(ngModel)]="selectedWeek"
-                  (change)="updateProgressionSettings()">
+          <select id="currentWeekSelect" class="form-select"
+                  [(ngModel)]="currentProgressionWeek"
+                  (change)="updateCurrentProgressionSettings()">
             <option *ngFor="let week of progressionWeeks" [value]="week">Week {{ week }}</option>
           </select>
         </div>
@@ -30,7 +30,7 @@
           <div class="form-check form-switch">
             <input class="form-check-input" type="checkbox" id="progressionToggle"
                    [(ngModel)]="progressionsOpen"
-                   (change)="updateProgressionSettings()">
+                   (change)="updateCurrentProgressionSettings()">
             <label class="form-check-label" for="progressionToggle">
               <i class="fas fa-toggle-on me-2"></i>
               Progressions {{ progressionsOpen ? 'Open' : 'Closed' }}
@@ -45,6 +45,41 @@
                   [class.bg-success]="progressionsOpen"
                   [class.bg-secondary]="!progressionsOpen">
               {{ progressionsOpen ? 'ACCEPTING SUBMISSIONS' : 'SUBMISSIONS CLOSED' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Management View Settings -->
+  <div class="card management-card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">
+        <i class="fas fa-eye me-2"></i>Management View Settings
+      </h5>
+    </div>
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <label for="viewingWeekSelect" class="form-label">
+            <i class="fas fa-search me-2"></i>View Progressions for Week
+          </label>
+          <select id="viewingWeekSelect" class="form-select"
+                  [(ngModel)]="viewingWeek"
+                  (change)="onViewingWeekChange()">
+            <option *ngFor="let week of viewingWeeks" [value]="week">Week {{ week }}</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <div class="alert alert-info mb-0">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Note:</strong> You are viewing Week {{ viewingWeek }} progressions. 
+            Players are currently on Week {{ currentProgressionWeek }}.
+            <span *ngIf="viewingWeek !== currentProgressionWeek" class="d-block mt-1">
+              <small class="text-muted">
+                <i class="fas fa-history me-1"></i>Viewing historical data
+              </small>
             </span>
           </div>
         </div>
@@ -96,7 +131,13 @@
         <p class="text-muted mb-0">
           <i class="fas fa-users me-1"></i>{{ roster.length }} players
           <span class="mx-2">•</span>
-          <i class="fas fa-calendar me-1"></i>Week {{ selectedWeek }}
+          <i class="fas fa-calendar me-1"></i>Viewing Week {{ viewingWeek }}
+          <span *ngIf="viewingWeek !== currentProgressionWeek" class="badge bg-warning text-dark ms-2">
+            Historical
+          </span>
+          <span *ngIf="viewingWeek === currentProgressionWeek" class="badge bg-success ms-2">
+            Current
+          </span>
         </p>
       </div>
     </div>
@@ -106,7 +147,7 @@
   <div *ngIf="!loading && roster.length > 0" class="card roster-card">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-clipboard-list me-2"></i>Player Progression Management
+        <i class="fas fa-clipboard-list me-2"></i>Player Progression Management - Week {{ viewingWeek }}
       </h5>
     </div>
     <div class="card-body p-0">
