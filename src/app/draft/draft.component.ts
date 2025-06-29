@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit, addDoc, updateDoc, writeBatch } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit, addDoc, updateDoc, writeBatch, DocumentData, DocumentReference, setDoc } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
 
 interface DraftClass {
@@ -141,7 +141,7 @@ export class DraftComponent implements OnInit {
     const snapshot = await getDocs(teamsRef);
     
     this.teams = snapshot.docs.map(doc => {
-      const data = doc.data();
+      const data = doc.data() as any;
       return {
         id: doc.id,
         name: `${data['city']} ${data['mascot']}`,
@@ -161,7 +161,7 @@ export class DraftComponent implements OnInit {
       // Get current league season
       const seasonRef = doc(this.firestore, 'leagueSettings/season');
       const seasonSnap = await getDoc(seasonRef);
-      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
+      const currentSeason = seasonSnap.exists() ? (seasonSnap.data() as any)['currentSeason'] : 1;
       
       // Load draft classes from Firestore
       const classesRef = collection(this.firestore, 'draftClasses');
@@ -176,7 +176,7 @@ export class DraftComponent implements OnInit {
       
       // Process draft classes
       this.draftClasses = await Promise.all(snapshot.docs.map(async doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         
         // Load players for this draft class
         const playersQuery = query(
@@ -187,7 +187,7 @@ export class DraftComponent implements OnInit {
         
         const playersSnapshot = await getDocs(playersQuery);
         const players = await Promise.all(playersSnapshot.docs.map(async playerDoc => {
-          const playerData = playerDoc.data();
+          const playerData = playerDoc.data() as any;
           
           // Get overall rating from attributes
           let overall = 50;
@@ -195,7 +195,8 @@ export class DraftComponent implements OnInit {
             const attributesRef = doc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
             const attributesSnap = await getDoc(attributesRef);
             if (attributesSnap.exists()) {
-              overall = attributesSnap.data()['OVERALL'] || 50;
+              const attrData = attributesSnap.data() as any;
+              overall = attrData['OVERALL'] || 50;
             }
           } catch (error) {
             console.error('Error loading player attributes:', error);
@@ -207,7 +208,7 @@ export class DraftComponent implements OnInit {
             const teamRef = doc(this.firestore, `teams/${playerData['draftedBy']}`);
             const teamSnap = await getDoc(teamRef);
             if (teamSnap.exists()) {
-              const teamData = teamSnap.data();
+              const teamData = teamSnap.data() as any;
               draftedTeamName = `${teamData['city']} ${teamData['mascot']}`;
             }
           }
@@ -274,14 +275,14 @@ export class DraftComponent implements OnInit {
       // Get current league season
       const seasonRef = doc(this.firestore, 'leagueSettings/season');
       const seasonSnap = await getDoc(seasonRef);
-      this.currentDraftSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
+      this.currentDraftSeason = seasonSnap.exists() ? (seasonSnap.data() as any)['currentSeason'] : 1;
       
       // Load draft order
       const orderRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/order`);
       const orderSnap = await getDoc(orderRef);
       
       if (orderSnap.exists()) {
-        const orderData = orderSnap.data();
+        const orderData = orderSnap.data() as any;
         this.draftOrder = await Promise.all((orderData['teams'] || []).map(async (teamId: string) => {
           const team = this.teams.find(t => t.id === teamId);
           if (team) return team;
@@ -290,7 +291,7 @@ export class DraftComponent implements OnInit {
           const teamRef = doc(this.firestore, `teams/${teamId}`);
           const teamSnap = await getDoc(teamRef);
           if (teamSnap.exists()) {
-            const data = teamSnap.data();
+            const data = teamSnap.data() as any;
             return {
               id: teamId,
               name: `${data['city']} ${data['mascot']}`,
@@ -341,7 +342,7 @@ export class DraftComponent implements OnInit {
       const settingsSnap = await getDoc(settingsRef);
       
       if (settingsSnap.exists()) {
-        this.draftInProgress = settingsSnap.data()['inProgress'] || false;
+        this.draftInProgress = (settingsSnap.data() as any)['inProgress'] || false;
       }
     } catch (error) {
       console.error('Error loading current draft:', error);
@@ -376,7 +377,7 @@ export class DraftComponent implements OnInit {
         const playerRef = doc(this.firestore, `players/${data['playerId']}`);
         const playerSnap = await getDoc(playerRef);
         if (playerSnap.exists()) {
-          const playerData = playerSnap.data();
+          const playerData = playerSnap.data() as any;
           playerName = `${playerData['firstName']} ${playerData['lastName']}`;
         }
       }
@@ -458,7 +459,7 @@ export class DraftComponent implements OnInit {
       
       if (!historySnap.empty) {
         const historyPromises = historySnap.docs.map(async doc => {
-          const data = doc.data();
+          const data = doc.data() as any;
           const season = data['season'];
           
           // Load picks for this season
@@ -488,7 +489,7 @@ export class DraftComponent implements OnInit {
       await setDoc(settingsRef, {
         inProgress: true,
         startedAt: new Date(),
-        startedBy: this.authService.auth.currentUser?.uid
+        startedBy: this.authService.currentUser
       });
       
       // Update draft class status
@@ -513,7 +514,7 @@ export class DraftComponent implements OnInit {
       await setDoc(settingsRef, {
         inProgress: false,
         endedAt: new Date(),
-        endedBy: this.authService.auth.currentUser?.uid
+        endedBy: this.authService.currentUser
       });
       
       // Update draft class status
@@ -598,7 +599,7 @@ export class DraftComponent implements OnInit {
       const playersSnap = await getDocs(playersQuery);
       
       this.availablePlayers = await Promise.all(playersSnap.docs.map(async doc => {
-        const data = doc.data();
+        const data = doc.data() as any;
         
         // Get overall rating
         let overall = 50;
@@ -606,7 +607,8 @@ export class DraftComponent implements OnInit {
           const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
-            overall = attributesSnap.data()['OVERALL'] || 50;
+            const attrData = attributesSnap.data() as any;
+            overall = attrData['OVERALL'] || 50;
           }
         } catch (error) {
           console.error('Error loading player attributes:', error);
@@ -756,9 +758,8 @@ export class DraftComponent implements OnInit {
           break;
         case 'position':
           // Order: G, D, C, LW, RW
-          const posOrder = { 'G': 1, 'D': 2, 'C': 3, 'LW': 4, 'RW': 5 };
-          comparison = (posOrder[a.position as keyof typeof posOrder] || 99) - 
-                      (posOrder[b.position as keyof typeof posOrder] || 99);
+          const posOrder: Record<string, number> = { 'G': 1, 'D': 2, 'C': 3, 'LW': 4, 'RW': 5 };
+          comparison = (posOrder[a.position] || 99) - (posOrder[b.position] || 99);
           break;
       }
       
@@ -820,5 +821,17 @@ export class DraftComponent implements OnInit {
   // Draft navigation
   goToRound(round: number) {
     this.currentRound = round;
+  }
+
+  // Get unique seasons from draft history
+  getUniqueDraftSeasons(): number[] {
+    const seasons = this.draftHistory.map(p => p.season);
+    const uniqueSeasons = [...new Set(seasons)];
+    return uniqueSeasons.sort((a, b) => b - a);
+  }
+
+  // Get picks for a specific season
+  getPicksForSeason(season: number): DraftPick[] {
+    return this.draftHistory.filter(p => p.season === season);
   }
 }

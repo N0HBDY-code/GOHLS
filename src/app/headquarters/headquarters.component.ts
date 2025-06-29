@@ -386,10 +386,12 @@ export class HeadquartersComponent implements OnInit {
       const q = query(pendingRef, where('status', '==', 'pending'));
       const snapshot = await getDocs(q);
       
-      this.pendingPlayers = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data() as PendingPlayer
-      }));
+      this.pendingPlayers = snapshot.docs.map(doc => {
+        return {
+          id: doc.id,
+          ...doc.data() as PendingPlayer
+        };
+      });
     } finally {
       this.loadingPendingPlayers = false;
     }
@@ -490,16 +492,16 @@ export class HeadquartersComponent implements OnInit {
         createdDate: new Date(),
         draftClass: player.draftClass || currentSeason, // Use specified draft class or current season
         draftStatus: 'eligible',
-        fightTendency: player.fight,
-        origin: player.origin,
-        hair: player.hair,
-        beard: player.beard,
-        stickTapeColor: player.tape,
-        race: player.ethnicity,
-        twitch: player.twitch,
-        referralSource: player.referral,
-        invitedBy: player.invitedBy,
-        gamertag: player.gamertag
+        fightTendency: player['fight'],
+        origin: player['origin'],
+        hair: player['hair'],
+        beard: player['beard'],
+        stickTapeColor: player['tape'],
+        race: player['ethnicity'],
+        twitch: player['twitch'],
+        referralSource: player['referral'],
+        invitedBy: player['invitedBy'],
+        gamertag: player['gamertag']
       });
 
       // Create default attributes

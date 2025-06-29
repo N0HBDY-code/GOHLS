@@ -376,7 +376,7 @@
 
         <div *ngIf="!loadingHistory && draftHistory.length > 0">
           <!-- Group by season -->
-          <div *ngFor="let season of [...new Set(draftHistory.map(p => p.season))].sort((a, b) => b - a)" class="mb-4">
+          <ng-container *ngFor="let season of getUniqueDraftSeasons()" class="mb-4">
             <h5 class="border-bottom pb-2">Season {{ season }} Draft</h5>
             
             <div class="table-responsive">
@@ -390,7 +390,7 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let pick of draftHistory.filter(p => p.season === season)">
+                  <tr *ngFor="let pick of getPicksForSeason(season)">
                     <td>{{ pick.round }}</td>
                     <td>{{ pick.pick }}</td>
                     <td>
@@ -407,7 +407,7 @@
                 </tbody>
               </table>
             </div>
-          </div>
+          </ng-container>
         </div>
       </div>
     </div>
