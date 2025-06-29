@@ -167,8 +167,8 @@ export class DraftComponent implements OnInit {
       const classesRef = collection(this.firestore, 'draftClasses');
       const snapshot = await getDocs(classesRef);
       
-      if (snapshot.empty) {
-        // Create initial draft class for current season if none exist
+      if (snapshot.empty && this.canManageDraft) {
+        // Create initial draft class if none exist
         await this.createInitialDraftClass(currentSeason);
         await this.loadDraftClasses(); // Reload after creation
         return;
