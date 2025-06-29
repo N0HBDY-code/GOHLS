@@ -1,5 +1,5 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, writeBatch, orderBy } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
@@ -14,6 +14,20 @@ interface Team {
   division?: string;
 }
 
+interface SeasonHistory {
+  season: number;
+  startDate: any;
+  playerCount: number;
+  status: 'active' | 'completed';
+}
+
+interface DraftClassCounts {
+  age18: number;
+  age19: number;
+  age20Plus: number;
+  total: number;
+}
+
 @Component({
   selector: 'app-headquarters',
   standalone: true,
@@ -24,6 +38,20 @@ interface Team {
 export class HeadquartersComponent implements OnInit {
   private firestore = inject(Firestore);
   private tradeService = inject(TradeService);
+
+  // Season Management
+  currentLeagueSeason = 1;
+  seasonHistory: SeasonHistory[] = [];
+  draftClassCounts: DraftClassCounts = {
+    age18: 0,
+    age19: 0,
+    age20Plus: 0,
+    total: 0
+  };
+  showSeasonRolloverModal = false;
+  rolloverConfirmed = false;
+  rolloverConfirmationText = '';
+  seasonRolloverInProgress = false;
 
   // Game Schedule Settings
   currentSeason = 1;
@@ -62,11 +90,202 @@ export class HeadquartersComponent implements OnInit {
 
   async ngOnInit() {
     await Promise.all([
+      this.loadSeasonManagement(),
       this.loadScheduleSettings(),
       this.loadPendingTrades(),
       this.loadNewPlayers(),
       this.loadTeams()
     ]);
+  }
+
+  async loadSeasonManagement() {
+    try {
+      // Load current league season
+      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      const seasonSnap = await getDoc(seasonRef);
+      
+      if (seasonSnap.exists()) {
+        this.currentLeagueSeason = seasonSnap.data()['currentSeason'] || 1;
+      } else {
+        // Initialize season settings
+        await setDoc(seasonRef, {
+          currentSeason: 1,
+          createdDate: new Date()
+        });
+        this.currentLeagueSeason = 1;
+      }
+
+      // Load season history
+      await this.loadSeasonHistory();
+      
+      // Load draft class counts
+      await this.loadDraftClassCounts();
+      
+    } catch (error) {
+      console.error('Error loading season management:', error);
+    }
+  }
+
+  async loadSeasonHistory() {
+    try {
+      const historyRef = collection(this.firestore, 'seasonHistory');
+      const historyQuery = query(historyRef, orderBy('season', 'desc'));
+      const historySnap = await getDocs(historyQuery);
+      
+      this.seasonHistory = historySnap.docs.map(doc => ({
+        season: doc.data()['season'],
+        startDate: doc.data()['startDate'],
+        playerCount: doc.data()['playerCount'],
+        status: doc.data()['season'] === this.currentLeagueSeason ? 'active' : 'completed'
+      }));
+    } catch (error) {
+      console.error('Error loading season history:', error);
+    }
+  }
+
+  async loadDraftClassCounts() {
+    try {
+      const playersRef = collection(this.firestore, 'players');
+      const activePlayersQuery = query(playersRef, where('status', '==', 'active'));
+      const playersSnap = await getDocs(activePlayersQuery);
+      
+      let age18 = 0;
+      let age19 = 0;
+      let age20Plus = 0;
+      
+      playersSnap.docs.forEach(doc => {
+        const age = doc.data()['age'] || 19;
+        if (age === 18) {
+          age18++;
+        } else if (age === 19) {
+          age19++;
+        } else {
+          age20Plus++;
+        }
+      });
+      
+      this.draftClassCounts = {
+        age18,
+        age19,
+        age20Plus,
+        total: age18 + age19 + age20Plus
+      };
+    } catch (error) {
+      console.error('Error loading draft class counts:', error);
+    }
+  }
+
+  async executeSeasonRollover() {
+    if (!this.rolloverConfirmed || this.rolloverConfirmationText !== 'ADVANCE SEASON') {
+      return;
+    }
+
+    this.seasonRolloverInProgress = true;
+    
+    try {
+      console.log(`🏆 Starting season rollover from Season ${this.currentLeagueSeason} to Season ${this.currentLeagueSeason + 1}`);
+      
+      // Create a batch for atomic operations
+      const batch = writeBatch(this.firestore);
+      
+      // 1. Record current season in history
+      const currentSeasonHistoryRef = doc(this.firestore, `seasonHistory/season${this.currentLeagueSeason}`);
+      batch.set(currentSeasonHistoryRef, {
+        season: this.currentLeagueSeason,
+        startDate: new Date(), // When this season started (now becomes history)
+        playerCount: this.draftClassCounts.total,
+        status: 'completed'
+      });
+      
+      // 2. Update league season
+      const newSeason = this.currentLeagueSeason + 1;
+      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      batch.update(seasonRef, {
+        currentSeason: newSeason,
+        lastRolloverDate: new Date(),
+        previousSeason: this.currentLeagueSeason
+      });
+      
+      // Commit the batch first
+      await batch.commit();
+      
+      // 3. Age all active players (done separately to avoid batch size limits)
+      const playersRef = collection(this.firestore, 'players');
+      const activePlayersQuery = query(playersRef, where('status', '==', 'active'));
+      const playersSnap = await getDocs(activePlayersQuery);
+      
+      console.log(`👥 Aging ${playersSnap.docs.length} active players...`);
+      
+      // Process players in smaller batches to avoid Firestore limits
+      const playerBatches = [];
+      const batchSize = 500; // Firestore batch limit
+      
+      for (let i = 0; i < playersSnap.docs.length; i += batchSize) {
+        const playerBatch = writeBatch(this.firestore);
+        const batchDocs = playersSnap.docs.slice(i, i + batchSize);
+        
+        batchDocs.forEach(playerDoc => {
+          const currentAge = playerDoc.data()['age'] || 19;
+          const newAge = currentAge + 1;
+          
+          playerBatch.update(playerDoc.ref, {
+            age: newAge,
+            lastAgedSeason: newSeason
+          });
+          
+          // Add aging history entry
+          const historyRef = doc(collection(this.firestore, `players/${playerDoc.id}/history`));
+          playerBatch.set(historyRef, {
+            action: 'aged',
+            previousAge: currentAge,
+            newAge: newAge,
+            season: newSeason,
+            timestamp: new Date(),
+            details: `Player aged from ${currentAge} to ${newAge} during Season ${newSeason} rollover`
+          });
+        });
+        
+        playerBatches.push(playerBatch.commit());
+      }
+      
+      // Execute all player aging batches
+      await Promise.all(playerBatches);
+      
+      // 4. Create new season history entry
+      const newSeasonHistoryRef = doc(this.firestore, `seasonHistory/season${newSeason}`);
+      await setDoc(newSeasonHistoryRef, {
+        season: newSeason,
+        startDate: new Date(),
+        playerCount: this.draftClassCounts.total,
+        status: 'active'
+      });
+      
+      // 5. Update local state
+      this.currentLeagueSeason = newSeason;
+      
+      // 6. Reload all data
+      await Promise.all([
+        this.loadSeasonHistory(),
+        this.loadDraftClassCounts()
+      ]);
+      
+      // Close modal and show success
+      this.showSeasonRolloverModal = false;
+      this.rolloverConfirmed = false;
+      this.rolloverConfirmationText = '';
+      
+      this.success = `Season rollover completed successfully! Welcome to Season ${newSeason}. All players have been aged by 1 year.`;
+      setTimeout(() => this.success = '', 5000);
+      
+      console.log(`✅ Season rollover completed successfully to Season ${newSeason}`);
+      
+    } catch (error) {
+      console.error('❌ Error during season rollover:', error);
+      this.error = 'Failed to complete season rollover. Please try again or contact support.';
+      setTimeout(() => this.error = '', 5000);
+    } finally {
+      this.seasonRolloverInProgress = false;
+    }
   }
 
   async loadScheduleSettings() {
