@@ -43,46 +43,60 @@
                      *ngFor="let game of todaysGames; let i = index"
                      (click)="navigateToSpecificGame()">
                   <div class="game-card-carousel">
-                    <div class="game-teams">
+                    <!-- Game Header -->
+                    <div class="game-header">
+                      <div class="game-week-info">
+                        <span class="week-badge">Week {{ game.week }}</span>
+                        <span class="day-badge">{{ game.day }}</span>
+                      </div>
+                      <div *ngIf="hasScore(game)" class="game-status">
+                        <span class="status-badge" 
+                              [class.live]="game.period && game.period !== 'Final'"
+                              [class.final]="game.period === 'Final'">
+                          {{ game.period || 'Live' }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Teams Display -->
+                    <div class="teams-container">
                       <!-- Away Team -->
-                      <div class="team-section away-team">
+                      <div class="team-display away-team">
                         <img *ngIf="game.awayTeamLogo" 
                              [src]="game.awayTeamLogo" 
                              [alt]="game.awayTeam"
-                             class="team-logo-carousel">
+                             class="team-logo">
                         <div class="team-info">
-                          <span class="team-name">{{ game.awayTeam }}</span>
-                          <span class="team-label">Away</span>
+                          <div class="team-name">{{ game.awayTeam }}</div>
+                          <div class="team-record">Away</div>
                         </div>
                       </div>
 
-                      <!-- VS Indicator -->
+                      <!-- VS / Score Section -->
                       <div class="vs-section">
-                        <span class="vs-text">VS</span>
-                        <div class="game-details">
-                          <div class="game-week">Week {{ game.week }}</div>
-                          <div class="game-day">{{ game.day }}</div>
-                          <div *ngIf="game.time" class="game-time">{{ game.time }}</div>
+                        <div *ngIf="!hasScore(game)" class="vs-display">
+                          <span class="vs-text">VS</span>
+                        </div>
+                        <div *ngIf="hasScore(game)" class="score-display">
+                          <div class="score-line">
+                            <span class="away-score">{{ game.awayScore || 0 }}</span>
+                            <span class="score-separator">-</span>
+                            <span class="home-score">{{ game.homeScore || 0 }}</span>
+                          </div>
                         </div>
                       </div>
 
                       <!-- Home Team -->
-                      <div class="team-section home-team">
+                      <div class="team-display home-team">
                         <div class="team-info">
-                          <span class="team-name">{{ game.homeTeam }}</span>
-                          <span class="team-label">Home</span>
+                          <div class="team-name">{{ game.homeTeam }}</div>
+                          <div class="team-record">Home</div>
                         </div>
                         <img *ngIf="game.homeTeamLogo" 
                              [src]="game.homeTeamLogo" 
                              [alt]="game.homeTeam"
-                             class="team-logo-carousel">
+                             class="team-logo">
                       </div>
-                    </div>
-
-                    <!-- Click to view indicator -->
-                    <div class="click-indicator">
-                      <i class="fas fa-gamepad me-2"></i>
-                      Click to view game details
                     </div>
                   </div>
                 </div>

@@ -66,7 +66,7 @@
   background-color: #495057 !important;
 }
 
-/* Games Carousel Styling - Enhanced Design */
+/* Games Carousel Styling - Enhanced Professional Design */
 .games-carousel-container {
   position: relative;
   overflow: hidden;
@@ -140,15 +140,17 @@
   transform: scale(1.02);
 }
 
+/* Enhanced Game Card Design */
 .game-card-carousel {
   background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-  border-radius: 12px;
+  border-radius: 16px;
   padding: 2rem;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   border: 2px solid #e9ecef;
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  min-height: 280px;
 }
 
 .game-card-carousel::before {
@@ -165,103 +167,160 @@
 
 .carousel-slide:hover .game-card-carousel {
   border-color: #007bff;
-  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.2);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(0, 123, 255, 0.2);
+  transform: translateY(-4px);
 }
 
 .carousel-slide:hover .game-card-carousel::before {
   opacity: 1;
 }
 
-.game-teams {
+/* Game Header */
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.game-week-info {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.week-badge {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.day-badge {
+  background: linear-gradient(135deg, #6c757d, #495057);
+  color: white;
+  padding: 0.4rem 0.8rem;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.game-status {
+  display: flex;
+  align-items: center;
+}
+
+.status-badge {
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.live {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+.status-badge.final {
+  background: linear-gradient(135deg, #28a745, #1e7e34);
+  color: white;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Teams Container */
+.teams-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  gap: 2rem;
 }
 
-.team-section {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex: 1;
-}
-
-.away-team {
-  justify-content: flex-start;
-}
-
-.home-team {
-  justify-content: flex-end;
-  flex-direction: row-reverse;
-}
-
-.team-logo-carousel {
-  width: 60px;
-  height: 60px;
-  object-fit: contain;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  transition: transform 0.3s ease;
-  border: 2px solid #e9ecef;
-}
-
-.carousel-slide:hover .team-logo-carousel {
-  transform: scale(1.1);
-  border-color: #007bff;
-}
-
-.team-info {
+.team-display {
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+  flex: 1;
+  max-width: 200px;
 }
 
-.away-team .team-info {
-  align-items: flex-start;
-  text-align: left;
+.team-logo {
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  border: 3px solid #e9ecef;
+  margin-bottom: 1rem;
 }
 
-.home-team .team-info {
-  align-items: flex-end;
-  text-align: right;
+.carousel-slide:hover .team-logo {
+  transform: scale(1.1);
+  border-color: #007bff;
+  box-shadow: 0 8px 25px rgba(0, 123, 255, 0.3);
+}
+
+.team-info {
+  width: 100%;
 }
 
 .team-name {
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 700;
   color: #212529;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
   line-height: 1.2;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.team-label {
+.team-record {
   font-size: 0.8rem;
   color: #6c757d;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   background: rgba(108, 117, 125, 0.1);
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem 0.75rem;
   border-radius: 12px;
+  display: inline-block;
 }
 
+/* VS / Score Section */
 .vs-section {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   text-align: center;
-  padding: 0 2rem;
   flex-shrink: 0;
+  min-width: 120px;
+}
+
+.vs-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .vs-text {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 900;
   color: #495057;
-  margin-bottom: 1rem;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   background: linear-gradient(45deg, #495057, #6c757d);
   -webkit-background-clip: text;
@@ -269,62 +328,37 @@
   background-clip: text;
 }
 
-.game-details {
+.score-display {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
   align-items: center;
 }
 
-.game-week {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #495057;
-  background: linear-gradient(135deg, #e9ecef, #f8f9fa);
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  border: 1px solid #dee2e6;
+.score-line {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
 }
 
-.game-day {
-  font-size: 0.9rem;
-  color: #6c757d;
-  font-weight: 600;
-  background: rgba(108, 117, 125, 0.1);
-  padding: 0.25rem 0.75rem;
+.away-score,
+.home-score {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #212529;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  padding: 0.5rem 1rem;
   border-radius: 12px;
-}
-
-.game-time {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #007bff;
-  padding: 0.5rem 1rem;
-  background: linear-gradient(135deg, #e3f2fd, #bbdefb);
-  border-radius: 20px;
-  border: 2px solid #007bff;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
-}
-
-.click-indicator {
+  border: 2px solid #dee2e6;
+  min-width: 60px;
   text-align: center;
-  padding: 1rem;
-  background: linear-gradient(135deg, #e3f2fd, #f3e5f5);
-  border-radius: 8px;
-  color: #495057;
-  font-weight: 600;
-  font-size: 0.9rem;
-  border: 2px dashed #007bff;
-  transition: all 0.3s ease;
-  margin-top: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-.carousel-slide:hover .click-indicator {
-  background: linear-gradient(135deg, #007bff, #6610f2);
-  color: white;
-  border-color: #007bff;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+.score-separator {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #6c757d;
 }
 
 .carousel-indicators {
@@ -503,42 +537,50 @@
 
   .game-card-carousel {
     padding: 1.5rem;
+    min-height: 240px;
   }
 
-  .game-teams {
+  .teams-container {
     flex-direction: column;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 1.5rem;
   }
 
-  .team-section {
-    width: 100%;
-    justify-content: center !important;
-    flex-direction: row !important;
+  .team-display {
+    max-width: 100%;
   }
 
-  .team-info {
-    align-items: center !important;
-    text-align: center !important;
-  }
-
-  .vs-section {
-    padding: 0;
-    order: 2;
-  }
-
-  .vs-text {
-    font-size: 1.5rem;
-    margin-bottom: 0.75rem;
+  .team-logo {
+    width: 60px;
+    height: 60px;
   }
 
   .team-name {
     font-size: 1rem;
   }
 
-  .team-logo-carousel {
-    width: 48px;
-    height: 48px;
+  .vs-text {
+    font-size: 2rem;
+  }
+
+  .away-score,
+  .home-score {
+    font-size: 2rem;
+    padding: 0.4rem 0.8rem;
+    min-width: 50px;
+  }
+
+  .score-separator {
+    font-size: 1.5rem;
+  }
+
+  .week-badge {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+
+  .day-badge {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.75rem;
   }
 
   .carousel-btn {
@@ -560,6 +602,17 @@
     height: 32px;
     font-size: 0.75rem;
   }
+
+  .game-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .game-week-info {
+    justify-content: center;
+    width: 100%;
+  }
 }
 
 @media (max-width: 576px) {
@@ -569,24 +622,31 @@
 
   .game-card-carousel {
     padding: 1rem;
+    min-height: 200px;
   }
 
   .team-name {
     font-size: 0.9rem;
   }
 
-  .team-logo-carousel {
-    width: 40px;
-    height: 40px;
+  .team-logo {
+    width: 50px;
+    height: 50px;
   }
 
   .vs-text {
-    font-size: 1.25rem;
+    font-size: 1.5rem;
   }
 
-  .game-time {
-    font-size: 0.9rem;
-    padding: 0.25rem 0.5rem;
+  .away-score,
+  .home-score {
+    font-size: 1.5rem;
+    padding: 0.3rem 0.6rem;
+    min-width: 40px;
+  }
+
+  .score-separator {
+    font-size: 1.25rem;
   }
 
   .display-6 {

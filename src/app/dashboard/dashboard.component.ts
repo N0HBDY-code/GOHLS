@@ -37,6 +37,9 @@ interface GameLineup {
   week: number;
   day: string;
   time?: string;
+  homeScore?: number;
+  awayScore?: number;
+  period?: string;
 }
 
 @Component({
@@ -59,7 +62,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingTransactions = false;
   loadingGames = false;
 
-  // Carousel properties - Fixed timing to rotate one game every 3 seconds
+  // Carousel properties - Fixed to rotate ONE game every 3 seconds
   currentGameIndex = 0;
   autoRotateInterval = 3000; // 3 seconds
   private autoRotateTimer?: any;
@@ -92,7 +95,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.stopAutoRotation();
   }
 
-  // Carousel methods - Fixed to rotate one game at a time
+  // Carousel methods - Fixed to rotate ONE game at a time every 3 seconds
   startAutoRotation(): void {
     if (this.todaysGames.length > 1) {
       this.autoRotateTimer = setInterval(() => {
@@ -296,7 +299,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
             awayTeamLogo: awayTeamData['logoUrl'],
             week: gameData['week'],
             day: gameData['day'],
-            time: gameData['time'] || 'TBD'
+            time: gameData['time'] || 'TBD',
+            homeScore: gameData['homeScore'],
+            awayScore: gameData['awayScore'],
+            period: gameData['period']
           };
         })
       );
@@ -347,5 +353,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
       case 'retirement': return 'text-warning';
       default: return 'text-muted';
     }
+  }
+
+  // Helper method to check if game has score
+  hasScore(game: GameLineup): boolean {
+    return (game.homeScore !== undefined && game.homeScore !== null) || 
+           (game.awayScore !== undefined && game.awayScore !== null);
   }
 }
