@@ -19,9 +19,9 @@
             <p class="mb-0">No games scheduled for today</p>
           </div>
           
-          <!-- Games Carousel - FIXED to show ONE game at a time -->
+          <!-- FIXED Games Carousel - Now shows ONE game at a time with smooth transitions -->
           <div *ngIf="!loadingGames && todaysGames.length > 0" class="games-carousel-container">
-            <!-- Carousel Navigation -->
+            <!-- Carousel Navigation - Only show if multiple games -->
             <div class="carousel-nav" *ngIf="todaysGames.length > 1">
               <button class="carousel-btn carousel-btn-prev" 
                       (click)="previousGame()">
@@ -33,9 +33,9 @@
               </button>
             </div>
 
-            <!-- Single Game Display - FIXED to show only current game -->
-            <div class="carousel-slide" (click)="navigateToSpecificGame()">
-              <div class="game-card-carousel" *ngIf="todaysGames[currentGameIndex] as currentGame">
+            <!-- FIXED: Single Game Display Container -->
+            <div class="single-game-container" (click)="navigateToSpecificGame()">
+              <div class="game-card-single" *ngIf="todaysGames[currentGameIndex] as currentGame">
                 <!-- Game Header -->
                 <div class="game-header">
                   <div class="game-week-info">
