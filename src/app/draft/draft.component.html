@@ -146,7 +146,7 @@
                         <th>Archetype</th>
                         <th>Age</th>
                         <th>Overall</th>
-                        <th>Status</th>
+                        <th>Team</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -169,10 +169,14 @@
                           </span>
                         </td>
                         <td>
-                          <span *ngIf="player.draftedBy" class="badge bg-success">
-                            Drafted by {{ player.draftedTeamName }}
-                          </span>
-                          <span *ngIf="!player.draftedBy" class="badge bg-secondary">
+                          <div *ngIf="player.teamId && player.teamId !== 'none'" class="d-flex align-items-center">
+                            <img *ngIf="player.teamLogo" 
+                                 [src]="player.teamLogo" 
+                                 [alt]="player.teamName"
+                                 class="team-logo-small me-2">
+                            <span>{{ player.teamName }}</span>
+                          </div>
+                          <span *ngIf="!player.teamId || player.teamId === 'none'" class="badge bg-secondary">
                             Undrafted
                           </span>
                         </td>

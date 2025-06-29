@@ -37,9 +37,13 @@ interface DraftPlayer {
   draftRank?: number;
   draftedBy?: string;
   draftedTeamName?: string;
+  draftedTeamLogo?: string;
   draftRound?: number;
   draftPick?: number;
   draftSeason?: number;
+  teamId?: string;
+  teamName?: string;
+  teamLogo?: string;
 }
 
 interface DraftPick {
@@ -228,14 +232,32 @@ export class DraftComponent implements OnInit {
               console.error('Error loading player attributes:', error);
             }
             
-            // Get team name if drafted
+            // Get team information (either drafted team or current team)
+            let teamId = playerData['teamId'];
+            let teamName = undefined;
+            let teamLogo = undefined;
             let draftedTeamName = undefined;
+            let draftedTeamLogo = undefined;
+            
+            // Check if player has been drafted
             if (playerData['draftedBy']) {
-              const teamRef = firestoreDoc(this.firestore, `teams/${playerData['draftedBy']}`);
+              const draftedTeamRef = firestoreDoc(this.firestore, `teams/${playerData['draftedBy']}`);
+              const draftedTeamSnap = await getDoc(draftedTeamRef);
+              if (draftedTeamSnap.exists()) {
+                const teamData = draftedTeamSnap.data() as any;
+                draftedTeamName = `${teamData['city']} ${teamData['mascot']}`;
+                draftedTeamLogo = teamData['logoUrl'] || '';
+              }
+            }
+            
+            // Check current team (might be different from drafted team)
+            if (teamId && teamId !== 'none') {
+              const teamRef = firestoreDoc(this.firestore, `teams/${teamId}`);
               const teamSnap = await getDoc(teamRef);
               if (teamSnap.exists()) {
                 const teamData = teamSnap.data() as any;
-                draftedTeamName = `${teamData['city']} ${teamData['mascot']}`;
+                teamName = `${teamData['city']} ${teamData['mascot']}`;
+                teamLogo = teamData['logoUrl'] || '';
               }
             }
             
@@ -250,9 +272,13 @@ export class DraftComponent implements OnInit {
               draftRank: playerData['draftRank'],
               draftedBy: playerData['draftedBy'],
               draftedTeamName,
+              draftedTeamLogo,
               draftRound: playerData['draftRound'],
               draftPick: playerData['draftPick'],
-              draftSeason: playerData['draftSeason']
+              draftSeason: playerData['draftSeason'],
+              teamId,
+              teamName,
+              teamLogo
             };
           }));
           
