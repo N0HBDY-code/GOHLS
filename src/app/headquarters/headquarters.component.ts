@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
-import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
 
@@ -146,7 +146,7 @@ export class HeadquartersComponent implements OnInit {
     this.playerApprovalSuccess = '';
 
     try {
-      console.log('Approving player:', this.selectedPendingPlayer.firstName, this.selectedPendingPlayer.lastName);
+      console.log('🎯 Approving player:', this.selectedPendingPlayer.firstName, this.selectedPendingPlayer.lastName);
       
       // Create the player document
       const playerRef = await addDoc(collection(this.firestore, 'players'), {
@@ -175,11 +175,11 @@ export class HeadquartersComponent implements OnInit {
         createdDate: new Date()
       });
 
-      console.log('Player created with ID:', playerRef.id);
+      console.log('✅ Player created with ID:', playerRef.id);
 
       // Create attributes document
       await setDoc(doc(this.firestore, `players/${playerRef.id}/meta/attributes`), this.playerAttributes);
-      console.log('Attributes set for player');
+      console.log('📊 Attributes set for player');
 
       // Add creation to player history
       await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
@@ -188,11 +188,21 @@ export class HeadquartersComponent implements OnInit {
         timestamp: new Date(),
         details: 'Player approved and entered the league'
       });
-      console.log('Player history added');
+      console.log('📝 Player history added');
 
       // Remove from pending players
       await deleteDoc(doc(this.firestore, `pendingPlayers/${this.selectedPendingPlayer.id}`));
-      console.log('Removed from pending players');
+      console.log('🗑️ Removed from pending players');
+
+      // Emit event to notify other components
+      console.log('📡 Emitting player approval event...');
+      window.dispatchEvent(new CustomEvent('playerApproved', {
+        detail: {
+          playerId: playerRef.id,
+          userId: this.selectedPendingPlayer.userId,
+          playerName: `${this.selectedPendingPlayer.firstName} ${this.selectedPendingPlayer.lastName}`
+        }
+      }));
 
       // Refresh the lists
       await Promise.all([
@@ -208,7 +218,7 @@ export class HeadquartersComponent implements OnInit {
       }, 2000);
 
     } catch (error) {
-      console.error('Error approving player:', error);
+      console.error('❌ Error approving player:', error);
       this.playerApprovalError = 'Failed to approve player. Please try again.';
     } finally {
       this.playerApprovalLoading = false;

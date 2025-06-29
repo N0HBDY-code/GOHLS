@@ -28,8 +28,9 @@ export class PlayersComponent implements OnInit, OnDestroy {
 
   filteredArchetypes: string[] = [];
 
-  // Event listener for player retirement
+  // Event listener for player retirement and approval
   private retirementListener?: () => void;
+  private approvalListener?: () => void;
 
   playerForm = {
     firstName: '',
@@ -60,21 +61,31 @@ export class PlayersComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Set up event listener for player retirement
+    // Set up event listeners
     this.retirementListener = () => {
-      console.log('Player retirement event received, refreshing status...');
+      console.log('🏆 Player retirement event received, refreshing status...');
       this.refreshPlayerStatus();
     };
+    
+    this.approvalListener = () => {
+      console.log('✅ Player approval event received, refreshing status...');
+      this.refreshPlayerStatus();
+    };
+
     window.addEventListener('playerRetired', this.retirementListener);
+    window.addEventListener('playerApproved', this.approvalListener);
 
     await this.checkPlayerStatus(user.uid);
     this.loading = false;
   }
 
   ngOnDestroy() {
-    // Clean up event listener
+    // Clean up event listeners
     if (this.retirementListener) {
       window.removeEventListener('playerRetired', this.retirementListener);
+    }
+    if (this.approvalListener) {
+      window.removeEventListener('playerApproved', this.approvalListener);
     }
   }
 
@@ -85,8 +96,44 @@ export class PlayersComponent implements OnInit, OnDestroy {
       // Reset all states first
       this.resetAllStates();
 
-      // FIRST: Check for pending players (highest priority for navigation persistence)
-      console.log('📋 Checking for pending players first...');
+      // FIRST: Check for active players (highest priority after approval)
+      console.log('👤 Checking for active players first...');
+      const activeQuery = query(
+        collection(this.firestore, 'players'),
+        where('userId', '==', userId),
+        where('status', '==', 'active')
+      );
+      const activeSnapshot = await getDocs(activeQuery);
+      
+      console.log('👤 Found active players:', activeSnapshot.docs.length);
+      
+      if (!activeSnapshot.empty) {
+        this.hasActivePlayer = true;
+        console.log('⚡ Player is active - showing player manager');
+        return; // Exit early - active player found
+      }
+
+      // SECOND: Check for retired players
+      console.log('🏆 No active player found, checking for retired players...');
+      const retiredQuery = query(
+        collection(this.firestore, 'players'),
+        where('userId', '==', userId),
+        where('status', '==', 'retired')
+      );
+      const retiredSnapshot = await getDocs(retiredQuery);
+      
+      console.log('🏆 Found retired players:', retiredSnapshot.docs.length);
+      
+      if (!retiredSnapshot.empty) {
+        const retiredData = retiredSnapshot.docs[0].data();
+        this.hasRetiredPlayer = true;
+        this.retiredPlayerName = `${retiredData['firstName']} ${retiredData['lastName']}`;
+        console.log('🏆 Player is retired:', this.retiredPlayerName);
+        return;
+      }
+
+      // THIRD: Check for pending players (lowest priority)
+      console.log('📋 No active/retired player found, checking for pending players...');
       const pendingQuery = query(
         collection(this.firestore, 'pendingPlayers'),
         where('userId', '==', userId),
@@ -100,38 +147,11 @@ export class PlayersComponent implements OnInit, OnDestroy {
         const pendingData = pendingSnapshot.docs[0].data();
         this.hasPendingPlayer = true;
         this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
-        console.log('✅ Player is pending:', this.pendingPlayerName);
-        return; // Exit early - pending player found
+        console.log('⏳ Player is pending:', this.pendingPlayerName);
+        return;
       }
 
-      // SECOND: Check for active/retired players in the main players collection
-      console.log('👤 No pending player found, checking main players collection...');
-      const playerQuery = query(
-        collection(this.firestore, 'players'),
-        where('userId', '==', userId)
-      );
-      const playerSnapshot = await getDocs(playerQuery);
-      
-      console.log('👤 Found players in main collection:', playerSnapshot.docs.length);
-      
-      if (!playerSnapshot.empty) {
-        const playerData = playerSnapshot.docs[0].data();
-        const playerStatus = playerData['status'];
-        console.log('👤 Player status:', playerStatus);
-        
-        if (playerStatus === 'retired') {
-          this.hasRetiredPlayer = true;
-          this.retiredPlayerName = `${playerData['firstName']} ${playerData['lastName']}`;
-          console.log('🏆 Player is retired:', this.retiredPlayerName);
-          return;
-        } else if (playerStatus === 'active') {
-          this.hasActivePlayer = true;
-          console.log('⚡ Player is active');
-          return;
-        }
-      }
-
-      // THIRD: No player found at all - show create form
+      // FOURTH: No player found at all - show create form
       console.log('➕ No player found, showing create form');
       this.showCreateForm = true;
     } catch (error) {
