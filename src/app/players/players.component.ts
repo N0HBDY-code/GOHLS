@@ -96,64 +96,63 @@ export class PlayersComponent implements OnInit, OnDestroy {
       // Reset all states first
       this.resetAllStates();
 
-      // FIRST: Check for active players (highest priority after approval)
-      console.log('👤 Checking for active players first...');
-      const activeQuery = query(
-        collection(this.firestore, 'players'),
-        where('userId', '==', userId),
-        where('status', '==', 'active')
-      );
-      const activeSnapshot = await getDocs(activeQuery);
-      
-      console.log('👤 Found active players:', activeSnapshot.docs.length);
-      
+      // Run all queries in parallel for better performance and consistency
+      const [activeSnapshot, retiredSnapshot, pendingSnapshot] = await Promise.all([
+        // Active players
+        getDocs(query(
+          collection(this.firestore, 'players'),
+          where('userId', '==', userId),
+          where('status', '==', 'active')
+        )),
+        // Retired players
+        getDocs(query(
+          collection(this.firestore, 'players'),
+          where('userId', '==', userId),
+          where('status', '==', 'retired')
+        )),
+        // Pending players
+        getDocs(query(
+          collection(this.firestore, 'pendingPlayers'),
+          where('userId', '==', userId),
+          where('status', '==', 'pending')
+        ))
+      ]);
+
+      console.log('📊 Query results:', {
+        active: activeSnapshot.docs.length,
+        retired: retiredSnapshot.docs.length,
+        pending: pendingSnapshot.docs.length
+      });
+
+      // PRIORITY 1: Active player (highest priority)
       if (!activeSnapshot.empty) {
         this.hasActivePlayer = true;
-        console.log('⚡ Player is active - showing player manager');
-        return; // Exit early - active player found
-      }
-
-      // SECOND: Check for retired players
-      console.log('🏆 No active player found, checking for retired players...');
-      const retiredQuery = query(
-        collection(this.firestore, 'players'),
-        where('userId', '==', userId),
-        where('status', '==', 'retired')
-      );
-      const retiredSnapshot = await getDocs(retiredQuery);
-      
-      console.log('🏆 Found retired players:', retiredSnapshot.docs.length);
-      
-      if (!retiredSnapshot.empty) {
-        const retiredData = retiredSnapshot.docs[0].data();
-        this.hasRetiredPlayer = true;
-        this.retiredPlayerName = `${retiredData['firstName']} ${retiredData['lastName']}`;
-        console.log('🏆 Player is retired:', this.retiredPlayerName);
+        console.log('⚡ Active player found - showing player manager');
         return;
       }
 
-      // THIRD: Check for pending players (lowest priority)
-      console.log('📋 No active/retired player found, checking for pending players...');
-      const pendingQuery = query(
-        collection(this.firestore, 'pendingPlayers'),
-        where('userId', '==', userId),
-        where('status', '==', 'pending')
-      );
-      const pendingSnapshot = await getDocs(pendingQuery);
-      
-      console.log('📋 Found pending players:', pendingSnapshot.docs.length);
-      
+      // PRIORITY 2: Pending player (second priority - must check before retired)
       if (!pendingSnapshot.empty) {
         const pendingData = pendingSnapshot.docs[0].data();
         this.hasPendingPlayer = true;
         this.pendingPlayerName = `${pendingData['firstName']} ${pendingData['lastName']}`;
-        console.log('⏳ Player is pending:', this.pendingPlayerName);
+        console.log('⏳ Pending player found:', this.pendingPlayerName);
         return;
       }
 
-      // FOURTH: No player found at all - show create form
+      // PRIORITY 3: Retired player (third priority)
+      if (!retiredSnapshot.empty) {
+        const retiredData = retiredSnapshot.docs[0].data();
+        this.hasRetiredPlayer = true;
+        this.retiredPlayerName = `${retiredData['firstName']} ${retiredData['lastName']}`;
+        console.log('🏆 Retired player found:', this.retiredPlayerName);
+        return;
+      }
+
+      // PRIORITY 4: No player found - show create form
       console.log('➕ No player found, showing create form');
       this.showCreateForm = true;
+
     } catch (error) {
       console.error('❌ Error checking player status:', error);
       // On error, default to showing create form
@@ -177,6 +176,10 @@ export class PlayersComponent implements OnInit, OnDestroy {
 
     console.log('🔄 Manually refreshing player status...');
     this.loading = true;
+    
+    // Add a small delay to ensure database consistency after approval/retirement
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     await this.checkPlayerStatus(user.uid);
     this.loading = false;
   }
