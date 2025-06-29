@@ -108,6 +108,10 @@ export class HeadquartersComponent implements OnInit {
   editingPlayer: PendingPlayer | null = null;
   editArchetypes: string[] = [];
 
+  // Permission flags - ADD THESE MISSING PROPERTIES
+  canManagePlayoffs = false;
+  isDeveloper = false;
+
   availableRoles = [
     'viewer',
     'developer',
