@@ -1,5 +1,5 @@
 <div class="container mt-4">
-  <!-- Today's Games - Horizontal Display Above Twitch -->
+  <!-- Today's Games - Carousel Display Above Twitch -->
   <div class="row mb-4">
     <div class="col-12">
       <div class="card">
@@ -19,32 +19,91 @@
             <p class="mb-0">No games scheduled for today</p>
           </div>
           
-          <!-- Horizontal Games Display -->
-          <div *ngIf="!loadingGames && todaysGames.length > 0" class="row g-3">
-            <div class="col-lg-3 col-md-4 col-sm-6" *ngFor="let game of todaysGames">
-              <div class="game-card-horizontal">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <div class="d-flex align-items-center">
-                    <img *ngIf="game.awayTeamLogo" 
-                         [src]="game.awayTeamLogo" 
-                         [alt]="game.awayTeam"
-                         class="team-logo-small me-2">
-                    <span class="fw-bold team-name-small">{{ game.awayTeam }}</span>
+          <!-- Games Carousel -->
+          <div *ngIf="!loadingGames && todaysGames.length > 0" class="games-carousel-container">
+            <!-- Carousel Navigation -->
+            <div class="carousel-nav">
+              <button class="carousel-btn carousel-btn-prev" 
+                      (click)="previousGame()"
+                      [disabled]="todaysGames.length <= 1">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <button class="carousel-btn carousel-btn-next" 
+                      (click)="nextGame()"
+                      [disabled]="todaysGames.length <= 1">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <!-- Carousel Track -->
+            <div class="carousel-track-container">
+              <div class="carousel-track" 
+                   [style.transform]="'translateX(' + (-currentGameIndex * 100) + '%)'">
+                <div class="carousel-slide" 
+                     *ngFor="let game of todaysGames; let i = index"
+                     (click)="navigateToGames()">
+                  <div class="game-card-carousel">
+                    <div class="game-teams">
+                      <!-- Away Team -->
+                      <div class="team-section away-team">
+                        <img *ngIf="game.awayTeamLogo" 
+                             [src]="game.awayTeamLogo" 
+                             [alt]="game.awayTeam"
+                             class="team-logo-carousel">
+                        <div class="team-info">
+                          <span class="team-name">{{ game.awayTeam }}</span>
+                          <span class="team-label">Away</span>
+                        </div>
+                      </div>
+
+                      <!-- VS Indicator -->
+                      <div class="vs-section">
+                        <span class="vs-text">VS</span>
+                        <div class="game-details">
+                          <div class="game-week">Week {{ game.week }}</div>
+                          <div class="game-day">{{ game.day }}</div>
+                          <div *ngIf="game.time" class="game-time">{{ game.time }}</div>
+                        </div>
+                      </div>
+
+                      <!-- Home Team -->
+                      <div class="team-section home-team">
+                        <div class="team-info">
+                          <span class="team-name">{{ game.homeTeam }}</span>
+                          <span class="team-label">Home</span>
+                        </div>
+                        <img *ngIf="game.homeTeamLogo" 
+                             [src]="game.homeTeamLogo" 
+                             [alt]="game.homeTeam"
+                             class="team-logo-carousel">
+                      </div>
+                    </div>
+
+                    <!-- Click to view indicator -->
+                    <div class="click-indicator">
+                      <i class="fas fa-mouse-pointer me-1"></i>
+                      Click to view all games
+                    </div>
                   </div>
-                  <span class="text-muted vs-indicator">&#64;</span>
-                  <div class="d-flex align-items-center">
-                    <span class="fw-bold team-name-small">{{ game.homeTeam }}</span>
-                    <img *ngIf="game.homeTeamLogo" 
-                         [src]="game.homeTeamLogo" 
-                         [alt]="game.homeTeam"
-                         class="team-logo-small ms-2">
-                  </div>
-                </div>
-                <div class="text-center">
-                  <small class="text-muted">Week {{ game.week }}, {{ game.day }}</small>
-                  <div *ngIf="game.time" class="text-primary fw-bold">{{ game.time }}</div>
                 </div>
               </div>
+            </div>
+
+            <!-- Carousel Indicators -->
+            <div class="carousel-indicators" *ngIf="todaysGames.length > 1">
+              <button *ngFor="let game of todaysGames; let i = index"
+                      class="indicator-dot"
+                      [class.active]="i === currentGameIndex"
+                      (click)="goToGame(i)">
+              </button>
+            </div>
+
+            <!-- Auto-rotation indicator -->
+            <div class="auto-rotation-info" *ngIf="todaysGames.length > 1">
+              <small class="text-muted">
+                <i class="fas fa-sync-alt me-1"></i>
+                Auto-rotating every {{ autoRotateInterval / 1000 }} seconds
+              </small>
             </div>
           </div>
         </div>

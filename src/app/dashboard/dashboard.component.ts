@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../auth.service';
 import { User } from 'firebase/auth';
@@ -56,7 +56,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingTransactions = false;
   loadingGames = false;
 
-  constructor(private authService: AuthService, private firestore: Firestore) {}
+  // Carousel properties
+  currentGameIndex = 0;
+  autoRotateInterval = 5000; // 5 seconds
+  private autoRotateTimer?: any;
+
+  constructor(
+    private authService: AuthService, 
+    private firestore: Firestore,
+    private router: Router
+  ) {}
 
   async ngOnInit(): Promise<void> {
     this.userSub = this.authService.currentUser.subscribe(user => {
@@ -68,12 +77,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadRecentTransactions(),
       this.loadTodaysGames()
     ]);
+
+    // Start auto-rotation if there are multiple games
+    this.startAutoRotation();
   }
 
   ngOnDestroy(): void {
     if (this.userSub) {
       this.userSub.unsubscribe();
     }
+    this.stopAutoRotation();
+  }
+
+  // Carousel methods
+  startAutoRotation(): void {
+    if (this.todaysGames.length > 1) {
+      this.autoRotateTimer = setInterval(() => {
+        this.nextGame();
+      }, this.autoRotateInterval);
+    }
+  }
+
+  stopAutoRotation(): void {
+    if (this.autoRotateTimer) {
+      clearInterval(this.autoRotateTimer);
+      this.autoRotateTimer = null;
+    }
+  }
+
+  nextGame(): void {
+    if (this.todaysGames.length > 1) {
+      this.currentGameIndex = (this.currentGameIndex + 1) % this.todaysGames.length;
+    }
+  }
+
+  previousGame(): void {
+    if (this.todaysGames.length > 1) {
+      this.currentGameIndex = this.currentGameIndex === 0 
+        ? this.todaysGames.length - 1 
+        : this.currentGameIndex - 1;
+    }
+  }
+
+  goToGame(index: number): void {
+    this.currentGameIndex = index;
+    // Restart auto-rotation when user manually navigates
+    this.stopAutoRotation();
+    this.startAutoRotation();
+  }
+
+  navigateToGames(): void {
+    this.router.navigate(['/games']);
   }
 
   async loadNewestPlayers(): Promise<void> {
@@ -233,6 +287,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
           };
         })
       );
+
+      // Reset carousel index when games are loaded
+      this.currentGameIndex = 0;
+      
+      // Start auto-rotation after games are loaded
+      this.stopAutoRotation();
+      this.startAutoRotation();
+      
     } catch (error) {
       console.error('Error loading today\'s games:', error);
     } finally {
