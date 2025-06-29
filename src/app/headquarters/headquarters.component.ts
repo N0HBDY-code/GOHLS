@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
 import { getDefaultAttributes } from '../services/progression-defaults';
+import { AuthService } from '../auth.service';
 
 interface Team {
   id: string;
@@ -59,6 +60,7 @@ interface PendingPlayer {
 export class HeadquartersComponent implements OnInit {
   private firestore = inject(Firestore);
   private tradeService = inject(TradeService);
+  private authService = inject(AuthService);
 
   // Season Management
   currentLeagueSeason = 1;
@@ -117,6 +119,11 @@ export class HeadquartersComponent implements OnInit {
   ];
 
   async ngOnInit() {
+    // Check permissions
+    this.authService.effectiveRoles.subscribe(roles => {
+      // Permissions logic here
+    });
+
     await Promise.all([
       this.loadSeasonManagement(),
       this.loadScheduleSettings(),

@@ -5,7 +5,7 @@ import {
   Firestore, 
   collection, 
   getDocs, 
-  doc, 
+  doc as firestoreDoc, 
   getDoc, 
   query, 
   where, 
@@ -14,7 +14,6 @@ import {
   addDoc, 
   updateDoc, 
   writeBatch, 
-  DocumentReference,
   setDoc
 } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
@@ -174,7 +173,7 @@ export class DraftComponent implements OnInit {
     
     try {
       // Get current league season
-      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      const seasonRef = firestoreDoc(this.firestore, 'leagueSettings/season');
       const seasonSnap = await getDoc(seasonRef);
       const currentSeason = seasonSnap.exists() ? (seasonSnap.data() as any)['currentSeason'] : 1;
       
@@ -207,7 +206,7 @@ export class DraftComponent implements OnInit {
           // Get overall rating from attributes
           let overall = 50;
           try {
-            const attributesRef = doc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
+            const attributesRef = firestoreDoc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
             const attributesSnap = await getDoc(attributesRef);
             if (attributesSnap.exists()) {
               const attrData = attributesSnap.data() as any;
@@ -220,7 +219,7 @@ export class DraftComponent implements OnInit {
           // Get team name if drafted
           let draftedTeamName = undefined;
           if (playerData['draftedBy']) {
-            const teamRef = doc(this.firestore, `teams/${playerData['draftedBy']}`);
+            const teamRef = firestoreDoc(this.firestore, `teams/${playerData['draftedBy']}`);
             const teamSnap = await getDoc(teamRef);
             if (teamSnap.exists()) {
               const teamData = teamSnap.data() as any;
@@ -288,12 +287,12 @@ export class DraftComponent implements OnInit {
     
     try {
       // Get current league season
-      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      const seasonRef = firestoreDoc(this.firestore, 'leagueSettings/season');
       const seasonSnap = await getDoc(seasonRef);
       this.currentDraftSeason = seasonSnap.exists() ? (seasonSnap.data() as any)['currentSeason'] : 1;
       
       // Load draft order
-      const orderRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/order`);
+      const orderRef = firestoreDoc(this.firestore, `drafts/${this.currentDraftSeason}/settings/order`);
       const orderSnap = await getDoc(orderRef);
       
       if (orderSnap.exists()) {
@@ -303,7 +302,7 @@ export class DraftComponent implements OnInit {
           if (team) return team;
           
           // If team not found in cache, load it
-          const teamRef = doc(this.firestore, `teams/${teamId}`);
+          const teamRef = firestoreDoc(this.firestore, `teams/${teamId}`);
           const teamSnap = await getDoc(teamRef);
           if (teamSnap.exists()) {
             const data = teamSnap.data() as any;
@@ -353,7 +352,7 @@ export class DraftComponent implements OnInit {
       this.updateCurrentDraftPosition();
       
       // Check if draft is in progress
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
+      const settingsRef = firestoreDoc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       const settingsSnap = await getDoc(settingsRef);
       
       if (settingsSnap.exists()) {
@@ -389,7 +388,7 @@ export class DraftComponent implements OnInit {
       // Get player name if picked
       let playerName = undefined;
       if (data['playerId']) {
-        const playerRef = doc(this.firestore, `players/${data['playerId']}`);
+        const playerRef = firestoreDoc(this.firestore, `players/${data['playerId']}`);
         const playerSnap = await getDoc(playerRef);
         if (playerSnap.exists()) {
           const playerData = playerSnap.data() as any;
@@ -438,7 +437,7 @@ export class DraftComponent implements OnInit {
           const teamIndex = pick - 1;
           const team = this.draftOrder[teamIndex];
           
-          const pickRef = doc(collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`));
+          const pickRef = firestoreDoc(collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`));
           
           batch.set(pickRef, {
             season: this.currentDraftSeason,
@@ -500,7 +499,7 @@ export class DraftComponent implements OnInit {
     
     try {
       // Update draft status
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
+      const settingsRef = firestoreDoc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
         inProgress: true,
         startedAt: new Date(),
@@ -508,7 +507,7 @@ export class DraftComponent implements OnInit {
       });
       
       // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
+      const classRef = firestoreDoc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
       await updateDoc(classRef, {
         status: 'active',
         startDate: new Date()
@@ -525,7 +524,7 @@ export class DraftComponent implements OnInit {
     
     try {
       // Update draft status
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
+      const settingsRef = firestoreDoc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
         inProgress: false,
         endedAt: new Date(),
@@ -533,7 +532,7 @@ export class DraftComponent implements OnInit {
       });
       
       // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
+      const classRef = firestoreDoc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
       await updateDoc(classRef, {
         status: 'completed',
         endDate: new Date()
@@ -570,7 +569,7 @@ export class DraftComponent implements OnInit {
   async archiveDraftToHistory() {
     try {
       // Create history document
-      const historyRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}`);
+      const historyRef = firestoreDoc(this.firestore, `draftHistory/${this.currentDraftSeason}`);
       await setDoc(historyRef, {
         season: this.currentDraftSeason,
         completedAt: new Date()
@@ -584,7 +583,7 @@ export class DraftComponent implements OnInit {
       
       picksSnap.docs.forEach(doc => {
         const data = doc.data();
-        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${doc.id}`);
+        const historyPickRef = firestoreDoc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${doc.id}`);
         batch.set(historyPickRef, {
           ...data,
           archivedAt: new Date()
@@ -619,7 +618,7 @@ export class DraftComponent implements OnInit {
         // Get overall rating
         let overall = 50;
         try {
-          const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
+          const attributesRef = firestoreDoc(this.firestore, `players/${doc.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
             const attrData = attributesSnap.data() as any;
@@ -657,7 +656,7 @@ export class DraftComponent implements OnInit {
       if (!player) return;
       
       // Update draft pick
-      const pickRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/picks/${this.selectedDraftPick.id}`);
+      const pickRef = firestoreDoc(this.firestore, `drafts/${this.currentDraftSeason}/picks/${this.selectedDraftPick.id}`);
       await updateDoc(pickRef, {
         playerId: player.id,
         completed: true,
@@ -665,7 +664,7 @@ export class DraftComponent implements OnInit {
       });
       
       // Update player
-      const playerRef = doc(this.firestore, `players/${player.id}`);
+      const playerRef = firestoreDoc(this.firestore, `players/${player.id}`);
       await updateDoc(playerRef, {
         teamId: this.selectedDraftPick.teamId,
         draftedBy: this.selectedDraftPick.teamId,
@@ -676,7 +675,7 @@ export class DraftComponent implements OnInit {
       });
       
       // Add player to team roster
-      const rosterRef = doc(this.firestore, `teams/${this.selectedDraftPick.teamId}/roster/${player.id}`);
+      const rosterRef = firestoreDoc(this.firestore, `teams/${this.selectedDraftPick.teamId}/roster/${player.id}`);
       await setDoc(rosterRef, {
         firstName: player.firstName,
         lastName: player.lastName,
