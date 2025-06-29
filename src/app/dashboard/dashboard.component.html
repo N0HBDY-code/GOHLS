@@ -19,91 +19,82 @@
             <p class="mb-0">No games scheduled for today</p>
           </div>
           
-          <!-- Games Carousel -->
+          <!-- Games Carousel - FIXED to show ONE game at a time -->
           <div *ngIf="!loadingGames && todaysGames.length > 0" class="games-carousel-container">
             <!-- Carousel Navigation -->
-            <div class="carousel-nav">
+            <div class="carousel-nav" *ngIf="todaysGames.length > 1">
               <button class="carousel-btn carousel-btn-prev" 
-                      (click)="previousGame()"
-                      [disabled]="todaysGames.length <= 1">
+                      (click)="previousGame()">
                 <i class="fas fa-chevron-left"></i>
               </button>
               <button class="carousel-btn carousel-btn-next" 
-                      (click)="nextGame()"
-                      [disabled]="todaysGames.length <= 1">
+                      (click)="nextGame()">
                 <i class="fas fa-chevron-right"></i>
               </button>
             </div>
 
-            <!-- Carousel Track -->
-            <div class="carousel-track-container">
-              <div class="carousel-track" 
-                   [style.transform]="'translateX(' + (-currentGameIndex * 100) + '%)'">
-                <div class="carousel-slide" 
-                     *ngFor="let game of todaysGames; let i = index"
-                     (click)="navigateToSpecificGame()">
-                  <div class="game-card-carousel">
-                    <!-- Game Header -->
-                    <div class="game-header">
-                      <div class="game-week-info">
-                        <span class="week-badge">Week {{ game.week }}</span>
-                        <span class="day-badge">{{ game.day }}</span>
-                      </div>
-                      <div *ngIf="hasScore(game)" class="game-status">
-                        <span class="status-badge" 
-                              [class.live]="game.period && game.period !== 'Final'"
-                              [class.final]="game.period === 'Final'">
-                          {{ game.period || 'Live' }}
-                        </span>
+            <!-- Single Game Display - FIXED to show only current game -->
+            <div class="carousel-slide" (click)="navigateToSpecificGame()">
+              <div class="game-card-carousel" *ngIf="todaysGames[currentGameIndex] as currentGame">
+                <!-- Game Header -->
+                <div class="game-header">
+                  <div class="game-week-info">
+                    <span class="week-badge">Week {{ currentGame.week }}</span>
+                    <span class="day-badge">{{ currentGame.day }}</span>
+                  </div>
+                  <div *ngIf="hasScore(currentGame)" class="game-status">
+                    <span class="status-badge" 
+                          [class.live]="currentGame.period && currentGame.period !== 'Final'"
+                          [class.final]="currentGame.period === 'Final'">
+                      {{ currentGame.period || 'Live' }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Teams Display -->
+                <div class="teams-container">
+                  <!-- Away Team -->
+                  <div class="team-display away-team">
+                    <img *ngIf="currentGame.awayTeamLogo" 
+                         [src]="currentGame.awayTeamLogo" 
+                         [alt]="currentGame.awayTeam"
+                         class="team-logo">
+                    <div class="team-info">
+                      <div class="team-name">{{ currentGame.awayTeam }}</div>
+                      <div class="team-record">Away</div>
+                    </div>
+                  </div>
+
+                  <!-- VS / Score Section -->
+                  <div class="vs-section">
+                    <div *ngIf="!hasScore(currentGame)" class="vs-display">
+                      <span class="vs-text">VS</span>
+                    </div>
+                    <div *ngIf="hasScore(currentGame)" class="score-display">
+                      <div class="score-line">
+                        <span class="away-score">{{ currentGame.awayScore || 0 }}</span>
+                        <span class="score-separator">-</span>
+                        <span class="home-score">{{ currentGame.homeScore || 0 }}</span>
                       </div>
                     </div>
+                  </div>
 
-                    <!-- Teams Display -->
-                    <div class="teams-container">
-                      <!-- Away Team -->
-                      <div class="team-display away-team">
-                        <img *ngIf="game.awayTeamLogo" 
-                             [src]="game.awayTeamLogo" 
-                             [alt]="game.awayTeam"
-                             class="team-logo">
-                        <div class="team-info">
-                          <div class="team-name">{{ game.awayTeam }}</div>
-                          <div class="team-record">Away</div>
-                        </div>
-                      </div>
-
-                      <!-- VS / Score Section -->
-                      <div class="vs-section">
-                        <div *ngIf="!hasScore(game)" class="vs-display">
-                          <span class="vs-text">VS</span>
-                        </div>
-                        <div *ngIf="hasScore(game)" class="score-display">
-                          <div class="score-line">
-                            <span class="away-score">{{ game.awayScore || 0 }}</span>
-                            <span class="score-separator">-</span>
-                            <span class="home-score">{{ game.homeScore || 0 }}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <!-- Home Team -->
-                      <div class="team-display home-team">
-                        <div class="team-info">
-                          <div class="team-name">{{ game.homeTeam }}</div>
-                          <div class="team-record">Home</div>
-                        </div>
-                        <img *ngIf="game.homeTeamLogo" 
-                             [src]="game.homeTeamLogo" 
-                             [alt]="game.homeTeam"
-                             class="team-logo">
-                      </div>
+                  <!-- Home Team -->
+                  <div class="team-display home-team">
+                    <div class="team-info">
+                      <div class="team-name">{{ currentGame.homeTeam }}</div>
+                      <div class="team-record">Home</div>
                     </div>
+                    <img *ngIf="currentGame.homeTeamLogo" 
+                         [src]="currentGame.homeTeamLogo" 
+                         [alt]="currentGame.homeTeam"
+                         class="team-logo">
                   </div>
                 </div>
               </div>
             </div>
 
-            <!-- Carousel Indicators -->
+            <!-- Carousel Indicators - Only show if multiple games -->
             <div class="carousel-indicators" *ngIf="todaysGames.length > 1">
               <button *ngFor="let game of todaysGames; let i = index"
                       class="indicator-dot"
@@ -112,7 +103,7 @@
               </button>
             </div>
 
-            <!-- Auto-rotation indicator -->
+            <!-- Auto-rotation indicator - Only show if multiple games -->
             <div class="auto-rotation-info" *ngIf="todaysGames.length > 1">
               <small class="text-muted">
                 <i class="fas fa-sync-alt me-1"></i>

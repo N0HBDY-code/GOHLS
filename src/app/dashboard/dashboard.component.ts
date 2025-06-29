@@ -62,10 +62,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingTransactions = false;
   loadingGames = false;
 
-  // Carousel properties - Fixed to rotate ONE game every 3 seconds
+  // Carousel properties - FIXED to rotate ONE game every 3 seconds
   currentGameIndex = 0;
-  autoRotateInterval = 3000; // 3 seconds
   private autoRotateTimer?: any;
+  private readonly ROTATION_INTERVAL = 3000; // 3 seconds
 
   constructor(
     private authService: AuthService, 
@@ -84,7 +84,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.loadTodaysGames()
     ]);
 
-    // Start auto-rotation if there are multiple games
+    // Start auto-rotation ONLY if there are multiple games
     this.startAutoRotation();
   }
 
@@ -95,16 +95,17 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.stopAutoRotation();
   }
 
-  // Carousel methods - Fixed to rotate ONE game at a time every 3 seconds
-  startAutoRotation(): void {
+  // FIXED Carousel methods - Now properly rotates ONE game every 3 seconds
+  private startAutoRotation(): void {
+    // Only start rotation if there are multiple games
     if (this.todaysGames.length > 1) {
       this.autoRotateTimer = setInterval(() => {
         this.nextGame();
-      }, this.autoRotateInterval);
+      }, this.ROTATION_INTERVAL);
     }
   }
 
-  stopAutoRotation(): void {
+  private stopAutoRotation(): void {
     if (this.autoRotateTimer) {
       clearInterval(this.autoRotateTimer);
       this.autoRotateTimer = null;
@@ -113,12 +114,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   nextGame(): void {
     if (this.todaysGames.length > 1) {
+      // Move to next game, wrap around to 0 if at the end
       this.currentGameIndex = (this.currentGameIndex + 1) % this.todaysGames.length;
     }
   }
 
   previousGame(): void {
     if (this.todaysGames.length > 1) {
+      // Move to previous game, wrap around to last if at the beginning
       this.currentGameIndex = this.currentGameIndex === 0 
         ? this.todaysGames.length - 1 
         : this.currentGameIndex - 1;
@@ -126,10 +129,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   goToGame(index: number): void {
-    this.currentGameIndex = index;
-    // Restart auto-rotation when user manually navigates
-    this.stopAutoRotation();
-    this.startAutoRotation();
+    if (index >= 0 && index < this.todaysGames.length) {
+      this.currentGameIndex = index;
+      // Restart auto-rotation when user manually navigates
+      this.stopAutoRotation();
+      this.startAutoRotation();
+    }
   }
 
   // Navigate to specific game instead of just games page
@@ -310,7 +315,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       // Reset carousel index when games are loaded
       this.currentGameIndex = 0;
       
-      // Start auto-rotation after games are loaded
+      // Restart auto-rotation after games are loaded
       this.stopAutoRotation();
       this.startAutoRotation();
       
@@ -359,5 +364,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   hasScore(game: GameLineup): boolean {
     return (game.homeScore !== undefined && game.homeScore !== null) || 
            (game.awayScore !== undefined && game.awayScore !== null);
+  }
+
+  // Getter for auto-rotation interval display
+  get autoRotateInterval(): number {
+    return this.ROTATION_INTERVAL;
   }
 }
