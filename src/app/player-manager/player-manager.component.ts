@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc, updateDoc, orderBy } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc, updateDoc, orderBy, limit } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -30,7 +30,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   trainingOptions: string[] = [];
   trainingSubmitted = false;
   trainingStatus: 'pending' | 'processed' | null = null;
-  trainingProcessed = false; // New flag to track if training is processed
+  trainingProcessed = false;
 
   // Progression control
   progressionsOpen = true;
@@ -69,7 +69,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     'Hit the Targets': ['WRI ACC', 'SLAP ACC', 'POISE'],
     'Study Film': ['OFF AWR', 'DEF AWR', 'DISCIP'],
     'Special Teams': ['STK CHK', 'SHT BLK', 'FACEOFF'],
-    'Learn Secondary Position': [], // No immediate attribute impact
+    'Learn Secondary Position': [],
     'Shots High': ['GLV HIGH', 'STK HIGH', 'VISION'],
     'Shots Low': ['GLV LOW', 'STK LOW', '5 HOLE'],
     'Side to Sides': ['SPEED', 'AGILITY', 'POISE'],
@@ -86,6 +86,11 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   currentView: 'overview' | 'history' | 'stats' | 'trainings' = 'overview';
   showRetireModal = false;
   retireConfirmation = '';
+
+  // Caching
+  private teamCache = new Map<string, any>();
+  private gameStatsCache: any[] | null = null;
+  private historyCache: any[] | null = null;
 
   // Week change listener
   private weekChangeListener?: () => void;
@@ -106,94 +111,400 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     };
     window.addEventListener('weekChanged', this.weekChangeListener);
 
-    // Load progression settings first
-    await this.loadProgressionSettings();
+    try {
+      // OPTIMIZATION: Load all initial data in parallel
+      const [playerData, progressionSettings] = await Promise.all([
+        this.loadPlayerData(user.uid),
+        this.loadProgressionSettings()
+      ]);
 
-    // First check for active player
-    const playerQuery = query(
-      collection(this.firestore, 'players'),
-      where('userId', '==', user.uid),
-      where('status', '==', 'active')
-    );
-    const playerSnapshot = await getDocs(playerQuery);
-    
-    if (!playerSnapshot.empty) {
-      // Active player found
-      console.log('PlayerManager: Found active player');
-      this.player = playerSnapshot.docs[0].data();
-      this.player.id = playerSnapshot.docs[0].id;
-      this.isPendingPlayer = false;
-      
-      this.setTrainingOptions(this.player.position);
-      await this.loadPlayerAttributes();
-      await this.loadPlayerHistory();
-      await this.loadGameStats();
-      await this.loadTrainingHistory();
-      await this.checkSecondaryProgress();
-      await this.checkExistingTraining();
-
-      if (this.player.teamId && this.player.teamId !== 'none') {
-        const teamRef = doc(this.firestore, `teams/${this.player.teamId}`);
-        const teamSnap = await getDoc(teamRef);
-        if (teamSnap.exists()) {
-          const teamData = teamSnap.data();
-          const city = teamData['city'] || '';
-          const mascot = teamData['mascot'] || '';
-          this.teamName = `${city} ${mascot}`.trim();
-          this.teamLogo = teamData['logoUrl'] || '';
-        }
+      if (playerData) {
+        await this.initializePlayerData(playerData);
       }
-    } else {
-      // No active player, check for pending player
-      console.log('PlayerManager: No active player, checking for pending...');
-      const pendingQuery = query(
-        collection(this.firestore, 'pendingPlayers'),
-        where('userId', '==', user.uid),
-        where('status', '==', 'pending')
-      );
-      const pendingSnapshot = await getDocs(pendingQuery);
-      
-      if (!pendingSnapshot.empty) {
-        console.log('PlayerManager: Found pending player');
-        this.pendingPlayer = pendingSnapshot.docs[0].data();
-        this.pendingPlayer.id = pendingSnapshot.docs[0].id;
-        this.isPendingPlayer = true;
-      } else {
-        console.log('PlayerManager: No pending player found either');
-      }
+    } catch (error) {
+      console.error('Error initializing player manager:', error);
+    } finally {
+      this.loading = false;
     }
-    
-    this.loading = false;
   }
 
   ngOnDestroy() {
-    // Clean up event listeners
     if (this.weekChangeListener) {
       window.removeEventListener('weekChanged', this.weekChangeListener);
     }
   }
 
-  // Method to get overall rating color - improved to avoid brown tones
+  // OPTIMIZATION: Single method to load player data (active or pending)
+  private async loadPlayerData(userId: string): Promise<any> {
+    console.log('🔍 Loading player data for user:', userId);
+
+    // Run both queries in parallel
+    const [activeSnapshot, pendingSnapshot] = await Promise.all([
+      getDocs(query(
+        collection(this.firestore, 'players'),
+        where('userId', '==', userId),
+        where('status', '==', 'active'),
+        limit(1) // Only need one result
+      )),
+      getDocs(query(
+        collection(this.firestore, 'pendingPlayers'),
+        where('userId', '==', userId),
+        where('status', '==', 'pending'),
+        limit(1) // Only need one result
+      ))
+    ]);
+
+    // Priority: Active player first
+    if (!activeSnapshot.empty) {
+      const playerData = activeSnapshot.docs[0].data();
+      playerData.id = activeSnapshot.docs[0].id;
+      this.player = playerData;
+      this.isPendingPlayer = false;
+      console.log('⚡ Active player found');
+      return { type: 'active', data: playerData };
+    }
+
+    // Fallback: Pending player
+    if (!pendingSnapshot.empty) {
+      const pendingData = pendingSnapshot.docs[0].data();
+      pendingData.id = pendingSnapshot.docs[0].id;
+      this.pendingPlayer = pendingData;
+      this.isPendingPlayer = true;
+      console.log('⏳ Pending player found');
+      return { type: 'pending', data: pendingData };
+    }
+
+    console.log('❌ No player found');
+    return null;
+  }
+
+  // OPTIMIZATION: Initialize all player-related data in parallel
+  private async initializePlayerData(playerData: any) {
+    if (playerData.type === 'pending') {
+      // For pending players, no additional data needed
+      return;
+    }
+
+    this.setTrainingOptions(this.player.position);
+
+    // Load all player data in parallel to reduce sequential API calls
+    const loadPromises = [
+      this.loadPlayerAttributes(),
+      this.loadProgressionData(),
+      this.loadTeamData()
+    ];
+
+    // Only load heavy data when user navigates to those tabs
+    if (this.currentView === 'history') {
+      loadPromises.push(this.loadPlayerHistory());
+    }
+    if (this.currentView === 'stats') {
+      loadPromises.push(this.loadGameStats());
+    }
+    if (this.currentView === 'trainings') {
+      loadPromises.push(this.loadTrainingHistory());
+    }
+
+    await Promise.all(loadPromises);
+  }
+
+  // OPTIMIZATION: Load progression data in a single method
+  private async loadProgressionData() {
+    if (!this.player?.id) return;
+
+    const [secondaryProgressSnap, currentWeekSnap] = await Promise.all([
+      // Get secondary position progress
+      getDocs(query(
+        collection(this.firestore, `players/${this.player.id}/progressions`),
+        where('training', '==', 'Learn Secondary Position')
+      )),
+      // Get current week submission
+      getDocs(query(
+        collection(this.firestore, `players/${this.player.id}/progressions`),
+        where('week', '==', this.currentProgressionWeek),
+        where('season', '==', new Date().getFullYear()),
+        limit(1)
+      ))
+    ]);
+
+    // Process secondary progress
+    this.secondaryProgress = secondaryProgressSnap.docs.length;
+
+    // Process current week submission
+    if (!currentWeekSnap.empty) {
+      const submissionData = currentWeekSnap.docs[0].data();
+      this.hasSubmittedThisWeek = true;
+      this.trainingType = submissionData['training'];
+      this.tempTrainingType = this.trainingType;
+      this.trainingStatus = submissionData['status'] || 'pending';
+      this.trainingProcessed = this.trainingStatus === 'processed';
+      this.trainingSubmitted = true;
+      this.existingTrainingId = currentWeekSnap.docs[0].id;
+    }
+  }
+
+  // OPTIMIZATION: Load team data with caching
+  private async loadTeamData() {
+    if (!this.player?.teamId || this.player.teamId === 'none') return;
+
+    // Check cache first
+    if (this.teamCache.has(this.player.teamId)) {
+      const cachedTeam = this.teamCache.get(this.player.teamId);
+      this.teamName = cachedTeam.name;
+      this.teamLogo = cachedTeam.logo;
+      return;
+    }
+
+    // Load from Firebase
+    const teamRef = doc(this.firestore, `teams/${this.player.teamId}`);
+    const teamSnap = await getDoc(teamRef);
+    
+    if (teamSnap.exists()) {
+      const teamData = teamSnap.data();
+      const name = `${teamData['city']} ${teamData['mascot']}`.trim();
+      const logo = teamData['logoUrl'] || '';
+      
+      // Cache the result
+      this.teamCache.set(this.player.teamId, { name, logo });
+      
+      this.teamName = name;
+      this.teamLogo = logo;
+    }
+  }
+
+  // OPTIMIZATION: Lazy load game stats only when needed
+  async loadGameStats() {
+    if (!this.player?.id) return;
+
+    // Return cached data if available
+    if (this.gameStatsCache) {
+      this.gameStats = this.gameStatsCache;
+      return;
+    }
+
+    console.log('📊 Loading game stats...');
+    this.gameStats = [];
+
+    try {
+      // OPTIMIZATION: Only load teams that have this player in their roster
+      const teamsRef = collection(this.firestore, 'teams');
+      const teamsSnap = await getDocs(teamsRef);
+      
+      const gamePromises: Promise<any>[] = [];
+      const uniqueGames = new Map<string, any>();
+
+      // Process teams in parallel
+      for (const teamDoc of teamsSnap.docs) {
+        const teamId = teamDoc.id;
+        const teamData = teamDoc.data();
+        
+        // Check if player is in this team's roster (quick check)
+        const rosterRef = doc(this.firestore, `teams/${teamId}/roster/${this.player.id}`);
+        const rosterSnap = await getDoc(rosterRef);
+        
+        if (!rosterSnap.exists()) continue; // Skip teams where player never played
+        
+        const teamName = `${teamData['city']} ${teamData['mascot']}`;
+        
+        // Load games for this team
+        gamePromises.push(
+          this.loadTeamGamesForPlayer(teamId, teamName, uniqueGames)
+        );
+      }
+
+      // Wait for all team game loads to complete
+      await Promise.all(gamePromises);
+      
+      // Convert to array and sort
+      this.gameStats = Array.from(uniqueGames.values())
+        .sort((a, b) => b.date.getTime() - a.date.getTime());
+
+      // Cache the results
+      this.gameStatsCache = this.gameStats;
+      
+      console.log(`✅ Loaded ${this.gameStats.length} game stats`);
+    } catch (error) {
+      console.error('Error loading game stats:', error);
+    }
+  }
+
+  // Helper method to load games for a specific team
+  private async loadTeamGamesForPlayer(teamId: string, teamName: string, uniqueGames: Map<string, any>) {
+    const gamesRef = collection(this.firestore, `teams/${teamId}/games`);
+    const gamesSnap = await getDocs(gamesRef);
+    
+    for (const gameDoc of gamesSnap.docs) {
+      const gameData = gameDoc.data();
+      
+      // Check if this player has stats in this game
+      const homePlayerStats = gameData['homePlayerStats']?.[this.player.id];
+      const awayPlayerStats = gameData['awayPlayerStats']?.[this.player.id];
+      
+      if (!homePlayerStats && !awayPlayerStats) continue;
+      
+      const playerStats = homePlayerStats || awayPlayerStats;
+      const isHome = !!homePlayerStats;
+      
+      // Get opponent information (cached)
+      const opponentTeamId = isHome ? gameData['awayTeamId'] : gameData['homeTeamId'];
+      let opponent = 'Unknown Opponent';
+      
+      if (opponentTeamId && this.teamCache.has(opponentTeamId)) {
+        opponent = this.teamCache.get(opponentTeamId).name;
+      } else if (opponentTeamId) {
+        // Load and cache opponent data
+        const opponentRef = doc(this.firestore, `teams/${opponentTeamId}`);
+        const opponentSnap = await getDoc(opponentRef);
+        if (opponentSnap.exists()) {
+          const opponentData = opponentSnap.data();
+          const opponentName = `${opponentData['city']} ${opponentData['mascot']}`;
+          this.teamCache.set(opponentTeamId, { name: opponentName, logo: opponentData['logoUrl'] || '' });
+          opponent = opponentName;
+        }
+      }
+      
+      // Create unique key
+      const gameKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
+      
+      if (!uniqueGames.has(gameKey)) {
+        uniqueGames.set(gameKey, {
+          gameId: gameDoc.id,
+          teamName,
+          opponent,
+          date: gameData['date']?.toDate?.() || new Date(),
+          week: gameData['week'],
+          day: gameData['day'],
+          isHome,
+          goals: playerStats.goals || 0,
+          assists: playerStats.assists || 0,
+          plusMinus: playerStats.plusMinus || 0,
+          shots: playerStats.shots || 0,
+          pim: playerStats.pim || 0,
+          hits: playerStats.hits || 0,
+          ppg: playerStats.ppg || 0,
+          shg: playerStats.shg || 0,
+          fot: playerStats.fot || 0,
+          fow: playerStats.fow || 0
+        });
+      }
+    }
+  }
+
+  // OPTIMIZATION: Lazy load player history only when needed
+  async loadPlayerHistory() {
+    if (!this.player?.id) return;
+
+    // Return cached data if available
+    if (this.historyCache) {
+      this.playerHistory = this.historyCache;
+      return;
+    }
+
+    console.log('📜 Loading player history...');
+    
+    const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
+    const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(20)); // Limit to recent history
+    const historySnap = await getDocs(historyQuery);
+    
+    // Process history with cached team data
+    this.playerHistory = await Promise.all(historySnap.docs.map(async (historyDoc) => {
+      const data = historyDoc.data();
+      let teamName = 'Unknown Team';
+      let teamLogo = '';
+      
+      if (data['teamId'] && data['teamId'] !== 'none') {
+        // Use cached team data if available
+        if (this.teamCache.has(data['teamId'])) {
+          const cachedTeam = this.teamCache.get(data['teamId']);
+          teamName = cachedTeam.name;
+          teamLogo = cachedTeam.logo;
+        } else {
+          // Load and cache team data
+          const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
+          const teamSnap = await getDoc(teamRef);
+          if (teamSnap.exists()) {
+            const teamData = teamSnap.data() as any;
+            teamName = `${teamData['city']} ${teamData['mascot']}`;
+            teamLogo = teamData['logoUrl'] || '';
+            this.teamCache.set(data['teamId'], { name: teamName, logo: teamLogo });
+          }
+        }
+      }
+      
+      return {
+        id: historyDoc.id,
+        ...data,
+        teamName,
+        teamLogo,
+        timestamp: data['timestamp']?.toDate?.() || new Date(data['timestamp'])
+      };
+    }));
+
+    // Cache the results
+    this.historyCache = this.playerHistory;
+    console.log(`✅ Loaded ${this.playerHistory.length} history entries`);
+  }
+
+  async loadPlayerAttributes() {
+    if (!this.player?.id) return;
+    
+    const attributesRef = doc(this.firestore, `players/${this.player.id}/meta/attributes`);
+    const attributesSnap = await getDoc(attributesRef);
+    
+    if (attributesSnap.exists()) {
+      this.playerAttributes = attributesSnap.data() as Record<string, number>;
+    }
+  }
+
+  async loadTrainingHistory() {
+    if (!this.player?.id) return;
+
+    const trainingRef = collection(this.firestore, `players/${this.player.id}/progressions`);
+    const trainingQuery = query(trainingRef, orderBy('timestamp', 'desc'), limit(10)); // Limit recent training
+    const trainingSnap = await getDocs(trainingQuery);
+    
+    this.trainingHistory = trainingSnap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      timestamp: doc.data()['timestamp']?.toDate?.() || new Date(doc.data()['timestamp'])
+    }));
+  }
+
+  // OPTIMIZATION: Load data only when tab is accessed
+  async onTabChange(tab: 'overview' | 'history' | 'stats' | 'trainings') {
+    this.currentView = tab;
+
+    // Lazy load data based on tab
+    switch (tab) {
+      case 'history':
+        if (!this.historyCache) {
+          await this.loadPlayerHistory();
+        }
+        break;
+      case 'stats':
+        if (!this.gameStatsCache) {
+          await this.loadGameStats();
+        }
+        break;
+      case 'trainings':
+        if (this.trainingHistory.length === 0) {
+          await this.loadTrainingHistory();
+        }
+        break;
+    }
+  }
+
+  // Method to get overall rating color
   getOverallColor(overall: number): string {
-    // Clamp the value between 50 and 99
     const clampedOverall = Math.max(50, Math.min(99, overall));
-    
-    // Calculate the percentage from 50 to 99 (0% to 100%)
     const percentage = (clampedOverall - 50) / (99 - 50);
-    
-    // Use a more vibrant red to green interpolation avoiding brown tones
-    // Red: RGB(220, 38, 38) - Bright red
-    // Green: RGB(34, 197, 94) - Bright green
     const red = Math.round(220 - (220 - 34) * percentage);
     const green = Math.round(38 + (197 - 38) * percentage);
     const blue = Math.round(38 + (94 - 38) * percentage);
-    
     return `rgb(${red}, ${green}, ${blue})`;
   }
 
-  // Method to get overall progress percentage for the circular progress
   getOverallProgress(overall: number): number {
-    // Convert overall rating (50-99) to percentage (0-100) for the circle
     const clampedOverall = Math.max(50, Math.min(99, overall));
     return ((clampedOverall - 50) / (99 - 50)) * 100;
   }
@@ -214,17 +525,14 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         this.currentProgressionWeek = 1;
       }
 
-      // Check if week has changed
       if (previousWeek !== this.currentProgressionWeek && previousWeek !== 0) {
         console.log(`📅 Week changed from ${previousWeek} to ${this.currentProgressionWeek}`);
         await this.handleWeekChange();
       }
 
-      // Check if player has submitted for current week
       if (this.player?.id) {
         await this.checkCurrentWeekSubmission();
       }
-
     } catch (error) {
       console.error('Error loading progression settings:', error);
       this.progressionsOpen = true;
@@ -234,8 +542,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
 
   async handleWeekChange() {
     console.log('🔄 Handling week change...');
-    
-    // Clear current training selection
     this.tempTrainingType = '';
     this.trainingType = '';
     this.trainingSubmitted = false;
@@ -243,7 +549,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     this.trainingProcessed = false;
     this.existingTrainingId = null;
     this.hasSubmittedThisWeek = false;
-
     console.log('✅ Training selection cleared for new week');
   }
 
@@ -251,12 +556,12 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     if (!this.player?.id) return;
 
     try {
-      // Check if player has already submitted training for current week
       const progressRef = collection(this.firestore, `players/${this.player.id}/progressions`);
       const q = query(
         progressRef,
         where('week', '==', this.currentProgressionWeek),
-        where('season', '==', new Date().getFullYear())
+        where('season', '==', new Date().getFullYear()),
+        limit(1)
       );
       const snapshot = await getDocs(q);
 
@@ -266,163 +571,17 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         this.trainingType = submissionData['training'];
         this.tempTrainingType = this.trainingType;
         this.trainingStatus = submissionData['status'] || 'pending';
-        this.trainingProcessed = this.trainingStatus === 'processed'; // Set processed flag
+        this.trainingProcessed = this.trainingStatus === 'processed';
         this.trainingSubmitted = true;
         this.existingTrainingId = snapshot.docs[0].id;
-        
-        console.log(`📝 Found existing submission for week ${this.currentProgressionWeek}:`, this.trainingType, 'Status:', this.trainingStatus);
       } else {
         this.hasSubmittedThisWeek = false;
         this.trainingSubmitted = false;
         this.trainingProcessed = false;
-        console.log(`📝 No submission found for week ${this.currentProgressionWeek}`);
       }
     } catch (error) {
       console.error('Error checking current week submission:', error);
     }
-  }
-
-  async loadPlayerAttributes() {
-    if (!this.player?.id) return;
-    
-    const attributesRef = doc(this.firestore, `players/${this.player.id}/meta/attributes`);
-    const attributesSnap = await getDoc(attributesRef);
-    
-    if (attributesSnap.exists()) {
-      this.playerAttributes = attributesSnap.data() as Record<string, number>;
-    }
-  }
-
-  async loadPlayerHistory() {
-    if (!this.player?.id) return;
-
-    const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
-    const historyQuery = query(historyRef, orderBy('timestamp', 'desc'));
-    const historySnap = await getDocs(historyQuery);
-    
-    this.playerHistory = await Promise.all(historySnap.docs.map(async (historyDoc) => {
-      const data = historyDoc.data();
-      let teamName = 'Unknown Team';
-      let teamLogo = '';
-      
-      if (data['teamId'] && data['teamId'] !== 'none') {
-        const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
-        const teamSnap = await getDoc(teamRef);
-        if (teamSnap.exists()) {
-          const teamData = teamSnap.data() as any;
-          teamName = `${teamData['city']} ${teamData['mascot']}`;
-          teamLogo = teamData['logoUrl'] || '';
-        }
-      }
-      
-      return {
-        id: historyDoc.id,
-        ...data,
-        teamName,
-        teamLogo,
-        timestamp: data['timestamp']?.toDate?.() || new Date(data['timestamp'])
-      };
-    }));
-  }
-
-  async loadGameStats() {
-    if (!this.player?.id) return;
-
-    this.gameStats = [];
-    
-    // Get all teams to search through their games
-    const teamsRef = collection(this.firestore, 'teams');
-    const teamsSnap = await getDocs(teamsRef);
-    
-    const uniqueGames = new Map<string, any>();
-    
-    for (const teamDoc of teamsSnap.docs) {
-      const teamId = teamDoc.id;
-      const teamData = teamDoc.data();
-      const teamName = `${teamData['city']} ${teamData['mascot']}`;
-      
-      // Check team's games for this player's stats
-      const gamesRef = collection(this.firestore, `teams/${teamId}/games`);
-      const gamesSnap = await getDocs(gamesRef);
-      
-      for (const gameDoc of gamesSnap.docs) {
-        const gameData = gameDoc.data();
-        
-        // Check if this player has stats in this game
-        const homePlayerStats = gameData['homePlayerStats']?.[this.player.id];
-        const awayPlayerStats = gameData['awayPlayerStats']?.[this.player.id];
-        
-        let playerStats = null;
-        let isHome = false;
-        let playerTeamName = teamName;
-        
-        if (homePlayerStats && gameData['homeTeamId'] === teamId) {
-          playerStats = homePlayerStats;
-          isHome = true;
-        } else if (awayPlayerStats && gameData['awayTeamId'] === teamId) {
-          playerStats = awayPlayerStats;
-          isHome = false;
-        }
-        
-        if (playerStats) {
-          // Get opponent information
-          const opponentTeamId = isHome ? gameData['awayTeamId'] : gameData['homeTeamId'];
-          let opponent = 'Unknown Opponent';
-          
-          if (opponentTeamId) {
-            const opponentRef = doc(this.firestore, `teams/${opponentTeamId}`);
-            const opponentSnap = await getDoc(opponentRef);
-            if (opponentSnap.exists()) {
-              const opponentData = opponentSnap.data();
-              opponent = `${opponentData['city']} ${opponentData['mascot']}`;
-            }
-          }
-          
-          // Create unique key using game date, teams, and week/day to avoid duplicates
-          const gameKey = `${gameData['week']}-${gameData['day']}-${gameData['homeTeamId']}-${gameData['awayTeamId']}`;
-          
-          if (!uniqueGames.has(gameKey)) {
-            uniqueGames.set(gameKey, {
-              gameId: gameDoc.id,
-              teamName: playerTeamName,
-              opponent,
-              date: gameData['date']?.toDate?.() || new Date(),
-              week: gameData['week'],
-              day: gameData['day'],
-              isHome,
-              goals: playerStats.goals || 0,
-              assists: playerStats.assists || 0,
-              plusMinus: playerStats.plusMinus || 0,
-              shots: playerStats.shots || 0,
-              pim: playerStats.pim || 0,
-              hits: playerStats.hits || 0,
-              ppg: playerStats.ppg || 0,
-              shg: playerStats.shg || 0,
-              fot: playerStats.fot || 0,
-              fow: playerStats.fow || 0
-            });
-          }
-        }
-      }
-    }
-    
-    // Convert Map to array and sort by date descending
-    this.gameStats = Array.from(uniqueGames.values())
-      .sort((a, b) => b.date.getTime() - a.date.getTime());
-  }
-
-  async loadTrainingHistory() {
-    if (!this.player?.id) return;
-
-    const trainingRef = collection(this.firestore, `players/${this.player.id}/progressions`);
-    const trainingQuery = query(trainingRef, orderBy('timestamp', 'desc'));
-    const trainingSnap = await getDocs(trainingQuery);
-    
-    this.trainingHistory = trainingSnap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      timestamp: doc.data()['timestamp']?.toDate?.() || new Date(doc.data()['timestamp'])
-    }));
   }
 
   setTrainingOptions(position: string) {
@@ -467,18 +626,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     return -3;
   }
 
-  async checkSecondaryProgress() {
-    const progressRef = collection(this.firestore, `players/${this.player.id}/progressions`);
-    const snapshot = await getDocs(progressRef);
-    this.secondaryProgress = snapshot.docs.filter(doc => doc.data()['training'] === 'Learn Secondary Position').length;
-  }
-
-  async checkExistingTraining() {
-    // This is now handled by checkCurrentWeekSubmission
-    await this.checkCurrentWeekSubmission();
-  }
-
-  // Check if training can be edited
   canEditTraining(): boolean {
     return !this.trainingProcessed && this.progressionsOpen;
   }
@@ -486,19 +633,16 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   async submitTraining() {
     if (!this.tempTrainingType || !this.player?.id || !this.player?.teamId) return;
 
-    // Check if progressions are open
     if (!this.progressionsOpen) {
       alert('Training submissions are currently closed. Please wait for the next progression period to open.');
       return;
     }
 
-    // Check if training has been processed (cannot edit processed training)
     if (this.trainingProcessed) {
       alert('Your training has already been processed and cannot be modified. Please wait for the next week.');
       return;
     }
 
-    // Check if already submitted for this week
     if (this.hasSubmittedThisWeek && !this.existingTrainingId) {
       alert(`You have already submitted training for Week ${this.currentProgressionWeek}. Please wait for the next week.`);
       return;
@@ -517,7 +661,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     const teamProgressionRef = collection(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression`);
   
     if (this.existingTrainingId) {
-      // Update existing training (only if not processed)
       if (this.trainingProcessed) {
         alert('Your training has already been processed and cannot be modified.');
         return;
@@ -527,9 +670,8 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
       await updateDoc(trainingDoc, trainingData);
       
       const teamDoc = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression/${this.existingTrainingId}`);
-      await setDoc(teamDoc, trainingData); // overwrite or create in team view
+      await setDoc(teamDoc, trainingData);
     } else {
-      // Add new training
       const docRef = await addDoc(playerProgressionRef, trainingData);
       this.existingTrainingId = docRef.id;
   
@@ -539,7 +681,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   
     this.trainingType = this.tempTrainingType;
     this.trainingStatus = 'pending';
-    this.trainingProcessed = false; // Reset processed flag since we just submitted/updated
+    this.trainingProcessed = false;
     this.hasSubmittedThisWeek = true;
   
     if (this.trainingType === 'Learn Secondary Position') {
@@ -562,7 +704,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     if (!this.player?.id) return;
 
     try {
-      // Add retirement to player history
       const historyRef = collection(this.firestore, `players/${this.player.id}/history`);
       await addDoc(historyRef, {
         action: 'retired',
@@ -571,7 +712,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         details: 'Player announced retirement from professional hockey'
       });
 
-      // Update player status
       const playerRef = doc(this.firestore, `players/${this.player.id}`);
       await updateDoc(playerRef, {
         status: 'retired',
@@ -579,7 +719,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         teamId: 'retired'
       });
 
-      // Remove from team roster if on a team
       if (this.player.teamId && this.player.teamId !== 'none') {
         const rosterRef = doc(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}`);
         await updateDoc(rosterRef, {
@@ -591,9 +730,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
       this.showRetireModal = false;
       this.player.status = 'retired';
       
-      // Emit an event to parent component to refresh status
       window.dispatchEvent(new CustomEvent('playerRetired'));
-      
       alert('Your player has been retired. Thank you for your service to the league!');
     } catch (error) {
       console.error('Error retiring player:', error);
