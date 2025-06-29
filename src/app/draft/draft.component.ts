@@ -1,7 +1,22 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit, addDoc, updateDoc, writeBatch, DocumentData, DocumentReference, setDoc } from '@angular/fire/firestore';
+import { 
+  Firestore, 
+  collection, 
+  getDocs, 
+  doc, 
+  getDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  addDoc, 
+  updateDoc, 
+  writeBatch, 
+  DocumentReference,
+  setDoc
+} from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
 
 interface DraftClass {
