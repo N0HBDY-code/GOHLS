@@ -56,9 +56,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingTransactions = false;
   loadingGames = false;
 
-  // Carousel properties
+  // Carousel properties - Fixed timing
   currentGameIndex = 0;
-  autoRotateInterval = 5000; // 5 seconds
+  autoRotateInterval = 3000; // Changed to 3 seconds
   private autoRotateTimer?: any;
 
   constructor(
