@@ -157,7 +157,8 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     // Priority: Active player first
     if (!activeSnapshot.empty) {
       const playerData = activeSnapshot.docs[0].data();
-      playerData.id = activeSnapshot.docs[0].id;
+      // FIXED: Use bracket notation to access id property
+      playerData['id'] = activeSnapshot.docs[0].id;
       this.player = playerData;
       this.isPendingPlayer = false;
       console.log('⚡ Active player found');
@@ -167,7 +168,8 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     // Fallback: Pending player
     if (!pendingSnapshot.empty) {
       const pendingData = pendingSnapshot.docs[0].data();
-      pendingData.id = pendingSnapshot.docs[0].id;
+      // FIXED: Use bracket notation to access id property
+      pendingData['id'] = pendingSnapshot.docs[0].id;
       this.pendingPlayer = pendingData;
       this.isPendingPlayer = true;
       console.log('⏳ Pending player found');
@@ -245,7 +247,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
 
   // OPTIMIZATION: Load team data with caching
   private async loadTeamData() {
-    if (!this.player?.teamId || this.player.teamId === 'none') return;
+    if (!this.player?.id || this.player.teamId === 'none') return;
 
     // Check cache first
     if (this.teamCache.has(this.player.teamId)) {
