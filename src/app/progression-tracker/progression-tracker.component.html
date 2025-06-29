@@ -1,23 +1,24 @@
 <div class="container mt-4">
   <!-- Page Title -->
   <h2 class="page-title">
-    <i class="fas fa-chart-line me-3"></i>Progression Tracker
+    <i class="fas fa-chart-line me-2"></i>Progression Tracker
   </h2>
 
   <!-- Current Progression System Settings -->
   <div class="card settings-card mb-4">
-    <div class="card-body">
+    <div class="card-header">
       <h4>
         <div class="settings-icon">
           <i class="fas fa-cog"></i>
         </div>
         Current Progression Settings (What Players See)
       </h4>
-
+    </div>
+    <div class="card-body">
       <div class="row align-items-end">
         <div class="col-md-4">
           <label for="currentWeekSelect" class="form-label">
-            <i class="fas fa-calendar-week me-2"></i>Current Progression Week
+            <i class="fas fa-calendar-week me-1"></i>Current Progression Week
           </label>
           <select id="currentWeekSelect" class="form-select"
                   [(ngModel)]="currentProgressionWeek"
@@ -32,7 +33,7 @@
                    [(ngModel)]="progressionsOpen"
                    (change)="updateCurrentProgressionSettings()">
             <label class="form-check-label" for="progressionToggle">
-              <i class="fas fa-toggle-on me-2"></i>
+              <i class="fas fa-toggle-on me-1"></i>
               Progressions {{ progressionsOpen ? 'Open' : 'Closed' }}
             </label>
           </div>
@@ -56,14 +57,14 @@
   <div class="card management-card mb-4">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-eye me-2"></i>Management View Settings
+        <i class="fas fa-eye me-1"></i>Management View Settings
       </h5>
     </div>
     <div class="card-body">
       <div class="row align-items-center">
         <div class="col-md-6">
           <label for="viewingWeekSelect" class="form-label">
-            <i class="fas fa-search me-2"></i>View Progressions for Week
+            <i class="fas fa-search me-1"></i>View Progressions for Week
           </label>
           <select id="viewingWeekSelect" class="form-select"
                   [(ngModel)]="viewingWeek"
@@ -73,7 +74,7 @@
         </div>
         <div class="col-md-6">
           <div class="alert alert-info mb-0">
-            <i class="fas fa-info-circle me-2"></i>
+            <i class="fas fa-info-circle me-1"></i>
             <strong>Note:</strong> You are viewing Week {{ viewingWeek }} progressions. 
             Players are currently on Week {{ currentProgressionWeek }}.
             <span *ngIf="viewingWeek !== currentProgressionWeek" class="d-block mt-1">
@@ -93,7 +94,7 @@
   <div class="card team-selection-card mb-4">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-users me-2"></i>Team Selection
+        <i class="fas fa-users me-1"></i>Team Selection
       </h5>
     </div>
     <div class="card-body">
@@ -123,8 +124,8 @@
       <img *ngIf="selectedTeam.logoUrl"
            [src]="selectedTeam.logoUrl"
            alt="Team Logo"
-           width="80"
-           height="80"
+           width="60"
+           height="60"
            class="team-logo" />
       <div>
         <h4 class="team-name mb-1">{{ selectedTeam.name }}</h4>
@@ -135,7 +136,7 @@
           <span *ngIf="viewingWeek !== currentProgressionWeek" class="badge bg-warning text-dark ms-2">
             Historical
           </span>
-          <span *ngIf="viewingWeek === currentProgressionWeek" class="badge bg-success ms-2">
+          <span *ngIf="viewingWeek === currentProgressionWeek" class="badge bg-info ms-2">
             Current
           </span>
         </p>
@@ -147,7 +148,7 @@
   <div *ngIf="!loading && roster.length > 0" class="card roster-card">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-clipboard-list me-2"></i>Player Progression Management - Week {{ viewingWeek }}
+        <i class="fas fa-clipboard-list me-1"></i>Player Progression Management - Week {{ viewingWeek }}
       </h5>
     </div>
     <div class="card-body p-0">
@@ -205,19 +206,19 @@
                           (click)="markAsProcessed(player.id, player.progressionDocId!)"
                           [disabled]="player.status === 'processed' || !player.progressionDocId"
                           title="Mark as processed">
-                    <i class="fas fa-check me-1"></i>Process
+                    <i class="fas fa-check"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-info"
                           (click)="showAttributes(player.id, player.progression)"
                           [disabled]="player.progression === 'Not submitted'"
                           title="View player attributes">
-                    <i class="fas fa-eye me-1"></i>Attributes
+                    <i class="fas fa-eye"></i>
                   </button>
                   <button class="btn btn-sm btn-outline-danger"
                           (click)="undoProcessed(player.id, player.progressionDocId!)"
                           [disabled]="player.status !== 'processed'"
                           title="Undo processing">
-                    <i class="fas fa-undo me-1"></i>Undo
+                    <i class="fas fa-undo"></i>
                   </button>
                 </div>
               </td>
@@ -232,7 +233,7 @@
   <div *ngIf="showAttributesPlayerId" class="card mt-4">
     <div class="card-header">
       <h5 class="mb-0">
-        <i class="fas fa-chart-bar me-2"></i>
+        <i class="fas fa-chart-bar me-1"></i>
         Player Attributes: {{ getPlayerNameById(showAttributesPlayerId) }}
       </h5>
     </div>
@@ -251,7 +252,7 @@
                   [class.text-success]="affectedAttributes.includes(attr)"
                   [class.fw-bold]="affectedAttributes.includes(attr)">
                 <span *ngIf="affectedAttributes.includes(attr)" class="badge bg-success me-1">
-                  <i class="fas fa-arrow-up"></i>
+                  ↑
                 </span>
                 {{ selectedPlayerAttributes[attr] !== undefined ? selectedPlayerAttributes[attr] : '-' }}
               </td>
@@ -262,7 +263,7 @@
       <div class="card-footer">
         <small class="text-muted">
           <i class="fas fa-info-circle me-1"></i>
-          <span class="badge bg-success me-1"><i class="fas fa-arrow-up"></i></span>
+          <span class="badge bg-success me-1">↑</span>
           Highlighted attributes will be affected by the selected training program
         </small>
       </div>
