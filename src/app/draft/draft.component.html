@@ -30,6 +30,16 @@
     </ul>
   </div>
 
+  <!-- Firestore Index Error Alert -->
+  <div *ngIf="indexError" class="alert alert-warning mb-4">
+    <h5><i class="fas fa-exclamation-triangle me-2"></i>Firestore Index Required</h5>
+    <p>Some features require a Firestore index that hasn't been created yet. Please click the link below to create the required index:</p>
+    <a [href]="getIndexUrl()" target="_blank" class="btn btn-primary">
+      <i class="fas fa-external-link-alt me-1"></i>Create Required Index
+    </a>
+    <p class="mt-2 mb-0"><small>After creating the index, it may take a few minutes to become active. Refresh the page after the index is created.</small></p>
+  </div>
+
   <!-- Draft Classes View -->
   <div *ngIf="currentView === 'classes'">
     <div class="card mb-4">
@@ -376,7 +386,7 @@
 
         <div *ngIf="!loadingHistory && draftHistory.length > 0">
           <!-- Group by season -->
-          <ng-container *ngFor="let season of getUniqueDraftSeasons()" class="mb-4">
+          <div *ngFor="let season of getUniqueDraftSeasons()" class="mb-4">
             <h5 class="border-bottom pb-2">Season {{ season }} Draft</h5>
             
             <div class="table-responsive">
@@ -407,7 +417,7 @@
                 </tbody>
               </table>
             </div>
-          </ng-container>
+          </div>
         </div>
       </div>
     </div>
