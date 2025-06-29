@@ -14,7 +14,6 @@ import {
   query,
   where
 } from '@angular/fire/firestore';
-import { ProgressionService } from '../services/progression.service';
 import { getDefaultAttributes } from '../services/progression-defaults';
 import { AuthService } from '../auth.service';
 
@@ -27,7 +26,6 @@ import { AuthService } from '../auth.service';
 })
 export class ProgressionTrackerComponent implements OnInit {
   private firestore = inject(Firestore);
-  private progressionService = inject(ProgressionService);
   private authService = inject(AuthService);
 
   teams: { id: string, name: string, logoUrl?: string }[] = [];
@@ -48,6 +46,25 @@ export class ProgressionTrackerComponent implements OnInit {
   // Management view settings (what progression tracker sees)
   viewingWeek: number = 1;
   currentSeason: number = new Date().getFullYear();
+
+  // Training impact mapping - moved from service since we're not using it
+  private trainingMap: Record<string, string[]> = {
+    'Speed Skating': ['SPEED', 'ACCEL', 'AGILITY'],
+    'Distance Skating': ['ENDUR', 'BALANCE', 'DRBLTY'],
+    'Stick Handling': ['PK CTRL', 'DEKE', 'HND EYE'],
+    'MMA': ['BODY CHK', 'STRENGTH', 'AGGRE', 'FIGHTING'],
+    'Marksmanship': ['WRI PWR', 'SLAP PWR', 'PASSING'],
+    'Hit the Targets': ['WRI ACC', 'SLAP ACC', 'POISE'],
+    'Study Film': ['OFF AWR', 'DEF AWR', 'DISCIP'],
+    'Special Teams': ['STK CHK', 'SHT BLK', 'FACEOFF'],
+    'Shots High': ['GLV HIGH', 'STK HIGH', 'VISION'],
+    'Shots Low': ['GLV LOW', 'STK LOW', '5 HOLE'],
+    'Side to Sides': ['SPEED', 'AGILITY', 'POISE'],
+    'Puck Skills': ['PK CTRL', 'PASSING', 'PK PL FRQ'],
+    'Laps in Pads': ['ENDUR', 'DRBLTY', 'AGGRE'],
+    'Positioning': ['BRK AWAY', 'ANGLES'],
+    'Under Pressure': ['RBD CTRL', 'RECOV']
+  };
 
   conferences = [
     {
@@ -226,6 +243,68 @@ export class ProgressionTrackerComponent implements OnInit {
     }
   }
 
+  // Helper method to get attribute delta based on age and week
+  private getAttributeDelta(age: number, week: number): number {
+    if (age <= 26) return week <= 5 ? 3 : 2;
+    if (age <= 29) return 1;
+    if (age === 30) return 1;
+    if (age === 31) return -1;
+    if (age === 32) return -2;
+    if (age === 33) return -2;
+    return -3;
+  }
+
+  // Apply progression manually (since we're not using the service)
+  private async applyProgression(playerId: string, training: string, age: number, week: number) {
+    const attrRef = doc(this.firestore, `players/${playerId}/meta/attributes`);
+    const attrSnap = await getDoc(attrRef);
+    if (!attrSnap.exists()) return;
+
+    const attributes = attrSnap.data();
+    const fields = this.trainingMap[training];
+    if (!fields) return; // Skip if training not found
+
+    const delta = this.getAttributeDelta(age, week);
+
+    const updatedAttributes: Record<string, any> = {};
+
+    for (const attr of fields) {
+      const current = attributes[attr] || 0;
+      // Ensure attributes stay within bounds (40-99)
+      updatedAttributes[attr] = Math.max(40, Math.min(99, current + delta));
+    }
+
+    await updateDoc(attrRef, updatedAttributes);
+  }
+
+  // Undo progression manually (since we're not using the service)
+  private async undoProgression(playerId: string, training: string, age: number, week: number) {
+    const attrRef = doc(this.firestore, `players/${playerId}/meta/attributes`);
+    const attrSnap = await getDoc(attrRef);
+    if (!attrSnap.exists()) return;
+
+    const attributes = attrSnap.data();
+    const fields = this.trainingMap[training];
+    if (!fields) return; // Skip if training not found
+
+    const delta = this.getAttributeDelta(age, week);
+
+    const updatedAttributes: Record<string, any> = {};
+
+    for (const attr of fields) {
+      const current = attributes[attr] || 0;
+      // Ensure attributes stay within bounds (40-99)
+      updatedAttributes[attr] = Math.max(40, Math.min(99, current - delta));
+    }
+
+    await updateDoc(attrRef, updatedAttributes);
+  }
+
+  // Get affected attributes for a training
+  private getAffectedAttributes(training: string): string[] {
+    return this.trainingMap[training] || [];
+  }
+
   async markAsProcessed(playerId: string, docId: string) {
     if (!this.selectedTeamId || !docId) return;
 
@@ -249,7 +328,7 @@ export class ProgressionTrackerComponent implements OnInit {
     const age = playerSnap.data()?.['age'] || 19;
 
     // Apply progression using the specific week
-    await this.progressionService.applyProgression(playerId, training, age, this.viewingWeek);
+    await this.applyProgression(playerId, training, age, this.viewingWeek);
 
     await this.loadRoster();
   }
@@ -266,7 +345,7 @@ export class ProgressionTrackerComponent implements OnInit {
     const age = playerSnap.data()?.['age'] || 19;
 
     // Undo the progression changes
-    await this.progressionService.undoProgression(playerId, training, age, this.viewingWeek);
+    await this.undoProgression(playerId, training, age, this.viewingWeek);
 
     // Update status back to pending
     await updateDoc(playerProgressionRef, { status: 'pending' });
@@ -301,7 +380,7 @@ export class ProgressionTrackerComponent implements OnInit {
     const attrSnap = await getDoc(attrRef);
     this.selectedPlayerAttributes = attrSnap.exists() ? attrSnap.data() as Record<string, number> : {};
 
-    this.affectedAttributes = this.progressionService.getAffectedAttributes(training);
+    this.affectedAttributes = this.getAffectedAttributes(training);
   }
 
   // Updated attribute display order to include OVERALL
