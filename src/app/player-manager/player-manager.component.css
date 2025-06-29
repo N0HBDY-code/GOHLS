@@ -35,6 +35,59 @@
   margin-bottom: 1rem;
 }
 
+/* Team display with logo */
+.team-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f8f9fa;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  margin-top: 0.5rem;
+}
+
+.team-logo-small {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.team-name-text {
+  font-weight: 600;
+  color: #495057;
+  font-size: 1rem;
+}
+
+/* Team logos in history */
+.team-logo-history {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+}
+
+.team-logo-timeline {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.team-history-item {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6 !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease;
+}
+
+.team-history-item:hover {
+  background: #e9ecef;
+  border-color: #adb5bd !important;
+}
+
 .stat-card {
   background: white;
   border-radius: 8px;
@@ -92,18 +145,6 @@
   gap: 0.75rem;
 }
 
-.training-icon {
-  width: 32px;
-  height: 32px;
-  background: #0d6efd;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1rem;
-}
-
 .training-submitted {
   background: #d1e7dd;
   padding: 1.25rem;
@@ -118,12 +159,15 @@
   border: 1px solid #e9ecef;
 }
 
-.attributes-section {
+/* Full width attributes section */
+.attributes-section-full {
   background: white;
   border-radius: 8px;
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   border: 1px solid #e9ecef;
+  margin-bottom: 2rem;
+  width: 100%;
 }
 
 .attributes-title {
@@ -131,26 +175,13 @@
   font-weight: 600;
   color: #212529;
   margin-bottom: 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.attributes-icon {
-  width: 32px;
-  height: 32px;
-  background: #198754;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1rem;
+  text-align: center;
 }
 
 .attributes-table {
   margin-bottom: 0;
   font-size: 0.9rem;
+  width: 100%;
 }
 
 .attributes-table th {
@@ -163,6 +194,7 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border: 1px solid #dee2e6;
+  white-space: nowrap;
 }
 
 .attributes-table td {
@@ -215,6 +247,7 @@
   border-radius: 6px;
   margin-top: 1rem;
   border-left: 4px solid #0d6efd;
+  text-align: center;
 }
 
 .legend-badge {
@@ -380,14 +413,38 @@
     font-size: 0.75rem;
   }
   
-  .training-section,
-  .attributes-section {
+  .training-section {
+    padding: 1.25rem;
+  }
+
+  .attributes-section-full {
     padding: 1.25rem;
   }
 
   .nav-tabs .nav-link {
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+  }
+
+  .team-display {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+
+  .team-logo-history {
+    width: 32px;
+    height: 32px;
+  }
+
+  .team-history-item {
+    text-align: center;
+  }
+
+  .team-history-item .d-flex {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
   }
 }
 

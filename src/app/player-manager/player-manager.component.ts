@@ -21,6 +21,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   player: any = null;
   pendingPlayer: any = null;
   teamName: string = '';
+  teamLogo: string = '';
   loading = true;
   isPendingPlayer = false;
 
@@ -139,6 +140,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
           const city = teamData['city'] || '';
           const mascot = teamData['mascot'] || '';
           this.teamName = `${city} ${mascot}`.trim();
+          this.teamLogo = teamData['logoUrl'] || '';
         }
       }
     } else {
@@ -276,6 +278,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     this.playerHistory = await Promise.all(historySnap.docs.map(async (historyDoc) => {
       const data = historyDoc.data();
       let teamName = 'Unknown Team';
+      let teamLogo = '';
       
       if (data['teamId'] && data['teamId'] !== 'none') {
         const teamRef = doc(this.firestore, `teams/${data['teamId']}`);
@@ -283,6 +286,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         if (teamSnap.exists()) {
           const teamData = teamSnap.data() as any;
           teamName = `${teamData['city']} ${teamData['mascot']}`;
+          teamLogo = teamData['logoUrl'] || '';
         }
       }
       
@@ -290,6 +294,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         id: historyDoc.id,
         ...data,
         teamName,
+        teamLogo,
         timestamp: data['timestamp']?.toDate?.() || new Date(data['timestamp'])
       };
     }));
@@ -591,6 +596,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
       if (entry.action === 'signed' || entry.action === 'traded') {
         teams.set(entry.teamId, {
           teamName: entry.teamName,
+          teamLogo: entry.teamLogo,
           joinDate: entry.timestamp,
           action: entry.action
         });
