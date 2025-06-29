@@ -232,7 +232,7 @@
             <div class="training-icon">
               <i class="fas fa-dumbbell"></i>
             </div>
-            Weekly Training Program
+            Weekly Training Program - Week {{ currentProgressionWeek }}
             <span class="badge ms-2" 
                   [class.bg-success]="progressionsOpen"
                   [class.bg-danger]="!progressionsOpen">
@@ -248,11 +248,19 @@
             Please wait for the next progression period to open.
           </div>
 
+          <!-- Already Submitted This Week Message -->
+          <div *ngIf="hasSubmittedThisWeek && !trainingSubmitted" class="alert alert-info">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Training Already Submitted</strong><br>
+            You have already submitted training for Week {{ currentProgressionWeek }}. 
+            You can only submit one training per week.
+          </div>
+
           <!-- Training Submitted State -->
           <div *ngIf="trainingSubmitted" class="training-submitted">
             <div class="d-flex justify-content-between align-items-center">
               <div>
-                <h6 class="mb-1 text-success">✅ Training Submitted</h6>
+                <h6 class="mb-1 text-success">✅ Training Submitted for Week {{ currentProgressionWeek }}</h6>
                 <p class="mb-1"><strong>Program:</strong> {{ trainingType }}</p>
                 <p class="mb-0">
                   <strong>Status:</strong> 
@@ -272,8 +280,8 @@
           </div>
 
           <!-- Training Selection Form -->
-          <div *ngIf="!trainingSubmitted" class="training-form">
-            <label for="trainingSelect" class="form-label fw-bold">Select Training Program</label>
+          <div *ngIf="!trainingSubmitted && progressionsOpen && !hasSubmittedThisWeek" class="training-form">
+            <label for="trainingSelect" class="form-label fw-bold">Select Training Program for Week {{ currentProgressionWeek }}</label>
             <select class="form-select mb-3" 
                     [(ngModel)]="tempTrainingType" 
                     name="training" 
@@ -289,7 +297,7 @@
             <button class="btn btn-primary" 
                     (click)="submitTraining()"
                     [disabled]="!tempTrainingType || !progressionsOpen">
-              <i class="fas fa-paper-plane me-1"></i> Submit Training
+              <i class="fas fa-paper-plane me-1"></i> Submit Training for Week {{ currentProgressionWeek }}
             </button>
           </div>
 
@@ -518,6 +526,7 @@
               <th>Training Program</th>
               <th>Status</th>
               <th>Week</th>
+              <th>Season</th>
             </tr>
           </thead>
           <tbody>
@@ -531,7 +540,8 @@
                   {{ training.status | titlecase }}
                 </span>
               </td>
-              <td>{{ training.timestamp | date:'w' }}</td>
+              <td>{{ training.week || 'N/A' }}</td>
+              <td>{{ training.season || 'N/A' }}</td>
             </tr>
           </tbody>
         </table>

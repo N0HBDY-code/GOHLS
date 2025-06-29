@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy } from '@angular/core';
 import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc, updateDoc, orderBy } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
@@ -13,7 +13,7 @@ import { Router } from '@angular/router';
   templateUrl: './player-manager.component.html',
   styleUrls: ['./player-manager.component.css']
 })
-export class PlayerManagerComponent implements OnInit {
+export class PlayerManagerComponent implements OnInit, OnDestroy {
   private firestore: Firestore = inject(Firestore);
   private auth: Auth = inject(Auth);
   private router: Router = inject(Router);
@@ -33,6 +33,7 @@ export class PlayerManagerComponent implements OnInit {
   // Progression control
   progressionsOpen = true;
   currentProgressionWeek = 1;
+  hasSubmittedThisWeek = false;
 
   secondaryProgress: number = 0;
   existingTrainingId: string | null = null;
@@ -84,6 +85,9 @@ export class PlayerManagerComponent implements OnInit {
   showRetireModal = false;
   retireConfirmation = '';
 
+  // Week change listener
+  private weekChangeListener?: () => void;
+
   async ngOnInit() {
     const user = this.auth.currentUser;
     if (!user) {
@@ -92,6 +96,13 @@ export class PlayerManagerComponent implements OnInit {
     }
 
     console.log('PlayerManager: Initializing for user:', user.uid);
+
+    // Set up week change listener
+    this.weekChangeListener = () => {
+      console.log('🔄 Week change detected, refreshing progression settings...');
+      this.loadProgressionSettings();
+    };
+    window.addEventListener('weekChanged', this.weekChangeListener);
 
     // Load progression settings first
     await this.loadProgressionSettings();
@@ -152,10 +163,19 @@ export class PlayerManagerComponent implements OnInit {
     this.loading = false;
   }
 
+  ngOnDestroy() {
+    // Clean up event listeners
+    if (this.weekChangeListener) {
+      window.removeEventListener('weekChanged', this.weekChangeListener);
+    }
+  }
+
   async loadProgressionSettings() {
     try {
       const settingsRef = doc(this.firestore, 'progressionSettings/config');
       const snap = await getDoc(settingsRef);
+
+      const previousWeek = this.currentProgressionWeek;
 
       if (snap.exists()) {
         const data = snap.data();
@@ -165,10 +185,69 @@ export class PlayerManagerComponent implements OnInit {
         this.progressionsOpen = true;
         this.currentProgressionWeek = 1;
       }
+
+      // Check if week has changed
+      if (previousWeek !== this.currentProgressionWeek && previousWeek !== 0) {
+        console.log(`📅 Week changed from ${previousWeek} to ${this.currentProgressionWeek}`);
+        await this.handleWeekChange();
+      }
+
+      // Check if player has submitted for current week
+      if (this.player?.id) {
+        await this.checkCurrentWeekSubmission();
+      }
+
     } catch (error) {
       console.error('Error loading progression settings:', error);
       this.progressionsOpen = true;
       this.currentProgressionWeek = 1;
+    }
+  }
+
+  async handleWeekChange() {
+    console.log('🔄 Handling week change...');
+    
+    // Clear current training selection
+    this.tempTrainingType = '';
+    this.trainingType = '';
+    this.trainingSubmitted = false;
+    this.trainingStatus = null;
+    this.existingTrainingId = null;
+    this.hasSubmittedThisWeek = false;
+
+    console.log('✅ Training selection cleared for new week');
+  }
+
+  async checkCurrentWeekSubmission() {
+    if (!this.player?.id) return;
+
+    try {
+      // Check if player has already submitted training for current week
+      const progressRef = collection(this.firestore, `players/${this.player.id}/progressions`);
+      const q = query(
+        progressRef,
+        where('week', '==', this.currentProgressionWeek),
+        where('season', '==', new Date().getFullYear())
+      );
+      const snapshot = await getDocs(q);
+
+      if (!snapshot.empty) {
+        const submissionData = snapshot.docs[0].data();
+        this.hasSubmittedThisWeek = true;
+        this.trainingType = submissionData['training'];
+        this.tempTrainingType = this.trainingType;
+        this.trainingStatus = submissionData['status'] || 'pending';
+        this.trainingSubmitted = true;
+        this.existingTrainingId = snapshot.docs[0].id;
+        
+        console.log(`📝 Found existing submission for week ${this.currentProgressionWeek}:`, this.trainingType);
+      } else {
+        this.hasSubmittedThisWeek = false;
+        this.trainingSubmitted = false;
+        console.log(`📝 No submission found for week ${this.currentProgressionWeek}`);
+      }
+    } catch (error) {
+      console.error('Error checking current week submission:', error);
     }
   }
 
@@ -343,7 +422,7 @@ export class PlayerManagerComponent implements OnInit {
     if (!this.player?.age) return 0;
     
     const age = this.player.age;
-    const currentWeek = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000));
+    const currentWeek = this.currentProgressionWeek;
     
     if (age <= 26) return currentWeek <= 5 ? 3 : 2;
     if (age <= 29) return 1;
@@ -361,26 +440,8 @@ export class PlayerManagerComponent implements OnInit {
   }
 
   async checkExistingTraining() {
-    const weekStart = new Date();
-    weekStart.setHours(0, 0, 0, 0);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-
-    const progressRef = collection(this.firestore, `players/${this.player.id}/progressions`);
-    const snapshot = await getDocs(progressRef);
-
-    const currentWeekTraining = snapshot.docs.find(doc => {
-      const ts = doc.data()['timestamp']?.toDate?.();
-      return ts && ts >= weekStart;
-    });
-
-    if (currentWeekTraining) {
-      const data = currentWeekTraining.data();
-      this.trainingType = data['training'];
-      this.tempTrainingType = this.trainingType;
-      this.trainingStatus = data['status'] || 'pending';
-      this.trainingSubmitted = true;
-      this.existingTrainingId = currentWeekTraining.id;
-    }
+    // This is now handled by checkCurrentWeekSubmission
+    await this.checkCurrentWeekSubmission();
   }
 
   async submitTraining() {
@@ -391,11 +452,20 @@ export class PlayerManagerComponent implements OnInit {
       alert('Training submissions are currently closed. Please wait for the next progression period to open.');
       return;
     }
+
+    // Check if already submitted for this week
+    if (this.hasSubmittedThisWeek && !this.existingTrainingId) {
+      alert(`You have already submitted training for Week ${this.currentProgressionWeek}. Please wait for the next week.`);
+      return;
+    }
   
+    const currentSeason = new Date().getFullYear();
     const trainingData = {
       training: this.tempTrainingType,
       timestamp: new Date(),
-      status: 'pending'
+      status: 'pending',
+      week: this.currentProgressionWeek,
+      season: currentSeason
     };
   
     const playerProgressionRef = collection(this.firestore, `players/${this.player.id}/progressions`);
@@ -419,6 +489,7 @@ export class PlayerManagerComponent implements OnInit {
   
     this.trainingType = this.tempTrainingType;
     this.trainingStatus = 'pending';
+    this.hasSubmittedThisWeek = true;
   
     if (this.trainingType === 'Learn Secondary Position') {
       this.secondaryProgress++;

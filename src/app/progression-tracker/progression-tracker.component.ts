@@ -33,7 +33,8 @@ export class ProgressionTrackerComponent implements OnInit {
 
   selectedWeek: number = 1;
   progressionsOpen: boolean = true;
-  progressionWeeks: number[] = Array.from({ length: 10 }, (_, i) => i + 1);
+  progressionWeeks: number[] = Array.from({ length: 20 }, (_, i) => i + 1);
+  previousWeek: number = 1;
 
   conferences = [
     {
@@ -82,7 +83,13 @@ export class ProgressionTrackerComponent implements OnInit {
     for (const playerDoc of playerDocs) {
       const data = playerDoc.data();
       const progressionSnap = await getDocs(collection(this.firestore, `teams/${this.selectedTeamId}/roster/${playerDoc.id}/progression`));
-      const progression = progressionSnap.docs[0]?.data();
+      
+      // Find progression for current week
+      const currentWeekProgression = progressionSnap.docs.find(doc => {
+        const progressionData = doc.data();
+        return progressionData['week'] === this.selectedWeek && 
+               progressionData['season'] === new Date().getFullYear();
+      });
 
       const globalPlayerRef = doc(this.firestore, `players/${playerDoc.id}`);
       const globalPlayerSnap = await getDoc(globalPlayerRef);
@@ -100,9 +107,9 @@ export class ProgressionTrackerComponent implements OnInit {
         number: data['jerseyNumber'],
         position: data['position'],
         age: globalPlayerData['age'] || 19,
-        progression: progression?.['training'] || 'Not submitted',
-        status: progression?.['status'] || 'N/A',
-        progressionDocId: progressionSnap.docs[0]?.id || null,
+        progression: currentWeekProgression?.data()?.['training'] || 'Not submitted',
+        status: currentWeekProgression?.data()?.['status'] || 'N/A',
+        progressionDocId: currentWeekProgression?.id || null,
         overall: globalPlayerData['overall'] ?? 'N/A'
       });
     }
@@ -125,12 +132,7 @@ export class ProgressionTrackerComponent implements OnInit {
     const playerSnap = await getDoc(doc(this.firestore, `players/${playerId}`));
     const age = playerSnap.data()?.['age'] || 19;
 
-    const weekStart = new Date();
-    weekStart.setHours(0, 0, 0, 0);
-    const seasonStart = new Date(weekStart.getFullYear(), 0, 1);
-    const diffWeeks = Math.floor((weekStart.getTime() - seasonStart.getTime()) / (7 * 24 * 60 * 60 * 1000));
-
-    await this.progressionService.applyProgression(playerId, training, age, diffWeeks);
+    await this.progressionService.applyProgression(playerId, training, age, this.selectedWeek);
 
     await this.loadRoster();
   }
@@ -188,6 +190,7 @@ export class ProgressionTrackerComponent implements OnInit {
 
     if (snap.exists()) {
       const data = snap.data();
+      this.previousWeek = this.selectedWeek;
       this.selectedWeek = data['week'] ?? 1;
       this.progressionsOpen = data['open'] ?? true;
     } else {
@@ -202,10 +205,34 @@ export class ProgressionTrackerComponent implements OnInit {
 
   async updateProgressionSettings() {
     const settingsRef = doc(this.firestore, 'progressionSettings/config');
+    
+    // Check if week changed
+    const weekChanged = this.previousWeek !== this.selectedWeek;
+    
     await setDoc(settingsRef, {
       week: this.selectedWeek,
       open: this.progressionsOpen
     }, { merge: true });
+
+    // If week changed, emit event and reload roster
+    if (weekChanged) {
+      console.log(`📅 Week changed from ${this.previousWeek} to ${this.selectedWeek}`);
+      
+      // Emit week change event for player components to listen to
+      window.dispatchEvent(new CustomEvent('weekChanged', {
+        detail: {
+          previousWeek: this.previousWeek,
+          newWeek: this.selectedWeek
+        }
+      }));
+
+      this.previousWeek = this.selectedWeek;
+      
+      // Reload roster to show data for new week
+      if (this.selectedTeamId) {
+        await this.loadRoster();
+      }
+    }
   }
 
   openAddTeamModal(conference: string, division: string) {
