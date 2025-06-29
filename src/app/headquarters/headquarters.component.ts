@@ -121,7 +121,10 @@ export class HeadquartersComponent implements OnInit {
   async ngOnInit() {
     // Check permissions
     this.authService.effectiveRoles.subscribe(roles => {
-      // Permissions logic here
+      this.canManagePlayoffs = roles.some(role => 
+        ['developer', 'commissioner'].includes(role)
+      );
+      this.isDeveloper = roles.includes('developer');
     });
 
     await Promise.all([
@@ -394,9 +397,34 @@ export class HeadquartersComponent implements OnInit {
       const snapshot = await getDocs(q);
       
       this.pendingPlayers = snapshot.docs.map(doc => {
+        const data = doc.data() as any;
         return {
           id: doc.id,
-          ...doc.data() as PendingPlayer
+          firstName: data.firstName,
+          lastName: data.lastName,
+          position: data.position,
+          archetype: data.archetype,
+          age: data.age,
+          height: data.height,
+          weight: data.weight,
+          jerseyNumber: data.jerseyNumber,
+          handedness: data.handedness,
+          userId: data.userId,
+          userEmail: data.userEmail,
+          userDisplayName: data.userDisplayName,
+          submittedDate: data.submittedDate,
+          status: data.status,
+          draftClass: data.draftClass,
+          fight: data.fight,
+          origin: data.origin,
+          hair: data.hair,
+          beard: data.beard,
+          tape: data.tape,
+          ethnicity: data.ethnicity,
+          twitch: data.twitch,
+          referral: data.referral,
+          invitedBy: data.invitedBy,
+          gamertag: data.gamertag
         };
       });
     } finally {
