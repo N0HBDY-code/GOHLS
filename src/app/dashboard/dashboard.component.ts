@@ -27,8 +27,11 @@ interface Transaction {
 }
 
 interface GameLineup {
+  gameId: string;
   homeTeam: string;
   awayTeam: string;
+  homeTeamId: string;
+  awayTeamId: string;
   homeTeamLogo?: string;
   awayTeamLogo?: string;
   week: number;
@@ -56,9 +59,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingTransactions = false;
   loadingGames = false;
 
-  // Carousel properties - Fixed timing
+  // Carousel properties - Fixed timing to rotate one game every 3 seconds
   currentGameIndex = 0;
-  autoRotateInterval = 3000; // Changed to 3 seconds
+  autoRotateInterval = 3000; // 3 seconds
   private autoRotateTimer?: any;
 
   constructor(
@@ -89,7 +92,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.stopAutoRotation();
   }
 
-  // Carousel methods
+  // Carousel methods - Fixed to rotate one game at a time
   startAutoRotation(): void {
     if (this.todaysGames.length > 1) {
       this.autoRotateTimer = setInterval(() => {
@@ -126,8 +129,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.startAutoRotation();
   }
 
-  navigateToGames(): void {
-    this.router.navigate(['/games']);
+  // Navigate to specific game instead of just games page
+  navigateToSpecificGame(): void {
+    const currentGame = this.todaysGames[this.currentGameIndex];
+    if (currentGame && currentGame.gameId && currentGame.homeTeamId) {
+      this.router.navigate(['/games', currentGame.homeTeamId, currentGame.gameId]);
+    } else {
+      // Fallback to games page if no specific game data
+      this.router.navigate(['/games']);
+    }
   }
 
   async loadNewestPlayers(): Promise<void> {
@@ -277,8 +287,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
           const awayTeamData = awayTeamSnap.exists() ? awayTeamSnap.data() : {};
           
           return {
+            gameId: gameDoc.id,
             homeTeam: `${homeTeamData['city']} ${homeTeamData['mascot']}`,
             awayTeam: `${awayTeamData['city']} ${awayTeamData['mascot']}`,
+            homeTeamId: gameData['homeTeamId'],
+            awayTeamId: gameData['awayTeamId'],
             homeTeamLogo: homeTeamData['logoUrl'],
             awayTeamLogo: awayTeamData['logoUrl'],
             week: gameData['week'],

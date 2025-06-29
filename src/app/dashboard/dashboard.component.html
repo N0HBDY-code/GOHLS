@@ -41,7 +41,7 @@
                    [style.transform]="'translateX(' + (-currentGameIndex * 100) + '%)'">
                 <div class="carousel-slide" 
                      *ngFor="let game of todaysGames; let i = index"
-                     (click)="navigateToGames()">
+                     (click)="navigateToSpecificGame()">
                   <div class="game-card-carousel">
                     <div class="game-teams">
                       <!-- Away Team -->
@@ -81,8 +81,8 @@
 
                     <!-- Click to view indicator -->
                     <div class="click-indicator">
-                      <i class="fas fa-mouse-pointer me-1"></i>
-                      Click to view all games
+                      <i class="fas fa-gamepad me-2"></i>
+                      Click to view game details
                     </div>
                   </div>
                 </div>
