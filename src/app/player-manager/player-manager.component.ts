@@ -29,6 +29,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   trainingOptions: string[] = [];
   trainingSubmitted = false;
   trainingStatus: 'pending' | 'processed' | null = null;
+  trainingProcessed = false; // New flag to track if training is processed
 
   // Progression control
   progressionsOpen = true;
@@ -212,6 +213,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     this.trainingType = '';
     this.trainingSubmitted = false;
     this.trainingStatus = null;
+    this.trainingProcessed = false;
     this.existingTrainingId = null;
     this.hasSubmittedThisWeek = false;
 
@@ -237,13 +239,15 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         this.trainingType = submissionData['training'];
         this.tempTrainingType = this.trainingType;
         this.trainingStatus = submissionData['status'] || 'pending';
+        this.trainingProcessed = this.trainingStatus === 'processed'; // Set processed flag
         this.trainingSubmitted = true;
         this.existingTrainingId = snapshot.docs[0].id;
         
-        console.log(`📝 Found existing submission for week ${this.currentProgressionWeek}:`, this.trainingType);
+        console.log(`📝 Found existing submission for week ${this.currentProgressionWeek}:`, this.trainingType, 'Status:', this.trainingStatus);
       } else {
         this.hasSubmittedThisWeek = false;
         this.trainingSubmitted = false;
+        this.trainingProcessed = false;
         console.log(`📝 No submission found for week ${this.currentProgressionWeek}`);
       }
     } catch (error) {
@@ -444,12 +448,23 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     await this.checkCurrentWeekSubmission();
   }
 
+  // Check if training can be edited
+  canEditTraining(): boolean {
+    return !this.trainingProcessed && this.progressionsOpen;
+  }
+
   async submitTraining() {
     if (!this.tempTrainingType || !this.player?.id || !this.player?.teamId) return;
 
     // Check if progressions are open
     if (!this.progressionsOpen) {
       alert('Training submissions are currently closed. Please wait for the next progression period to open.');
+      return;
+    }
+
+    // Check if training has been processed (cannot edit processed training)
+    if (this.trainingProcessed) {
+      alert('Your training has already been processed and cannot be modified. Please wait for the next week.');
       return;
     }
 
@@ -472,7 +487,12 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     const teamProgressionRef = collection(this.firestore, `teams/${this.player.teamId}/roster/${this.player.id}/progression`);
   
     if (this.existingTrainingId) {
-      // Update existing training
+      // Update existing training (only if not processed)
+      if (this.trainingProcessed) {
+        alert('Your training has already been processed and cannot be modified.');
+        return;
+      }
+      
       const trainingDoc = doc(this.firestore, `players/${this.player.id}/progressions/${this.existingTrainingId}`);
       await updateDoc(trainingDoc, trainingData);
       
@@ -489,6 +509,7 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
   
     this.trainingType = this.tempTrainingType;
     this.trainingStatus = 'pending';
+    this.trainingProcessed = false; // Reset processed flag since we just submitted/updated
     this.hasSubmittedThisWeek = true;
   
     if (this.trainingType === 'Learn Secondary Position') {

@@ -248,8 +248,16 @@
             Please wait for the next progression period to open.
           </div>
 
+          <!-- Training Already Processed Message -->
+          <div *ngIf="trainingProcessed" class="alert alert-info">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong>Training Processed</strong><br>
+            Your training for Week {{ currentProgressionWeek }} has been processed and applied to your player. 
+            You cannot modify processed training. Please wait for the next week to submit new training.
+          </div>
+
           <!-- Already Submitted This Week Message -->
-          <div *ngIf="hasSubmittedThisWeek && !trainingSubmitted" class="alert alert-info">
+          <div *ngIf="hasSubmittedThisWeek && !trainingSubmitted && !trainingProcessed" class="alert alert-info">
             <i class="fas fa-check-circle me-2"></i>
             <strong>Training Already Submitted</strong><br>
             You have already submitted training for Week {{ currentProgressionWeek }}. 
@@ -269,24 +277,29 @@
                         [class.bg-success]="trainingStatus === 'processed'">
                     {{ trainingStatus | titlecase }}
                   </span>
+                  <span *ngIf="trainingStatus === 'processed'" class="ms-2 text-success">
+                    <i class="fas fa-lock me-1"></i>Locked
+                  </span>
                 </p>
               </div>
               <button class="btn btn-warning" 
                       (click)="trainingSubmitted = false"
-                      [disabled]="!progressionsOpen">
-                <i class="fas fa-edit me-1"></i> Edit Training
+                      [disabled]="!canEditTraining()"
+                      [title]="trainingProcessed ? 'Cannot edit processed training' : (!progressionsOpen ? 'Progressions are closed' : 'Edit training')">
+                <i class="fas fa-edit me-1"></i> 
+                {{ trainingProcessed ? 'Locked' : 'Edit Training' }}
               </button>
             </div>
           </div>
 
           <!-- Training Selection Form -->
-          <div *ngIf="!trainingSubmitted && progressionsOpen && !hasSubmittedThisWeek" class="training-form">
+          <div *ngIf="!trainingSubmitted && progressionsOpen && !hasSubmittedThisWeek && !trainingProcessed" class="training-form">
             <label for="trainingSelect" class="form-label fw-bold">Select Training Program for Week {{ currentProgressionWeek }}</label>
             <select class="form-select mb-3" 
                     [(ngModel)]="tempTrainingType" 
                     name="training" 
                     (change)="onTrainingChange()"
-                    [disabled]="!progressionsOpen"
+                    [disabled]="!progressionsOpen || trainingProcessed"
                     id="trainingSelect">
               <option value="">-- Choose Your Training --</option>
               <option *ngFor="let option of trainingOptions" [value]="option">
@@ -296,7 +309,7 @@
             
             <button class="btn btn-primary" 
                     (click)="submitTraining()"
-                    [disabled]="!tempTrainingType || !progressionsOpen">
+                    [disabled]="!tempTrainingType || !progressionsOpen || trainingProcessed">
               <i class="fas fa-paper-plane me-1"></i> Submit Training for Week {{ currentProgressionWeek }}
             </button>
           </div>
@@ -331,7 +344,7 @@
                       [ngClass]="{ 'table-success': isAttributeAffected(attr) }">
                     <div class="attribute-cell">
                       <span class="attribute-value">{{ playerAttributes[attr] || 0 }}</span>
-                      <span *ngIf="isAttributeAffected(attr)" class="training-impact">
+                      <span *ngIf="isAttributeAffected(attr) && !trainingProcessed" class="training-impact">
                         +{{ getAttributeDelta() }}
                       </span>
                     </div>
@@ -355,7 +368,7 @@
                       [ngClass]="{ 'table-success': isAttributeAffected(attr) }">
                     <div class="attribute-cell">
                       <span class="attribute-value">{{ playerAttributes[attr] || 0 }}</span>
-                      <span *ngIf="isAttributeAffected(attr)" class="training-impact">
+                      <span *ngIf="isAttributeAffected(attr) && !trainingProcessed" class="training-impact">
                         +{{ getAttributeDelta() }}
                       </span>
                     </div>
@@ -366,11 +379,19 @@
           </div>
 
           <!-- Training Impact Legend -->
-          <div *ngIf="tempTrainingType" class="training-legend">
+          <div *ngIf="tempTrainingType && !trainingProcessed" class="training-legend">
             <span class="legend-badge">Enhanced</span>
             <small>
               <strong>{{ tempTrainingType }}</strong> will improve the highlighted attributes by 
               <strong>{{ getAttributeDelta() > 0 ? '+' : '' }}{{ getAttributeDelta() }} points</strong>
+            </small>
+          </div>
+
+          <!-- Processed Training Notice -->
+          <div *ngIf="trainingProcessed && trainingType" class="training-legend">
+            <span class="legend-badge bg-success">Applied</span>
+            <small>
+              <strong>{{ trainingType }}</strong> has been processed and applied to your player's attributes.
             </small>
           </div>
         </div>
@@ -538,6 +559,9 @@
                       [class.bg-warning]="training.status === 'pending'"
                       [class.bg-success]="training.status === 'processed'">
                   {{ training.status | titlecase }}
+                </span>
+                <span *ngIf="training.status === 'processed'" class="ms-1">
+                  <i class="fas fa-lock text-success" title="Training has been processed and locked"></i>
                 </span>
               </td>
               <td>{{ training.week || 'N/A' }}</td>
