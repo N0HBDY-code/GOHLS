@@ -14,6 +14,7 @@ import { RoleGuard } from './role.guard';
 import { ProgressionTrackerComponent } from './progression-tracker/progression-tracker.component';
 import { GameDetailComponent } from './game-detail/game-detail.component';
 import { HeadquartersComponent } from './headquarters/headquarters.component';
+import { DraftComponent } from './draft/draft.component';
 
 export const routes: Routes = [
     {
@@ -86,5 +87,11 @@ export const routes: Routes = [
         loadComponent: () => import('./progression-tracker/progression-tracker.component').then(m => m.ProgressionTrackerComponent),
         title: 'Progression Tracker',
         canActivate: [RoleGuard(['developer', 'commissioner', 'progression tracker'])]
+    },
+    {
+        path: 'draft',
+        loadComponent: () => import('./draft/draft.component').then(m => m.DraftComponent),
+        title: 'Draft Central',
+        canActivate: [RoleGuard(['developer', 'commissioner', 'gm'])]
     }
 ];

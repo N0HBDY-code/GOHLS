@@ -1,5 +1,5 @@
 import { Component, inject, OnInit, OnDestroy } from '@angular/core';
-import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getDoc } from '@angular/fire/firestore';
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -96,7 +96,7 @@ export class PlayersComponent implements OnInit, OnDestroy {
       // Reset all states first
       this.resetAllStates();
 
-      // Run all queries in parallel for better performance and consistency
+      // Run all queries in parallel
       const [activeSnapshot, retiredSnapshot, pendingSnapshot] = await Promise.all([
         // Active players
         getDocs(query(
@@ -218,14 +218,31 @@ export class PlayersComponent implements OnInit, OnDestroy {
     try {
       console.log('📝 Creating pending player request...');
       
-      // Create a pending player request instead of a full player
+      // Get current progression settings to determine age
+      const settingsRef = doc(this.firestore, 'progressionSettings/config');
+      const settingsSnap = await getDoc(settingsRef);
+      const currentWeek = settingsSnap.exists() ? settingsSnap.data()['week'] || 1 : 1;
+      
+      // Get current league season
+      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      const seasonSnap = await getDoc(seasonRef);
+      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] || 1 : 1;
+      
+      // Determine player age based on week
+      // Before week 5: 20 years old
+      // After week 5: 19 years old
+      const playerAge = currentWeek <= 5 ? 20 : 19;
+      
+      // Create a pending player request
       await addDoc(collection(this.firestore, 'pendingPlayers'), {
         ...this.playerForm,
         userId: user.uid,
         status: 'pending',
         submittedDate: new Date(),
         userEmail: user.email,
-        userDisplayName: user.displayName
+        userDisplayName: user.displayName,
+        age: playerAge,
+        draftClass: currentSeason // Assign to current season's draft class
       });
 
       console.log('✅ Pending player created successfully');

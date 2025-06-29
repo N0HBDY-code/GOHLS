@@ -1,0 +1,595 @@
+<div class="container mt-4">
+  <h2 class="page-title">
+    <i class="fas fa-trophy me-2"></i>GOHLS Draft Central
+  </h2>
+
+  <!-- Navigation Tabs -->
+  <div class="mb-4">
+    <ul class="nav nav-tabs">
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'classes'"
+           (click)="currentView = 'classes'">
+          <i class="fas fa-users me-1"></i> Draft Classes
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'current'"
+           (click)="currentView = 'current'">
+          <i class="fas fa-hockey-puck me-1"></i> Current Draft
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'history'"
+           (click)="currentView = 'history'">
+          <i class="fas fa-history me-1"></i> Draft History
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Draft Classes View -->
+  <div *ngIf="currentView === 'classes'">
+    <div class="card mb-4">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+          <i class="fas fa-users me-2"></i>Draft Classes
+        </h5>
+        <button *ngIf="canManageDraft" 
+                class="btn btn-primary btn-sm"
+                (click)="showCreateClassModal = true">
+          <i class="fas fa-plus me-1"></i>Create Draft Class
+        </button>
+      </div>
+      <div class="card-body">
+        <div *ngIf="loadingClasses" class="text-center py-4">
+          <div class="spinner-border text-primary"></div>
+          <p class="mt-2 text-muted">Loading draft classes...</p>
+        </div>
+
+        <div *ngIf="!loadingClasses && draftClasses.length === 0" class="text-center py-4">
+          <i class="fas fa-users fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">No Draft Classes</h5>
+          <p class="text-muted">No draft classes have been created yet.</p>
+        </div>
+
+        <div *ngIf="!loadingClasses && draftClasses.length > 0" class="row">
+          <div class="col-md-3">
+            <div class="list-group">
+              <button *ngFor="let draftClass of draftClasses"
+                      class="list-group-item list-group-item-action"
+                      [class.active]="selectedDraftClass?.season === draftClass.season"
+                      (click)="selectDraftClass(draftClass)">
+                <div class="d-flex justify-content-between align-items-center">
+                  <span>Season {{ draftClass.season }} Draft</span>
+                  <span class="badge" 
+                        [class.bg-warning]="draftClass.status === 'upcoming'"
+                        [class.bg-success]="draftClass.status === 'active'"
+                        [class.bg-secondary]="draftClass.status === 'completed'">
+                    {{ draftClass.status | titlecase }}
+                  </span>
+                </div>
+                <small class="d-block text-muted mt-1">
+                  {{ draftClass.players.length }} players
+                </small>
+              </button>
+            </div>
+          </div>
+
+          <div class="col-md-9">
+            <div *ngIf="selectedDraftClass" class="card">
+              <div class="card-header">
+                <h5 class="mb-0">Season {{ selectedDraftClass.season }} Draft Class</h5>
+              </div>
+              <div class="card-body p-0">
+                <!-- Filters -->
+                <div class="p-3 bg-light border-bottom">
+                  <div class="row">
+                    <div class="col-md-3">
+                      <label class="form-label small">Position</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="positionFilter">
+                        <option value="all">All Positions</option>
+                        <option value="G">Goalies</option>
+                        <option value="D">Defensemen</option>
+                        <option value="C">Centers</option>
+                        <option value="LW">Left Wings</option>
+                        <option value="RW">Right Wings</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small">Age</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="ageFilter">
+                        <option value="all">All Ages</option>
+                        <option value="18">18 Years</option>
+                        <option value="19">19 Years</option>
+                        <option value="20">20+ Years</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small">Sort By</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="sortBy">
+                        <option value="overall">Overall Rating</option>
+                        <option value="age">Age</option>
+                        <option value="position">Position</option>
+                      </select>
+                    </div>
+                    <div class="col-md-3">
+                      <label class="form-label small">Direction</label>
+                      <select class="form-select form-select-sm" [(ngModel)]="sortDirection">
+                        <option value="desc">Highest First</option>
+                        <option value="asc">Lowest First</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Players Table -->
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Rank</th>
+                        <th>Name</th>
+                        <th>Position</th>
+                        <th>Archetype</th>
+                        <th>Age</th>
+                        <th>Overall</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let player of filterPlayers(); let i = index">
+                        <td>{{ player.draftRank || i + 1 }}</td>
+                        <td>{{ player.firstName }} {{ player.lastName }}</td>
+                        <td>
+                          <span class="badge" 
+                                [style.background-color]="getPositionColor(player.position)">
+                            {{ player.position }}
+                          </span>
+                        </td>
+                        <td>{{ player.archetype }}</td>
+                        <td>{{ player.age }}</td>
+                        <td>
+                          <span class="badge" 
+                                [style.background-color]="getOverallColor(player.overall)"
+                                [style.color]="player.overall >= 75 ? 'white' : 'black'">
+                            {{ player.overall }}
+                          </span>
+                        </td>
+                        <td>
+                          <span *ngIf="player.draftedBy" class="badge bg-success">
+                            Drafted by {{ player.draftedTeamName }}
+                          </span>
+                          <span *ngIf="!player.draftedBy" class="badge bg-secondary">
+                            Undrafted
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- Empty State -->
+                <div *ngIf="filterPlayers().length === 0" class="text-center py-4">
+                  <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                  <p class="text-muted">No players match your filters.</p>
+                </div>
+              </div>
+            </div>
+
+            <div *ngIf="!selectedDraftClass" class="text-center py-4">
+              <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">Select a Draft Class</h5>
+              <p class="text-muted">Choose a draft class from the list to view details.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Current Draft View -->
+  <div *ngIf="currentView === 'current'">
+    <div class="card mb-4">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Season {{ currentDraftSeason }} Draft</h5>
+      </div>
+      <div class="card-body">
+        <div *ngIf="loadingDraft" class="text-center py-4">
+          <div class="spinner-border text-primary"></div>
+          <p class="mt-2 text-muted">Loading draft data...</p>
+        </div>
+
+        <div *ngIf="!loadingDraft">
+          <!-- Draft Status -->
+          <div class="alert" 
+               [class.alert-warning]="!draftInProgress"
+               [class.alert-success]="draftInProgress">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="mb-1">
+                  <i class="fas" 
+                     [class.fa-clock]="!draftInProgress"
+                     [class.fa-play]="draftInProgress"></i>
+                  {{ draftInProgress ? 'Draft In Progress' : 'Draft Not Started' }}
+                </h5>
+                <p class="mb-0">
+                  {{ draftInProgress ? 
+                     'The draft is currently in progress. Make your selections below.' : 
+                     'The draft has not started yet. Start the draft when ready.' }}
+                </p>
+              </div>
+              <div *ngIf="canManageDraft">
+                <button *ngIf="!draftInProgress" 
+                        class="btn btn-success"
+                        (click)="startDraft()">
+                  <i class="fas fa-play me-1"></i>Start Draft
+                </button>
+                <button *ngIf="draftInProgress" 
+                        class="btn btn-danger"
+                        (click)="endDraft()">
+                  <i class="fas fa-stop me-1"></i>End Draft
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Current Pick -->
+          <div *ngIf="draftInProgress" class="card mb-4 border-primary">
+            <div class="card-header bg-primary text-white">
+              <h5 class="mb-0">Current Selection</h5>
+            </div>
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-2 text-center">
+                  <div class="draft-pick-badge">
+                    <div class="round">Round {{ currentRound }}</div>
+                    <div class="pick">Pick {{ currentPick }}</div>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div *ngIf="getCurrentDraftPick() as pick" class="d-flex align-items-center">
+                    <img *ngIf="getTeamLogo(pick.teamId)" 
+                         [src]="getTeamLogo(pick.teamId)" 
+                         alt="Team Logo"
+                         class="team-logo-small me-2">
+                    <div>
+                      <h5 class="mb-1">{{ pick.teamName }}</h5>
+                      <p class="mb-0 text-muted" *ngIf="pick.originalTeamId !== pick.teamId">
+                        <small>From: {{ pick.originalTeamName }}</small>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-6 text-end">
+                  <button *ngIf="canManageDraft && getCurrentDraftPick() && !getCurrentDraftPick()?.completed" 
+                          class="btn btn-primary"
+                          (click)="openMakePickModal(getCurrentDraftPick()!)">
+                    <i class="fas fa-user-plus me-1"></i>Make Selection
+                  </button>
+                  <div *ngIf="getCurrentDraftPick()?.completed" class="alert alert-success mb-0">
+                    <i class="fas fa-check-circle me-1"></i>
+                    <strong>{{ getCurrentDraftPick()?.playerName }}</strong> has been selected
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Draft Board -->
+          <div class="card">
+            <div class="card-header">
+              <h5 class="mb-0">Draft Board</h5>
+            </div>
+            <div class="card-body p-0">
+              <!-- Round Navigation -->
+              <div class="draft-round-nav">
+                <div class="btn-group">
+                  <button *ngFor="let round of [1, 2, 3, 4, 5, 6, 7]"
+                          class="btn"
+                          [class.btn-primary]="currentRound === round"
+                          [class.btn-outline-primary]="currentRound !== round"
+                          (click)="goToRound(round)">
+                    Round {{ round }}
+                  </button>
+                </div>
+              </div>
+
+              <!-- Round Picks -->
+              <div class="draft-round-picks">
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0">
+                    <thead>
+                      <tr>
+                        <th>Pick</th>
+                        <th>Team</th>
+                        <th>Player</th>
+                        <th>Position</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let pick of getDraftPicksForRound(currentRound)"
+                          [class.table-success]="pick.completed"
+                          [class.table-active]="pick.round === currentRound && pick.pick === currentPick && !pick.completed">
+                        <td>{{ pick.pick }}</td>
+                        <td>
+                          <div class="d-flex align-items-center">
+                            <img *ngIf="getTeamLogo(pick.teamId)" 
+                                [src]="getTeamLogo(pick.teamId)" 
+                                alt="Team Logo"
+                                class="team-logo-small me-2">
+                            <span>{{ pick.teamName }}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span *ngIf="pick.playerName">{{ pick.playerName }}</span>
+                          <span *ngIf="!pick.playerName" class="text-muted">Not selected</span>
+                        </td>
+                        <td>
+                          <span *ngIf="pick.playerId" class="badge bg-primary">Position</span>
+                          <span *ngIf="!pick.playerId">-</span>
+                        </td>
+                        <td>
+                          <button *ngIf="canManageDraft && draftInProgress && !pick.completed" 
+                                  class="btn btn-sm btn-outline-primary"
+                                  (click)="openMakePickModal(pick)">
+                            <i class="fas fa-user-plus me-1"></i>Select
+                          </button>
+                          <span *ngIf="pick.completed" class="badge bg-success">
+                            <i class="fas fa-check me-1"></i>Completed
+                          </span>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Draft History View -->
+  <div *ngIf="currentView === 'history'">
+    <div class="card">
+      <div class="card-header">
+        <h5 class="mb-0">
+          <i class="fas fa-history me-2"></i>Draft History
+        </h5>
+      </div>
+      <div class="card-body">
+        <div *ngIf="loadingHistory" class="text-center py-4">
+          <div class="spinner-border text-primary"></div>
+          <p class="mt-2 text-muted">Loading draft history...</p>
+        </div>
+
+        <div *ngIf="!loadingHistory && draftHistory.length === 0" class="text-center py-4">
+          <i class="fas fa-history fa-3x text-muted mb-3"></i>
+          <h5 class="text-muted">No Draft History</h5>
+          <p class="text-muted">No previous drafts have been completed yet.</p>
+        </div>
+
+        <div *ngIf="!loadingHistory && draftHistory.length > 0">
+          <!-- Group by season -->
+          <div *ngFor="let season of [...new Set(draftHistory.map(p => p.season))].sort((a, b) => b - a)" class="mb-4">
+            <h5 class="border-bottom pb-2">Season {{ season }} Draft</h5>
+            
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Round</th>
+                    <th>Pick</th>
+                    <th>Team</th>
+                    <th>Player</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let pick of draftHistory.filter(p => p.season === season)">
+                    <td>{{ pick.round }}</td>
+                    <td>{{ pick.pick }}</td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <img *ngIf="getTeamLogo(pick.teamId)" 
+                             [src]="getTeamLogo(pick.teamId)" 
+                             alt="Team Logo"
+                             class="team-logo-small me-2">
+                        <span>{{ pick.teamName }}</span>
+                      </div>
+                    </td>
+                    <td>{{ pick.playerName || 'Not selected' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Draft Class Modal -->
+<div class="modal fade show" 
+     *ngIf="showCreateClassModal" 
+     tabindex="-1" 
+     style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-users me-2"></i>Create Draft Class
+        </h5>
+        <button type="button" class="btn-close" (click)="showCreateClassModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="draftClassSeason" class="form-label">Season</label>
+          <input type="number" 
+                 id="draftClassSeason"
+                 class="form-control" 
+                 [(ngModel)]="newDraftClassSeason"
+                 min="1">
+          <div class="form-text">
+            Enter the season number for this draft class.
+          </div>
+        </div>
+
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Note:</strong> Creating a draft class will allow players to be assigned to this class. 
+          Players created before Week 5 will be 20 years old, and players created after Week 5 will be 19 years old.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showCreateClassModal = false">Cancel</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                (click)="createDraftClass()">
+          <i class="fas fa-plus me-1"></i>Create Draft Class
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Make Draft Pick Modal -->
+<div class="modal fade show" 
+     *ngIf="showMakePickModal" 
+     tabindex="-1" 
+     style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-user-plus me-2"></i>Make Draft Selection
+        </h5>
+        <button type="button" class="btn-close" (click)="showMakePickModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="selectedDraftPick" class="mb-3">
+          <div class="alert alert-primary">
+            <div class="d-flex align-items-center">
+              <div class="draft-pick-badge me-3">
+                <div class="round">Round {{ selectedDraftPick.round }}</div>
+                <div class="pick">Pick {{ selectedDraftPick.pick }}</div>
+              </div>
+              <div>
+                <h5 class="mb-1">{{ selectedDraftPick.teamName }} is on the clock</h5>
+                <p class="mb-0" *ngIf="selectedDraftPick.originalTeamId !== selectedDraftPick.teamId">
+                  <small>From: {{ selectedDraftPick.originalTeamName }}</small>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="mb-3 p-3 bg-light border rounded">
+          <div class="row">
+            <div class="col-md-3">
+              <label class="form-label small">Position</label>
+              <select class="form-select form-select-sm" [(ngModel)]="positionFilter">
+                <option value="all">All Positions</option>
+                <option value="G">Goalies</option>
+                <option value="D">Defensemen</option>
+                <option value="C">Centers</option>
+                <option value="LW">Left Wings</option>
+                <option value="RW">Right Wings</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Age</label>
+              <select class="form-select form-select-sm" [(ngModel)]="ageFilter">
+                <option value="all">All Ages</option>
+                <option value="18">18 Years</option>
+                <option value="19">19 Years</option>
+                <option value="20">20+ Years</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Sort By</label>
+              <select class="form-select form-select-sm" [(ngModel)]="sortBy" (change)="sortPlayers()">
+                <option value="overall">Overall Rating</option>
+                <option value="age">Age</option>
+                <option value="position">Position</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Direction</label>
+              <select class="form-select form-select-sm" [(ngModel)]="sortDirection" (change)="sortPlayers()">
+                <option value="desc">Highest First</option>
+                <option value="asc">Lowest First</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Players Table -->
+        <div class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>Select</th>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Archetype</th>
+                <th>Age</th>
+                <th>Overall</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let player of availablePlayers">
+                <td>
+                  <div class="form-check">
+                    <input class="form-check-input" 
+                           type="radio" 
+                           [id]="'player-' + player.id"
+                           [value]="player.id"
+                           [(ngModel)]="selectedPlayerId">
+                  </div>
+                </td>
+                <td>{{ player.firstName }} {{ player.lastName }}</td>
+                <td>
+                  <span class="badge" 
+                        [style.background-color]="getPositionColor(player.position)">
+                    {{ player.position }}
+                  </span>
+                </td>
+                <td>{{ player.archetype }}</td>
+                <td>{{ player.age }}</td>
+                <td>
+                  <span class="badge" 
+                        [style.background-color]="getOverallColor(player.overall)"
+                        [style.color]="player.overall >= 75 ? 'white' : 'black'">
+                    {{ player.overall }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="availablePlayers.length === 0" class="text-center py-4">
+          <i class="fas fa-search fa-2x text-muted mb-2"></i>
+          <p class="text-muted">No available players found.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showMakePickModal = false">Cancel</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                [disabled]="!selectedPlayerId"
+                (click)="makeDraftPick()">
+          <i class="fas fa-check me-1"></i>Confirm Selection
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

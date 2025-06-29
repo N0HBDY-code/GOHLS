@@ -1,8 +1,9 @@
 import { Component, inject, OnInit } from '@angular/core';
-import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, writeBatch, orderBy } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, writeBatch, orderBy, deleteDoc } from '@angular/fire/firestore';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
+import { getDefaultAttributes } from '../services/progression-defaults';
 
 interface Team {
   id: string;
@@ -26,6 +27,26 @@ interface DraftClassCounts {
   age19: number;
   age20Plus: number;
   total: number;
+}
+
+interface PendingPlayer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  position: string;
+  archetype: string;
+  age: number;
+  height: number;
+  weight: number;
+  jerseyNumber: number;
+  handedness: string;
+  userId: string;
+  userEmail: string;
+  userDisplayName?: string;
+  submittedDate: any;
+  status: string;
+  draftClass?: number;
+  [key: string]: any;
 }
 
 @Component({
@@ -78,6 +99,13 @@ export class HeadquartersComponent implements OnInit {
   majorLeagueTeams: Team[] = [];
   minorLeagueTeams: Team[] = [];
 
+  // Player Approval System
+  pendingPlayers: PendingPlayer[] = [];
+  loadingPendingPlayers = false;
+  showEditPlayerModal = false;
+  editingPlayer: PendingPlayer | null = null;
+  editArchetypes: string[] = [];
+
   availableRoles = [
     'viewer',
     'developer',
@@ -94,7 +122,8 @@ export class HeadquartersComponent implements OnInit {
       this.loadScheduleSettings(),
       this.loadPendingTrades(),
       this.loadNewPlayers(),
-      this.loadTeams()
+      this.loadTeams(),
+      this.loadPendingPlayers()
     ]);
   }
 
@@ -260,10 +289,17 @@ export class HeadquartersComponent implements OnInit {
         status: 'active'
       });
       
-      // 5. Update local state
+      // 5. Create new draft class for the new season
+      await addDoc(collection(this.firestore, 'draftClasses'), {
+        season: newSeason,
+        status: 'upcoming',
+        createdAt: new Date()
+      });
+      
+      // 6. Update local state
       this.currentLeagueSeason = newSeason;
       
-      // 6. Reload all data
+      // 7. Reload all data
       await Promise.all([
         this.loadSeasonHistory(),
         this.loadDraftClassCounts()
@@ -343,6 +379,22 @@ export class HeadquartersComponent implements OnInit {
     }
   }
 
+  async loadPendingPlayers() {
+    this.loadingPendingPlayers = true;
+    try {
+      const pendingRef = collection(this.firestore, 'pendingPlayers');
+      const q = query(pendingRef, where('status', '==', 'pending'));
+      const snapshot = await getDocs(q);
+      
+      this.pendingPlayers = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data() as PendingPlayer
+      }));
+    } finally {
+      this.loadingPendingPlayers = false;
+    }
+  }
+
   async loadTeams() {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
@@ -407,6 +459,172 @@ export class HeadquartersComponent implements OnInit {
     } catch (error) {
       console.error('Error assigning player:', error);
       this.error = 'Failed to assign player to team';
+      setTimeout(() => this.error = '', 3000);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async approvePlayer(player: PendingPlayer) {
+    this.loading = true;
+    try {
+      // Get current league season for draft class
+      const seasonRef = doc(this.firestore, 'leagueSettings/season');
+      const seasonSnap = await getDoc(seasonRef);
+      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
+      
+      // Create player in main collection
+      const playerRef = await addDoc(collection(this.firestore, 'players'), {
+        firstName: player.firstName,
+        lastName: player.lastName,
+        position: player.position,
+        archetype: player.archetype,
+        jerseyNumber: player.jerseyNumber,
+        age: player.age,
+        height: player.height,
+        weight: player.weight,
+        handedness: player.handedness,
+        userId: player.userId,
+        teamId: 'none',
+        status: 'active',
+        createdDate: new Date(),
+        draftClass: player.draftClass || currentSeason, // Use specified draft class or current season
+        draftStatus: 'eligible',
+        fightTendency: player.fight,
+        origin: player.origin,
+        hair: player.hair,
+        beard: player.beard,
+        stickTapeColor: player.tape,
+        race: player.ethnicity,
+        twitch: player.twitch,
+        referralSource: player.referral,
+        invitedBy: player.invitedBy,
+        gamertag: player.gamertag
+      });
+
+      // Create default attributes
+      const attributesRef = doc(this.firestore, `players/${playerRef.id}/meta/attributes`);
+      await setDoc(attributesRef, getDefaultAttributes(player.position));
+
+      // Add creation to player history
+      await addDoc(collection(this.firestore, `players/${playerRef.id}/history`), {
+        action: 'created',
+        teamId: 'none',
+        timestamp: new Date(),
+        details: 'Player approved and entered the league'
+      });
+
+      // Delete from pending players
+      await deleteDoc(doc(this.firestore, `pendingPlayers/${player.id}`));
+
+      // Remove from pending players list
+      this.pendingPlayers = this.pendingPlayers.filter(p => p.id !== player.id);
+      
+      this.success = `${player.firstName} ${player.lastName} has been approved and created!`;
+      setTimeout(() => this.success = '', 3000);
+      
+      // Dispatch event for player components to refresh
+      window.dispatchEvent(new CustomEvent('playerApproved'));
+    } catch (error) {
+      console.error('Error approving player:', error);
+      this.error = 'Failed to approve player';
+      setTimeout(() => this.error = '', 3000);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async rejectPlayer(player: PendingPlayer) {
+    if (!confirm(`Are you sure you want to reject ${player.firstName} ${player.lastName}'s player request?`)) {
+      return;
+    }
+    
+    this.loading = true;
+    try {
+      // Delete from pending players
+      await deleteDoc(doc(this.firestore, `pendingPlayers/${player.id}`));
+
+      // Remove from pending players list
+      this.pendingPlayers = this.pendingPlayers.filter(p => p.id !== player.id);
+      
+      this.success = `${player.firstName} ${player.lastName}'s player request has been rejected.`;
+      setTimeout(() => this.success = '', 3000);
+    } catch (error) {
+      console.error('Error rejecting player:', error);
+      this.error = 'Failed to reject player';
+      setTimeout(() => this.error = '', 3000);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  editPlayer(player: PendingPlayer) {
+    this.editingPlayer = { ...player };
+    this.onEditPositionChange();
+    this.showEditPlayerModal = true;
+  }
+
+  onEditPositionChange() {
+    if (!this.editingPlayer) return;
+    
+    const position = this.editingPlayer.position;
+    if (['LW', 'C', 'RW'].includes(position)) {
+      this.editArchetypes = [
+        'Playmaker',
+        'Sniper',
+        '2-Way Forward',
+        'Power Forward',
+        'Enforcer Forward',
+        'Grinder'
+      ];
+    } else if (position === 'D') {
+      this.editArchetypes = [
+        'Defensive Defense',
+        'Offensive Defense',
+        '2-Way Defense',
+        'Enforcer Defense'
+      ];
+    } else if (position === 'G') {
+      this.editArchetypes = ['Hybrid', 'Butterfly', 'Standup'];
+    } else {
+      this.editArchetypes = [];
+    }
+  }
+
+  async savePlayerEdit() {
+    if (!this.editingPlayer) return;
+    
+    this.loading = true;
+    try {
+      // Update pending player
+      const playerRef = doc(this.firestore, `pendingPlayers/${this.editingPlayer.id}`);
+      await updateDoc(playerRef, {
+        firstName: this.editingPlayer.firstName,
+        lastName: this.editingPlayer.lastName,
+        position: this.editingPlayer.position,
+        archetype: this.editingPlayer.archetype,
+        jerseyNumber: this.editingPlayer.jerseyNumber,
+        age: this.editingPlayer.age,
+        height: this.editingPlayer.height,
+        weight: this.editingPlayer.weight,
+        handedness: this.editingPlayer.handedness,
+        draftClass: this.editingPlayer.draftClass
+      });
+
+      // Update local list
+      const index = this.pendingPlayers.findIndex(p => p.id === this.editingPlayer?.id);
+      if (index !== -1) {
+        this.pendingPlayers[index] = { ...this.editingPlayer };
+      }
+      
+      this.success = `${this.editingPlayer.firstName} ${this.editingPlayer.lastName}'s information has been updated.`;
+      setTimeout(() => this.success = '', 3000);
+      
+      this.showEditPlayerModal = false;
+      this.editingPlayer = null;
+    } catch (error) {
+      console.error('Error updating player:', error);
+      this.error = 'Failed to update player';
       setTimeout(() => this.error = '', 3000);
     } finally {
       this.loading = false;

@@ -168,6 +168,79 @@
         </div>
       </div>
 
+      <!-- Player Approval Section -->
+      <div class="card mb-4">
+        <div class="card-header bg-info text-white">
+          <h4 class="mb-0">
+            <i class="fas fa-user-check me-2"></i>Player Approval System
+          </h4>
+        </div>
+        <div class="card-body">
+          <div *ngIf="loadingPendingPlayers" class="text-center">
+            <div class="spinner-border text-info"></div>
+            <p>Loading pending players...</p>
+          </div>
+
+          <div *ngIf="!loadingPendingPlayers && pendingPlayers.length === 0" class="text-center text-muted">
+            <i class="fas fa-check-circle fa-3x mb-3"></i>
+            <p>No players awaiting approval</p>
+          </div>
+
+          <div *ngFor="let player of pendingPlayers" class="card mb-3 border-info">
+            <div class="card-body">
+              <div class="row align-items-center">
+                <div class="col-md-4">
+                  <h5 class="mb-1">{{ player.firstName }} {{ player.lastName }}</h5>
+                  <p class="text-muted mb-1">{{ player.position }} • {{ player.archetype }}</p>
+                  <small class="text-muted">Submitted: {{ player.submittedDate?.toDate?.() | date:'medium' }}</small>
+                  <div class="mt-1">
+                    <small class="text-muted">By: {{ player.userDisplayName || player.userEmail }}</small>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="row text-center">
+                    <div class="col-4">
+                      <small class="text-muted">Age</small>
+                      <div class="fw-bold">{{ player.age }}</div>
+                    </div>
+                    <div class="col-4">
+                      <small class="text-muted">Height</small>
+                      <div class="fw-bold">{{ player.height }}"</div>
+                    </div>
+                    <div class="col-4">
+                      <small class="text-muted">Weight</small>
+                      <div class="fw-bold">{{ player.weight }}</div>
+                    </div>
+                  </div>
+                  <div class="mt-2 text-center">
+                    <span class="badge bg-info">Draft Class: Season {{ player.draftClass || currentLeagueSeason }}</span>
+                  </div>
+                </div>
+                <div class="col-md-5 text-end">
+                  <div class="btn-group">
+                    <button class="btn btn-success" 
+                            (click)="approvePlayer(player)"
+                            [disabled]="loading">
+                      <i class="fas fa-check me-1"></i>Approve
+                    </button>
+                    <button class="btn btn-danger" 
+                            (click)="rejectPlayer(player)"
+                            [disabled]="loading">
+                      <i class="fas fa-times me-1"></i>Reject
+                    </button>
+                    <button class="btn btn-outline-secondary" 
+                            (click)="editPlayer(player)"
+                            [disabled]="loading">
+                      <i class="fas fa-edit me-1"></i>Edit
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- New Players Section -->
       <div class="card mb-4">
         <div class="card-header bg-warning text-dark">
@@ -456,6 +529,90 @@
           <span *ngIf="seasonRolloverInProgress" class="spinner-border spinner-border-sm me-1"></span>
           <i *ngIf="!seasonRolloverInProgress" class="fas fa-forward me-1"></i>
           {{ seasonRolloverInProgress ? 'Processing Season Rollover...' : 'Advance to Season ' + (currentLeagueSeason + 1) }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Player Edit Modal -->
+<div class="modal fade show" 
+     *ngIf="showEditPlayerModal" 
+     tabindex="-1" 
+     style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title">
+          <i class="fas fa-edit me-2"></i>Edit Player
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="showEditPlayerModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <div *ngIf="editingPlayer" class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">First Name</label>
+            <input type="text" class="form-control" [(ngModel)]="editingPlayer.firstName">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Last Name</label>
+            <input type="text" class="form-control" [(ngModel)]="editingPlayer.lastName">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Position</label>
+            <select class="form-select" [(ngModel)]="editingPlayer.position" (change)="onEditPositionChange()">
+              <option value="LW">Left Wing</option>
+              <option value="C">Center</option>
+              <option value="RW">Right Wing</option>
+              <option value="D">Defense</option>
+              <option value="G">Goalie</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Archetype</label>
+            <select class="form-select" [(ngModel)]="editingPlayer.archetype">
+              <option *ngFor="let type of editArchetypes" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Age</label>
+            <input type="number" class="form-control" [(ngModel)]="editingPlayer.age" min="18" max="40">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Jersey Number</label>
+            <input type="number" class="form-control" [(ngModel)]="editingPlayer.jerseyNumber" min="0" max="99">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Height (inches)</label>
+            <input type="number" class="form-control" [(ngModel)]="editingPlayer.height" min="67" max="81">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Weight (lbs)</label>
+            <input type="number" class="form-control" [(ngModel)]="editingPlayer.weight" min="129" max="290">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Draft Class Season</label>
+            <input type="number" class="form-control" [(ngModel)]="editingPlayer.draftClass" min="1">
+            <small class="form-text text-muted">
+              This determines which draft class the player will be part of.
+            </small>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Handedness</label>
+            <select class="form-select" [(ngModel)]="editingPlayer.handedness">
+              <option value="Left">Left</option>
+              <option value="Right">Right</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showEditPlayerModal = false">Cancel</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                (click)="savePlayerEdit()"
+                [disabled]="loading">
+          <i class="fas fa-save me-1"></i>Save Changes
         </button>
       </div>
     </div>
