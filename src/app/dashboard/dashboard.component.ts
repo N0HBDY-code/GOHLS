@@ -84,7 +84,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
         playersRef, 
         where('status', '==', 'active'),
         orderBy('createdDate', 'desc'), 
-        limit(5)
+        limit(5) // Limit to 5 most recent
       );
       const snapshot = await getDocs(q);
       
@@ -134,7 +134,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       
       for (const playerDoc of playersSnapshot.docs) {
         const historyRef = collection(this.firestore, `players/${playerDoc.id}/history`);
-        const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(3));
+        const historyQuery = query(historyRef, orderBy('timestamp', 'desc'), limit(2)); // Reduced from 3 to 2
         const historySnapshot = await getDocs(historyQuery);
         
         for (const historyDoc of historySnapshot.docs) {
@@ -168,14 +168,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
         }
       }
       
-      // Sort all transactions by timestamp and take the 10 most recent
+      // Sort all transactions by timestamp and take the 5 most recent
       this.recentTransactions = allTransactions
         .sort((a, b) => {
           const aTime = a.timestamp?.toDate?.() || new Date(a.timestamp);
           const bTime = b.timestamp?.toDate?.() || new Date(b.timestamp);
           return bTime.getTime() - aTime.getTime();
         })
-        .slice(0, 10);
+        .slice(0, 5); // Limit to 5 most recent
         
     } catch (error) {
       console.error('Error loading recent transactions:', error);
