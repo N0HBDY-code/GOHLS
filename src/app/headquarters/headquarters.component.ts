@@ -55,20 +55,20 @@ export class HeadquartersComponent implements OnInit {
   playerApprovalError = '';
   playerApprovalSuccess = '';
 
-  // Attribute lists
+  // Attribute lists - updated to include OVERALL
   skaterAttributes = [
     'SPEED', 'BODY CHK', 'ENDUR', 'PK CTRL', 'PASSING', 'SHT/PSS',
     'SLAP PWR', 'SLAP ACC', 'WRI PWR', 'WRI ACC', 'AGILITY', 'STRENGTH',
     'ACCEL', 'BALANCE', 'FACEOFF', 'DRBLTY', 'DEKE', 'AGGRE', 'POISE',
     'HND EYE', 'SHT BLK', 'OFF AWR', 'DEF AWR', 'DISCIP', 'FIGHTING',
-    'STK CHK'
+    'STK CHK', 'OVERALL'
   ];
 
   goalieAttributes = [
     'GLV LOW', 'GLV HIGH', 'STK LOW', 'STK HIGH', '5 HOLE', 'SPEED',
     'AGILITY', 'CONSIS', 'PK CTRL', 'ENDUR', 'BRK AWAY', 'RBD CTRL',
     'RECOV', 'POISE', 'PASSING', 'ANGLES', 'PK PL FRQ', 'AGGRE',
-    'DRBLTY', 'VISION'
+    'DRBLTY', 'VISION', 'OVERALL'
   ];
 
   availableRoles = [

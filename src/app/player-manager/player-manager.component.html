@@ -98,7 +98,7 @@
           {{ player.firstName?.charAt(0) }}{{ player.lastName?.charAt(0) }}
         </div>
       </div>
-      <div class="col-md-7">
+      <div class="col-md-6">
         <h1 class="player-name">{{ player.firstName }} {{ player.lastName }}</h1>
         <div class="player-position">
           {{ player.position }} • {{ player.archetype }} • #{{ player.jerseyNumber }}
@@ -112,8 +112,18 @@
           <span class="team-name-text">{{ teamName }}</span>
         </div>
       </div>
-      <div class="col-md-3">
+      <div class="col-md-4">
         <div class="stat-grid">
+          <!-- Overall Rating with Circular Progress -->
+          <div class="stat-item overall-rating">
+            <div class="stat-label">Overall</div>
+            <div class="overall-container">
+              <div class="circular-progress" 
+                   [style.background]="'conic-gradient(#0d6efd 0deg ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg, #e9ecef ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg 360deg)'">
+                <div class="overall-value">{{ playerAttributes['OVERALL'] || 50 }}</div>
+              </div>
+            </div>
+          </div>
           <div class="stat-item">
             <div class="stat-label">Age</div>
             <div class="stat-value">{{ player.age }}</div>

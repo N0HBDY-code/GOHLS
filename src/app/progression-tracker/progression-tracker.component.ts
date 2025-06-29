@@ -304,12 +304,13 @@ export class ProgressionTrackerComponent implements OnInit {
     this.affectedAttributes = this.progressionService.getAffectedAttributes(training);
   }
 
+  // Updated attribute display order to include OVERALL
   attributeDisplayOrder: string[] = [
     "SPEED", "BODY CHK", "ENDUR", "PK CTRL", "PASSING", "SHT/PSS",
     "SLAP PWR", "SLAP ACC", "WRI PWR", "WRI ACC", "AGILITY", "STRENGTH",
     "ACCEL", "BALANCE", "FACEOFF", "DRBLTY", "DEKE", "AGGRE", "POISE",
     "HND EYE", "SHT BLK", "OFF AWR", "DEF AWR", "DISCIP", "FIGHTING",
-    "STK CHK", "SAVED"
+    "STK CHK", "OVERALL"
   ];
 
   getPlayerNameById(playerId: string): string {
