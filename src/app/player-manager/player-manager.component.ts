@@ -173,6 +173,29 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
     }
   }
 
+  // Method to get overall rating color based on value
+  getOverallColor(overall: number): string {
+    // Clamp the value between 50 and 99
+    const clampedOverall = Math.max(50, Math.min(99, overall));
+    
+    // Calculate the percentage from 50 to 99 (0% to 100%)
+    const percentage = (clampedOverall - 50) / (99 - 50);
+    
+    // Interpolate between red (RGB: 220, 53, 69) and green (RGB: 40, 167, 69)
+    const red = Math.round(220 - (220 - 40) * percentage);
+    const green = Math.round(53 + (167 - 53) * percentage);
+    const blue = Math.round(69);
+    
+    return `rgb(${red}, ${green}, ${blue})`;
+  }
+
+  // Method to get overall progress percentage for the circular progress
+  getOverallProgress(overall: number): number {
+    // Convert overall rating (50-99) to percentage (0-100) for the circle
+    const clampedOverall = Math.max(50, Math.min(99, overall));
+    return ((clampedOverall - 50) / (99 - 50)) * 100;
+  }
+
   async loadProgressionSettings() {
     try {
       const settingsRef = doc(this.firestore, 'progressionSettings/config');

@@ -114,13 +114,16 @@
       </div>
       <div class="col-md-4">
         <div class="stat-grid">
-          <!-- Overall Rating with Circular Progress -->
+          <!-- Overall Rating with Dynamic Color Circular Progress -->
           <div class="stat-item overall-rating">
             <div class="stat-label">Overall</div>
             <div class="overall-container">
               <div class="circular-progress" 
-                   [style.background]="'conic-gradient(#0d6efd 0deg ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg, #e9ecef ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg 360deg)'">
-                <div class="overall-value">{{ playerAttributes['OVERALL'] || 50 }}</div>
+                   [style.background]="'conic-gradient(' + getOverallColor(playerAttributes['OVERALL'] || 50) + ' 0deg ' + (getOverallProgress(playerAttributes['OVERALL'] || 50) * 3.6) + 'deg, #e9ecef ' + (getOverallProgress(playerAttributes['OVERALL'] || 50) * 3.6) + 'deg 360deg)'">
+                <div class="overall-value" 
+                     [style.color]="getOverallColor(playerAttributes['OVERALL'] || 50)">
+                  {{ playerAttributes['OVERALL'] || 50 }}
+                </div>
               </div>
             </div>
           </div>
