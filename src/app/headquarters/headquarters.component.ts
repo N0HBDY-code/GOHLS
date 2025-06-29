@@ -1,6 +1,6 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { Firestore, collection, getDocs, updateDoc, doc, arrayUnion, arrayRemove, query, where, getDoc, addDoc, setDoc, deleteDoc } from '@angular/fire/firestore';
-import { CommonModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TradeService, TradeOffer } from '../services/trade.service';
 
