@@ -300,14 +300,6 @@ export class ProgressionTrackerComponent implements OnInit {
         OVERALL: this.newOverallValue
       });
 
-      // Add to player history
-      await addDoc(collection(this.firestore, `players/${playerId}/history`), {
-        action: 'overall_updated',
-        teamId: this.selectedPlayerForOverall.teamId || 'none',
-        timestamp: new Date(),
-        details: `Overall rating manually adjusted to ${this.newOverallValue} by league management`
-      });
-
       // Update the roster display
       const playerIndex = this.roster.findIndex(p => p.id === playerId);
       if (playerIndex !== -1) {
@@ -330,13 +322,21 @@ export class ProgressionTrackerComponent implements OnInit {
     }
   }
 
-  // Method to get overall rating color (same as player manager)
+  // Method to get overall rating color - improved to avoid brown tones
   getOverallColor(overall: number): string {
+    // Clamp the value between 50 and 99
     const clampedOverall = Math.max(50, Math.min(99, overall));
+    
+    // Calculate the percentage from 50 to 99 (0% to 100%)
     const percentage = (clampedOverall - 50) / (99 - 50);
-    const red = Math.round(220 - (220 - 40) * percentage);
-    const green = Math.round(53 + (167 - 53) * percentage);
-    const blue = Math.round(69);
+    
+    // Use a more vibrant red to green interpolation avoiding brown tones
+    // Red: RGB(220, 38, 38) - Bright red
+    // Green: RGB(34, 197, 94) - Bright green
+    const red = Math.round(220 - (220 - 34) * percentage);
+    const green = Math.round(38 + (197 - 38) * percentage);
+    const blue = Math.round(38 + (94 - 38) * percentage);
+    
     return `rgb(${red}, ${green}, ${blue})`;
   }
 
