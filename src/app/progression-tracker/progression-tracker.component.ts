@@ -35,6 +35,7 @@ export class ProgressionTrackerComponent implements OnInit {
 
   // Permission control
   canManageWeeks = false;
+  canManageOverall = false;
 
   // Current progression settings (what players see)
   currentProgressionWeek: number = 1;
@@ -46,6 +47,14 @@ export class ProgressionTrackerComponent implements OnInit {
   // Management view settings (what progression tracker sees)
   viewingWeek: number = 1;
   currentSeason: number = new Date().getFullYear();
+
+  // Overall attribute management
+  showOverallModal = false;
+  selectedPlayerForOverall: any = null;
+  newOverallValue: number = 50;
+  overallSaving = false;
+  overallError = '';
+  overallSuccess = '';
 
   // Training impact mapping - moved from service since we're not using it
   private trainingMap: Record<string, string[]> = {
@@ -87,6 +96,9 @@ export class ProgressionTrackerComponent implements OnInit {
     this.authService.effectiveRoles.subscribe(roles => {
       this.canManageWeeks = roles.some(role => 
         ['developer', 'commissioner'].includes(role)
+      );
+      this.canManageOverall = roles.some(role => 
+        ['developer', 'commissioner', 'progression tracker'].includes(role)
       );
     });
 
@@ -140,6 +152,10 @@ export class ProgressionTrackerComponent implements OnInit {
         await setDoc(attributesRef, getDefaultAttributes(data['position']));
       }
 
+      // Get current overall value from attributes
+      const currentAttributes = attributesSnap.exists() ? attributesSnap.data() : {};
+      const currentOverall = currentAttributes['OVERALL'] || 50;
+
       this.roster.push({
         id: playerDoc.id,
         name: `${data['firstName']} ${data['lastName']}`,
@@ -149,7 +165,7 @@ export class ProgressionTrackerComponent implements OnInit {
         progression: progression?.['training'] || 'Not submitted',
         status: progression?.['status'] || 'N/A',
         progressionDocId: progressionSnap.docs[0]?.id || null,
-        overall: globalPlayerData['overall'] ?? 'N/A'
+        overall: currentOverall
       });
     }
 
@@ -241,6 +257,87 @@ export class ProgressionTrackerComponent implements OnInit {
       console.error('Error updating progression status:', error);
       alert('Failed to update progression status. Please try again.');
     }
+  }
+
+  // Overall attribute management methods
+  openOverallModal(player: any) {
+    if (!this.canManageOverall) return;
+    
+    this.selectedPlayerForOverall = player;
+    this.newOverallValue = player.overall || 50;
+    this.showOverallModal = true;
+    this.overallError = '';
+    this.overallSuccess = '';
+  }
+
+  closeOverallModal() {
+    this.showOverallModal = false;
+    this.selectedPlayerForOverall = null;
+    this.newOverallValue = 50;
+    this.overallError = '';
+    this.overallSuccess = '';
+  }
+
+  async saveOverallAttribute() {
+    if (!this.selectedPlayerForOverall || this.overallSaving) return;
+
+    // Validate overall value
+    if (this.newOverallValue < 40 || this.newOverallValue > 99) {
+      this.overallError = 'Overall rating must be between 40 and 99';
+      return;
+    }
+
+    this.overallSaving = true;
+    this.overallError = '';
+    this.overallSuccess = '';
+
+    try {
+      const playerId = this.selectedPlayerForOverall.id;
+      const attributesRef = doc(this.firestore, `players/${playerId}/meta/attributes`);
+      
+      // Update the OVERALL attribute
+      await updateDoc(attributesRef, {
+        OVERALL: this.newOverallValue
+      });
+
+      // Add to player history
+      await addDoc(collection(this.firestore, `players/${playerId}/history`), {
+        action: 'overall_updated',
+        teamId: this.selectedPlayerForOverall.teamId || 'none',
+        timestamp: new Date(),
+        details: `Overall rating manually adjusted to ${this.newOverallValue} by league management`
+      });
+
+      // Update the roster display
+      const playerIndex = this.roster.findIndex(p => p.id === playerId);
+      if (playerIndex !== -1) {
+        this.roster[playerIndex].overall = this.newOverallValue;
+      }
+
+      this.overallSuccess = `Overall rating updated to ${this.newOverallValue} successfully!`;
+      
+      // Close modal after short delay
+      setTimeout(() => {
+        this.closeOverallModal();
+      }, 1500);
+
+      console.log(`✅ Overall rating updated for ${this.selectedPlayerForOverall.name}: ${this.newOverallValue}`);
+    } catch (error) {
+      console.error('Error updating overall rating:', error);
+      this.overallError = 'Failed to update overall rating. Please try again.';
+    } finally {
+      this.overallSaving = false;
+    }
+  }
+
+  // Method to get overall rating color (same as player manager)
+  getOverallColor(overall: number): string {
+    const clampedOverall = Math.max(50, Math.min(99, overall));
+    const percentage = (clampedOverall - 50) / (99 - 50);
+    const red = Math.round(220 - (220 - 40) * percentage);
+    const green = Math.round(53 + (167 - 53) * percentage);
+    const blue = Math.round(69);
+    return `rgb(${red}, ${green}, ${blue})`;
   }
 
   // Helper method to get attribute delta based on age and week

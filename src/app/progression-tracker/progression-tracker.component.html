@@ -230,6 +230,7 @@
               <th><i class="fas fa-user me-1"></i>Player Name</th>
               <th><i class="fas fa-hashtag me-1"></i>Number</th>
               <th><i class="fas fa-map-marker-alt me-1"></i>Position</th>
+              <th><i class="fas fa-star me-1"></i>Overall</th>
               <th><i class="fas fa-dumbbell me-1"></i>Training Program</th>
               <th><i class="fas fa-flag me-1"></i>Status</th>
               <th><i class="fas fa-tools me-1"></i>Actions</th>
@@ -254,6 +255,21 @@
               </td>
               <td>
                 <span class="badge bg-primary">{{ player.position }}</span>
+              </td>
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge" 
+                        [style.background-color]="getOverallColor(player.overall)"
+                        [style.color]="player.overall >= 75 ? 'white' : 'black'">
+                    {{ player.overall }}
+                  </span>
+                  <button *ngIf="canManageOverall"
+                          class="btn btn-outline-secondary btn-sm"
+                          (click)="openOverallModal(player)"
+                          title="Edit overall rating">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                </div>
               </td>
               <td>
                 <span *ngIf="player.progression !== 'Not submitted'" class="text-success">
@@ -355,6 +371,87 @@
       <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
       <h5 class="text-muted">Select a Team</h5>
       <p class="text-muted">Choose a team from the dropdown above to manage player progressions.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Overall Rating Management Modal -->
+<div class="modal fade show" 
+     *ngIf="showOverallModal" 
+     tabindex="-1" 
+     style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-star me-2"></i>Edit Overall Rating
+        </h5>
+        <button type="button" class="btn-close" (click)="closeOverallModal()"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Modal Messages -->
+        <div *ngIf="overallError" class="alert alert-danger">{{ overallError }}</div>
+        <div *ngIf="overallSuccess" class="alert alert-success">{{ overallSuccess }}</div>
+
+        <div *ngIf="selectedPlayerForOverall">
+          <div class="mb-3">
+            <h6>Player: {{ selectedPlayerForOverall.name }}</h6>
+            <p class="text-muted mb-0">
+              {{ selectedPlayerForOverall.position }} • #{{ selectedPlayerForOverall.number }}
+            </p>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">
+              <i class="fas fa-star me-1"></i>Current Overall Rating
+            </label>
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge fs-6 px-3 py-2" 
+                    [style.background-color]="getOverallColor(selectedPlayerForOverall.overall)"
+                    [style.color]="selectedPlayerForOverall.overall >= 75 ? 'white' : 'black'">
+                {{ selectedPlayerForOverall.overall }}
+              </span>
+              <span class="text-muted">→</span>
+              <span class="badge fs-6 px-3 py-2" 
+                    [style.background-color]="getOverallColor(newOverallValue)"
+                    [style.color]="newOverallValue >= 75 ? 'white' : 'black'">
+                {{ newOverallValue }}
+              </span>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label for="overallInput" class="form-label">
+              <i class="fas fa-edit me-1"></i>New Overall Rating (40-99)
+            </label>
+            <input type="number" 
+                   id="overallInput"
+                   class="form-control" 
+                   [(ngModel)]="newOverallValue"
+                   min="40" 
+                   max="99"
+                   [disabled]="overallSaving">
+            <div class="form-text">
+              Overall rating must be between 40 and 99. This change will be logged in the player's history.
+            </div>
+          </div>
+
+          <div class="alert alert-warning">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            <strong>Note:</strong> This will manually adjust the player's overall rating and add an entry to their career history.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="closeOverallModal()">Cancel</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                (click)="saveOverallAttribute()"
+                [disabled]="overallSaving || newOverallValue < 40 || newOverallValue > 99">
+          <span *ngIf="overallSaving" class="spinner-border spinner-border-sm me-1"></span>
+          <i *ngIf="!overallSaving" class="fas fa-save me-1"></i>Update Overall Rating
+        </button>
+      </div>
     </div>
   </div>
 </div>
