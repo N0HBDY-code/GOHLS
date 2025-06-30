@@ -534,7 +534,7 @@ export class DraftComponent implements OnInit {
       const batch = writeBatch(this.firestore);
       
       // Generate picks for each round and team
-      for (let round = 1; round <= this.draftRounds; round++) {
+      for (let round = 1; round <= this.newDraftRounds; round++) {
         for (let pick = 1; pick <= this.draftOrder.length; pick++) {
           const teamIndex = pick - 1;
           const team = this.draftOrder[teamIndex];
@@ -554,7 +554,7 @@ export class DraftComponent implements OnInit {
       }
       
       await batch.commit();
-      console.log(`Generated ${this.draftRounds} rounds of draft picks`);
+      console.log(`Generated ${this.newDraftRounds} rounds of draft picks`);
     } catch (error) {
       console.error('Error generating draft picks:', error);
     }
