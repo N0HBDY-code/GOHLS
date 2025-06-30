@@ -605,7 +605,7 @@ export class DraftComponent implements OnInit {
       await setDoc(settingsRef, {
         inProgress: true,
         startedAt: new Date(),
-        startedBy: this.authService.currentUser
+        startedBy: this.authService.currentUser.value?.uid || 'unknown'
       });
       
       // Update draft class status
@@ -631,7 +631,7 @@ export class DraftComponent implements OnInit {
       await setDoc(settingsRef, {
         inProgress: false,
         endedAt: new Date(),
-        endedBy: this.authService.currentUser
+        endedBy: this.authService.currentUser.value?.uid || 'unknown'
       });
       
       // Update draft class status
