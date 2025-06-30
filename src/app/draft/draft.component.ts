@@ -120,7 +120,7 @@ export class DraftComponent implements OnInit {
   sortBy: 'overall' | 'age' | 'position' = 'overall';
   sortDirection: 'asc' | 'desc' = 'desc';
 
-  // Error handling - removed indexError
+  // Error handling
   draftClassError = false;
   draftClassErrorMessage = '';
 
@@ -138,7 +138,7 @@ export class DraftComponent implements OnInit {
       this.isDeveloper = roles.includes('developer');
     });
     
-    // Load teams
+    // Load teams first
     await this.loadTeams();
     
     // Load draft classes
@@ -152,6 +152,7 @@ export class DraftComponent implements OnInit {
   }
   
   async loadTeams() {
+    console.log('🏒 Loading teams...');
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
     
@@ -168,6 +169,8 @@ export class DraftComponent implements OnInit {
         league: data['league'] || 'major'
       };
     });
+    
+    console.log(`✅ Loaded ${this.teams.length} teams`);
   }
   
   async loadDraftClasses() {
@@ -300,45 +303,44 @@ export class DraftComponent implements OnInit {
       const seasonSnap = await getDoc(seasonRef);
       this.currentDraftSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
       
+      console.log(`🎯 Loading draft for season ${this.currentDraftSeason}`);
+      
       // Load draft order
       const orderRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/order`);
       const orderSnap = await getDoc(orderRef);
       
       if (orderSnap.exists()) {
         const orderData = orderSnap.data();
-        this.draftOrder = await Promise.all((orderData['teams'] || []).map(async (teamId: string) => {
-          const team = this.teams.find(t => t.id === teamId);
-          if (team) return team;
-          
-          // If team not found in cache, load it
-          const teamRef = doc(this.firestore, `teams/${teamId}`);
-          const teamSnap = await getDoc(teamRef);
-          if (teamSnap.exists()) {
-            const data = teamSnap.data();
-            return {
-              id: teamId,
-              name: `${data['city']} ${data['mascot']}`,
-              city: data['city'],
-              mascot: data['mascot'],
-              logoUrl: data['logoUrl'],
-              conference: data['conference'],
-              division: data['division'],
-              league: data['league'] || 'major'
-            };
-          }
-          
-          return null;
-        })).then(teams => teams.filter(t => t !== null) as Team[]);
-      } else if (this.teams.length > 0) {
-        // If no draft order exists, create a default one based on current league
-        this.draftOrder = this.teams.filter(t => (t.league || 'major') === 'major');
+        const teamIds = orderData['teams'] || [];
         
-        // Save the default draft order
+        console.log(`📋 Found draft order with ${teamIds.length} teams`);
+        
+        // Load team details for the draft order
+        this.draftOrder = [];
+        for (const teamId of teamIds) {
+          const team = this.teams.find(t => t.id === teamId);
+          if (team) {
+            this.draftOrder.push(team);
+          } else {
+            console.warn(`Team ${teamId} not found in teams list`);
+          }
+        }
+        
+        console.log(`✅ Loaded draft order: ${this.draftOrder.map(t => t.name).join(', ')}`);
+      } else {
+        console.log('📝 No draft order found, creating default order');
+        
+        // If no draft order exists, create a default one based on current league
+        const majorLeagueTeams = this.teams.filter(t => (t.league || 'major') === 'major');
+        this.draftOrder = majorLeagueTeams;
+        
+        // Save the default draft order if user can manage drafts
         if (this.canManageDraft && this.draftOrder.length > 0) {
           await setDoc(orderRef, {
             teams: this.draftOrder.map(t => t.id),
             createdAt: new Date()
           });
+          console.log(`💾 Saved default draft order with ${this.draftOrder.length} teams`);
         }
       }
       
@@ -348,6 +350,7 @@ export class DraftComponent implements OnInit {
       const picksSnap = await getDocs(picksQuery);
       
       if (picksSnap.empty && this.canManageDraft && this.draftOrder.length > 0) {
+        console.log('🔧 Generating draft picks...');
         // Generate draft picks if none exist
         await this.generateDraftPicks();
         
@@ -357,6 +360,8 @@ export class DraftComponent implements OnInit {
       } else {
         this.draftPicks = await this.processDraftPicks(picksSnap);
       }
+      
+      console.log(`🎯 Loaded ${this.draftPicks.length} draft picks`);
       
       // Determine current round and pick
       this.updateCurrentDraftPosition();
@@ -368,6 +373,8 @@ export class DraftComponent implements OnInit {
       if (settingsSnap.exists()) {
         this.draftInProgress = settingsSnap.data()['inProgress'] || false;
       }
+      
+      console.log(`🏒 Draft status: ${this.draftInProgress ? 'In Progress' : 'Not Started'}`);
     } catch (error) {
       console.error('Error loading current draft:', error);
     } finally {
@@ -379,7 +386,7 @@ export class DraftComponent implements OnInit {
     return await Promise.all(snapshot.docs.map(async (docSnapshot: any) => {
       const data = docSnapshot.data();
       
-      // Get team name
+      // Get team name from our loaded teams
       let teamName = 'Unknown Team';
       const team = this.teams.find(t => t.id === data['teamId']);
       if (team) {
@@ -401,7 +408,7 @@ export class DraftComponent implements OnInit {
         const playerRef = doc(this.firestore, `players/${data['playerId']}`);
         const playerSnap = await getDoc(playerRef);
         if (playerSnap.exists()) {
-          const playerData = playerSnap.data();
+          const playerData = playerSnap.data() as any;
           playerName = `${playerData['firstName']} ${playerData['lastName']}`;
         }
       }
@@ -441,6 +448,8 @@ export class DraftComponent implements OnInit {
     try {
       const batch = writeBatch(this.firestore);
       
+      console.log(`🔧 Generating ${this.draftRounds} rounds for ${this.draftOrder.length} teams`);
+      
       // Generate picks for each round and team
       for (let round = 1; round <= this.draftRounds; round++) {
         for (let pick = 1; pick <= this.draftOrder.length; pick++) {
@@ -462,7 +471,7 @@ export class DraftComponent implements OnInit {
       }
       
       await batch.commit();
-      console.log(`Generated ${this.draftRounds} rounds of draft picks`);
+      console.log(`✅ Generated ${this.draftRounds} rounds of draft picks`);
     } catch (error) {
       console.error('Error generating draft picks:', error);
     }
@@ -940,6 +949,4 @@ export class DraftComponent implements OnInit {
   getPicksForSeason(season: number): DraftPick[] {
     return this.draftHistory.filter(p => p.season === season);
   }
-
-  // Error handling methods - removed getIndexUrl method
 }
