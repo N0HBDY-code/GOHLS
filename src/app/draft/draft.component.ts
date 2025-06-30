@@ -304,6 +304,7 @@ export class DraftComponent implements OnInit {
           // Check if this is an index error
           if (error instanceof Error && error.toString().includes('requires an index')) {
             this.indexError = true;
+            this.indexUrl = this.extractIndexUrl(error.toString());
           }
           
           // Return draft class with empty players array
@@ -334,6 +335,7 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
+        this.indexUrl = this.extractIndexUrl(error.toString());
       }
     } finally {
       this.loadingClasses = false;
@@ -428,6 +430,7 @@ export class DraftComponent implements OnInit {
         // Check if this is an index error
         if (error instanceof Error && error.toString().includes('requires an index')) {
           this.indexError = true;
+          this.indexUrl = this.extractIndexUrl(error.toString());
           this.draftPicks = []; // Reset picks to empty array
         }
       }
@@ -452,6 +455,7 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
+        this.indexUrl = this.extractIndexUrl(error.toString());
       }
     } finally {
       this.loadingDraft = false;
@@ -592,6 +596,7 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
+        this.indexUrl = this.extractIndexUrl(error.toString());
       }
     } finally {
       this.loadingHistory = false;
@@ -770,6 +775,7 @@ export class DraftComponent implements OnInit {
         // Check if this is an index error
         if (error instanceof Error && error.toString().includes('requires an index')) {
           this.indexError = true;
+          this.indexUrl = this.extractIndexUrl(error.toString());
           this.availablePlayers = []; // Reset to empty array
         }
       }
@@ -1054,5 +1060,11 @@ export class DraftComponent implements OnInit {
 
   getPicksForSeason(season: number): DraftPick[] {
     return this.draftHistory.filter(p => p.season === season);
+  }
+  
+  // Helper method to extract index URL from error message
+  extractIndexUrl(errorMessage: string): string {
+    const match = errorMessage.match(/https:\/\/console\.firebase\.google\.com[^\s]+/);
+    return match ? match[0] : this.indexUrl;
   }
 }
