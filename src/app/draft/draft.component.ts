@@ -600,12 +600,16 @@ export class DraftComponent implements OnInit {
     if (!this.canManageDraft) return;
     
     try {
+      // Get current user ID
+      const currentUser = this.auth.currentUser;
+      const userId = currentUser ? currentUser.uid : 'unknown';
+      
       // Update draft status
       const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
         inProgress: true,
         startedAt: new Date(),
-        startedBy: this.authService.currentUser.value?.uid || 'unknown'
+        startedBy: userId
       });
       
       // Update draft class status
@@ -626,12 +630,16 @@ export class DraftComponent implements OnInit {
     if (!this.canManageDraft) return;
     
     try {
+      // Get current user ID
+      const currentUser = this.auth.currentUser;
+      const userId = currentUser ? currentUser.uid : 'unknown';
+      
       // Update draft status
       const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
         inProgress: false,
         endedAt: new Date(),
-        endedBy: this.authService.currentUser.value?.uid || 'unknown'
+        endedBy: userId
       });
       
       // Update draft class status
