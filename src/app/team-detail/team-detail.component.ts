@@ -106,13 +106,13 @@ export class TeamDetailComponent implements OnInit {
       const rosterRef = collection(this.firestore, `teams/${this.teamId}/roster`);
       const rosterSnap = await getDocs(rosterRef);
       
-      this.roster = await Promise.all(rosterSnap.docs.map(async doc => {
-        const data = doc.data() as any;
+      this.roster = await Promise.all(rosterSnap.docs.map(async docSnapshot => {
+        const data = docSnapshot.data() as any;
         
         // Get overall rating from attributes
         let overall = 50;
         try {
-          const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
+          const attributesRef = doc(this.firestore, `players/${docSnapshot.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
             overall = (attributesSnap.data() as any)['OVERALL'] || 50;
@@ -122,7 +122,7 @@ export class TeamDetailComponent implements OnInit {
         }
         
         return {
-          id: doc.id,
+          id: docSnapshot.id,
           firstName: data['firstName'] || '',
           lastName: data['lastName'] || '',
           position: data['position'] || '',

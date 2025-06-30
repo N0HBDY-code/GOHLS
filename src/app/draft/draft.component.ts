@@ -233,8 +233,8 @@ export class DraftComponent implements OnInit {
       // Process draft classes
       this.draftClasses = [];
       
-      for (const doc of snapshot.docs) {
-        const data = doc.data() as any;
+      for (const docSnapshot of snapshot.docs) {
+        const data = docSnapshot.data() as any;
         
         try {
           // Load players for this draft class - without orderBy to avoid index issues
@@ -468,8 +468,8 @@ export class DraftComponent implements OnInit {
   }
   
   async processDraftPicks(snapshot: any) {
-    return await Promise.all(snapshot.docs.map(async (doc: any) => {
-      const data = doc.data();
+    return await Promise.all(snapshot.docs.map(async (docSnapshot: any) => {
+      const data = docSnapshot.data();
       
       // Get team name
       let teamName = 'Unknown Team';
@@ -499,7 +499,7 @@ export class DraftComponent implements OnInit {
       }
       
       return {
-        id: doc.id,
+        id: docSnapshot.id,
         season: data['season'],
         round: data['round'],
         pick: data['pick'],
@@ -574,8 +574,8 @@ export class DraftComponent implements OnInit {
       const historySnap = await getDocs(historyQuery);
       
       if (!historySnap.empty) {
-        const historyPromises = historySnap.docs.map(async doc => {
-          const data = doc.data() as any;
+        const historyPromises = historySnap.docs.map(async docSnapshot => {
+          const data = docSnapshot.data() as any;
           const season = data['season'];
           
           // Load picks for this season
@@ -650,10 +650,10 @@ export class DraftComponent implements OnInit {
         const undraftedSnap = await getDocs(undraftedQuery);
         
         const batch = writeBatch(this.firestore);
-        undraftedSnap.docs.forEach(doc => {
-          const data = doc.data();
+        undraftedSnap.docs.forEach(docSnapshot => {
+          const data = docSnapshot.data();
           if (data['teamId'] === 'none') {
-            batch.update(doc.ref, {
+            batch.update(docSnapshot.ref, {
               draftStatus: 'undrafted',
               freeAgent: true
             });
@@ -689,9 +689,9 @@ export class DraftComponent implements OnInit {
       
       const batch = writeBatch(this.firestore);
       
-      picksSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${doc.id}`);
+      picksSnap.docs.forEach(docSnapshot => {
+        const data = docSnapshot.data();
+        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${docSnapshot.id}`);
         batch.set(historyPickRef, {
           ...data,
           archivedAt: new Date()
@@ -722,8 +722,8 @@ export class DraftComponent implements OnInit {
       // Filter in memory instead of using complex query
       const availablePlayers = [];
       
-      for (const doc of playersSnap.docs) {
-        const data = doc.data() as any;
+      for (const docSnapshot of playersSnap.docs) {
+        const data = docSnapshot.data() as any;
         
         // Skip players that are already on a team or drafted
         if (data['teamId'] !== 'none' || data['draftedBy']) {
@@ -733,7 +733,7 @@ export class DraftComponent implements OnInit {
         // Get overall rating
         let overall = 50;
         try {
-          const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
+          const attributesRef = doc(this.firestore, `players/${docSnapshot.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
             const attrData = attributesSnap.data() as any;
@@ -744,7 +744,7 @@ export class DraftComponent implements OnInit {
         }
         
         availablePlayers.push({
-          id: doc.id,
+          id: docSnapshot.id,
           firstName: data['firstName'] || '',
           lastName: data['lastName'] || '',
           position: data['position'] || '',
