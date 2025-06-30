@@ -237,9 +237,9 @@
               <td>{{ player.age }}</td>
               <td>
                 <span class="badge" 
-                      [style.background-color]="getOverallColor(player.overall)"
-                      [style.color]="player.overall >= 75 ? 'white' : 'black'">
-                  {{ player.overall }}
+                      [style.background-color]="getOverallColor(player.overall || 50)"
+                      [style.color]="(player.overall || 50) >= 75 ? 'white' : 'black'">
+                  {{ player.overall || 50 }}
                 </span>
               </td>
               <td>{{ player.height || '-' }}"</td>
