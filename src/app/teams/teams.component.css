@@ -12,11 +12,14 @@
   display: flex;
   flex-direction: column;
   background: white;
+  border: 2px solid #dee2e6;
+  margin-bottom: 1rem;
 }
 
 .team-card:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+  border-color: #0d6efd;
 }
 
 .team-logo-container {
@@ -26,30 +29,65 @@
   justify-content: center;
   padding: 1rem;
   margin-bottom: 0.5rem;
+  background: #f8f9fa;
 }
 
 .team-logo {
   max-height: 120px;
+  max-width: 120px;
   width: auto;
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+}
+
+.no-logo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.team-card:hover .no-logo-placeholder {
+  border-color: #0d6efd;
+  background: #e7f3ff;
+}
+
+.no-logo-placeholder .fas {
+  color: #6c757d;
+  transition: color 0.3s ease;
+}
+
+.team-card:hover .no-logo-placeholder .fas {
+  color: #0d6efd;
 }
 
 .team-info {
   text-align: center;
   padding: 1rem;
-  color: black;
+  color: #212529;
+  background: white;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .team-name {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.5rem;
+  color: #212529;
 }
 
 .team-division {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: #6c757d;
   margin-bottom: 0.5rem;
 }
 
@@ -62,34 +100,47 @@
   gap: 0.5rem;
   justify-content: center;
   margin-top: 1rem;
+  padding: 0 1rem 1rem;
+}
+
+/* Ensure team cards are visible */
+.col-md-3 {
+  padding: 0.75rem;
+}
+
+.col-md-3 .team-card {
+  min-height: 280px;
+  border: 2px solid #e9ecef;
+  background: #ffffff;
+  position: relative;
 }
 
 /* Form Styles */
-.card.mt-5 {
+.card.mt-3 {
   background: #1a1a1a;
   border: none;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-.card.mt-5 .card-header {
+.card.mt-3 .card-header {
   background: linear-gradient(45deg, #1a237e, #283593);
   color: white;
   border-bottom: none;
   padding: 1.25rem;
 }
 
-.card.mt-5 .card-body {
+.card.mt-3 .card-body {
   padding: 1.5rem;
   background: #1a1a1a;
 }
 
-.card.mt-5 .form-label {
+.card.mt-3 .form-label {
   color: #ffffff;
   font-weight: 500;
   margin-bottom: 0.5rem;
 }
 
-.card.mt-5 .form-control {
+.card.mt-3 .form-control {
   border-radius: 8px;
   border: 2px solid #333;
   padding: 0.75rem;
@@ -97,13 +148,13 @@
   color: white;
 }
 
-.card.mt-5 .form-control:focus {
+.card.mt-3 .form-control:focus {
   border-color: #0d6efd;
   box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
   background: #333;
 }
 
-.card.mt-5 .form-select {
+.card.mt-3 .form-select {
   border-radius: 8px;
   border: 2px solid #333;
   padding: 0.75rem;
@@ -111,7 +162,7 @@
   color: white;
 }
 
-.card.mt-5 .btn-primary {
+.card.mt-3 .btn-primary {
   background: #0d6efd;
   border: none;
   padding: 0.75rem 1.5rem;
@@ -120,7 +171,7 @@
   transition: all 0.2s ease;
 }
 
-.card.mt-5 .btn-primary:hover {
+.card.mt-3 .btn-primary:hover {
   background: #0b5ed7;
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
@@ -180,8 +231,78 @@
   font-weight: 600;
 }
 
+/* Empty state styling */
+.text-center.text-muted.py-4 {
+  background: #f8f9fa;
+  border: 2px dashed #dee2e6;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.text-center.text-muted.py-4 .fa-plus-circle {
+  color: #6c757d;
+}
+
+/* Management buttons */
+.btn-outline-secondary,
+.btn-outline-danger {
+  border-width: 2px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-secondary:hover,
+.btn-outline-danger:hover {
+  transform: translateY(-1px);
+}
+
+/* Help text styling */
+.form-text {
+  color: #6c757d !important;
+  font-size: 0.875rem;
+}
+
+.card.mt-3 .form-text {
+  color: #adb5bd !important;
+}
+
+.text-muted {
+  color: #6c757d !important;
+}
+
+.card.mt-3 .text-muted {
+  color: #adb5bd !important;
+}
+
 @media (max-width: 768px) {
   .col-md-3 {
     margin-bottom: 1.5rem;
+  }
+  
+  .team-card {
+    min-height: 250px;
+  }
+  
+  .team-logo-container {
+    height: 120px;
+  }
+  
+  .team-logo {
+    max-height: 80px;
+    max-width: 80px;
+  }
+  
+  .team-name {
+    font-size: 1.1rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .action-buttons .btn {
+    font-size: 0.875rem;
+    padding: 0.5rem;
   }
 }

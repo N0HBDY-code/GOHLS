@@ -54,8 +54,6 @@ interface Game {
 export class GamesComponent implements OnInit {
   teams: Team[] = [];
   currentSeason = 1;
-  tempSeason = 1;
-  editingSeason = false;
   loading = false;
   isClearing = false;
   selectedWeek = 1;
@@ -63,7 +61,6 @@ export class GamesComponent implements OnInit {
   weekSchedule: Map<number, Game[]> = new Map();
   gamesCache = new Map<string, Game>();
   canManageGames = false;
-  canManageSeason = false;
   isDeveloper = false;
 
   newGame: {
@@ -94,11 +91,11 @@ export class GamesComponent implements OnInit {
       this.canManageGames = roles.some(role => 
         ['developer', 'commissioner'].includes(role)
       );
-      this.canManageSeason = roles.some(role => 
-        ['developer', 'commissioner'].includes(role)
-      );
       this.isDeveloper = roles.includes('developer');
     });
+
+    // Load current season from headquarters settings
+    await this.loadCurrentSeason();
 
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
@@ -111,6 +108,21 @@ export class GamesComponent implements OnInit {
     if (this.activeWeeks.length > 0) {
       this.selectedWeek = this.activeWeeks[0];
       await this.loadWeek(this.selectedWeek);
+    }
+  }
+
+  async loadCurrentSeason() {
+    try {
+      const settingsRef = doc(this.firestore, 'gameScheduleSettings/current');
+      const settingsSnap = await getDoc(settingsRef);
+      
+      if (settingsSnap.exists()) {
+        const data = settingsSnap.data();
+        this.currentSeason = data['season'] || 1;
+        this.newGame.season = this.currentSeason;
+      }
+    } catch (error) {
+      console.error('Error loading current season:', error);
     }
   }
 
@@ -279,18 +291,6 @@ export class GamesComponent implements OnInit {
       this.selectedWeek = 1;
     } finally {
       this.isClearing = false;
-    }
-  }
-
-  async saveSeason() {
-    if (!this.canManageSeason) return;
-
-    this.currentSeason = this.tempSeason;
-    this.editingSeason = false;
-    await this.loadActiveWeeks();
-    if (this.activeWeeks.length > 0) {
-      this.selectedWeek = this.activeWeeks[0];
-      await this.loadWeek(this.selectedWeek);
     }
   }
 

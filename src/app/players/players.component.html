@@ -1,4 +1,9 @@
-<div *ngIf="loading" class="alert alert-info mt-3 text-center">Loading...</div>
+<div *ngIf="loading" class="loading-container">
+  <div class="spinner-border" role="status">
+    <span class="visually-hidden">Loading...</span>
+  </div>
+  <p class="mt-2 text-muted">Checking player status...</p>
+</div>
 
 <!-- Show retired player message with option to create new -->
 <div *ngIf="!loading && hasRetiredPlayer && !showCreateForm" class="container mt-4">
@@ -21,6 +26,12 @@
         </h4>
       </div>
       <div class="card-body">
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Player Creation Process:</strong> Your player will be submitted for approval by league management. 
+          Once approved, your player will be created with the appropriate attributes and you'll be able to start playing!
+        </div>
+        
         <form (ngSubmit)="createPlayer()" class="row g-3">
           <div class="col-md-6 mb-3">
             <label class="form-label">First Name</label>
@@ -130,7 +141,7 @@
 
           <div class="col-12">
             <button type="submit" class="btn btn-primary btn-lg w-100">
-              <i class="fas fa-hockey-puck me-2"></i>Create Player
+              <i class="fas fa-paper-plane me-2"></i>Submit Player for Approval
             </button>
           </div>
         </form>
@@ -139,7 +150,7 @@
   </div>
 </div>
 
-<!-- Player Manager -->
-<div *ngIf="!loading && hasActivePlayer">
+<!-- Player Manager for Active or Pending Players -->
+<div *ngIf="!loading && (hasActivePlayer || hasPendingPlayer)">
   <app-player-manager></app-player-manager>
 </div>

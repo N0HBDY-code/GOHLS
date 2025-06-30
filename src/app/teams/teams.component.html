@@ -100,8 +100,9 @@
               </div>
             </div>
             <div class="col-md-12 mb-3">
-              <label class="form-label">Team Logo</label>
-              <input type="file" class="form-control" (change)="onFileSelected($event)" required />
+              <label class="form-label">Team Logo <small class="text-muted">(Optional)</small></label>
+              <input type="file" class="form-control" (change)="onFileSelected($event)" accept="image/*" />
+              <small class="form-text text-muted">You can add a logo now or upload one later when editing the team.</small>
             </div>
           </div>
           <button type="submit" class="btn btn-primary">Add Team</button>
@@ -159,6 +160,9 @@
                    [src]="team.logoUrl"
                    class="team-logo"
                    alt="Team Logo" />
+              <div *ngIf="!team.logoUrl" class="no-logo-placeholder">
+                <i class="fas fa-hockey-puck fa-3x text-muted"></i>
+              </div>
             </div>
             <div class="team-info">
               <h6 class="team-name">{{ team.city }} {{ team.mascot }}</h6>
@@ -233,7 +237,7 @@
           </div>
           <div class="mb-3">
             <label class="form-label">Update Logo</label>
-            <input type="file" class="form-control" (change)="onEditLogoSelected($event)" />
+            <input type="file" class="form-control" (change)="onEditLogoSelected($event)" accept="image/*" />
             <small class="form-text text-muted">Leave empty to keep the current logo.</small>
           </div>        
         </div>
