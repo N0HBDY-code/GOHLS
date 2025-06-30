@@ -31,16 +31,6 @@
     </ul>
   </div>
 
-  <!-- Firestore Index Error Alert -->
-  <div *ngIf="indexError" class="alert alert-warning mb-4">
-    <h5><i class="fas fa-exclamation-triangle me-2"></i>Firestore Index Required</h5>
-    <p>Some features require a Firestore index that hasn't been created yet. Please click the link below to create the required index:</p>
-    <a [href]="getIndexUrl()" target="_blank" class="btn btn-primary">
-      <i class="fas fa-external-link-alt me-1"></i>Create Required Index
-    </a>
-    <p class="mt-2 mb-0"><small>After creating the index, it may take a few minutes to become active. Refresh the page after the index is created.</small></p>
-  </div>
-
   <!-- Draft Class Error Alert -->
   <div *ngIf="draftClassError" class="alert alert-danger mb-4">
     <h5><i class="fas fa-exclamation-triangle me-2"></i>Draft Class Error</h5>
@@ -683,7 +673,8 @@
         <!-- Empty State -->
         <div *ngIf="availablePlayers.length === 0" class="text-center py-4">
           <i class="fas fa-search fa-2x text-muted mb-2"></i>
-          <p class="text-muted">No available players found.</p>
+          <p class="text-muted">No available players found for Season {{ currentDraftSeason }}.</p>
+          <small class="text-muted">Make sure players have been assigned to the Season {{ currentDraftSeason }} draft class.</small>
         </div>
       </div>
       <div class="modal-footer">

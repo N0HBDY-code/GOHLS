@@ -120,8 +120,7 @@ export class DraftComponent implements OnInit {
   sortBy: 'overall' | 'age' | 'position' = 'overall';
   sortDirection: 'asc' | 'desc' = 'desc';
 
-  // Error handling
-  indexError = false;
+  // Error handling - removed indexError
   draftClassError = false;
   draftClassErrorMessage = '';
 
@@ -269,8 +268,7 @@ export class DraftComponent implements OnInit {
     } catch (error) {
       console.error('Error loading draft classes:', error);
       this.draftClassError = true;
-      this.draftClassErrorMessage = 'Failed to load draft classes. This may be due to missing Firestore indexes.';
-      this.indexError = true;
+      this.draftClassErrorMessage = 'Failed to load draft classes. Please try again.';
     } finally {
       this.loadingClasses = false;
     }
@@ -522,12 +520,17 @@ export class DraftComponent implements OnInit {
         startedBy: (currentUser as any)?.uid || 'unknown'
       });
       
-      // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
-      await updateDoc(classRef, {
-        status: 'active',
-        startDate: new Date()
-      });
+      // Find the draft class for this season and update its status
+      const draftClass = this.draftClasses.find(dc => dc.season === this.currentDraftSeason);
+      if (draftClass && draftClass.id) {
+        const classRef = doc(this.firestore, `draftClasses/${draftClass.id}`);
+        await updateDoc(classRef, {
+          status: 'active',
+          startDate: new Date()
+        });
+      } else {
+        console.warn(`No draft class found for season ${this.currentDraftSeason}`);
+      }
       
       this.draftInProgress = true;
     } catch (error) {
@@ -552,12 +555,15 @@ export class DraftComponent implements OnInit {
         endedBy: (currentUser as any)?.uid || 'unknown'
       });
       
-      // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
-      await updateDoc(classRef, {
-        status: 'completed',
-        endDate: new Date()
-      });
+      // Find the draft class for this season and update its status
+      const draftClass = this.draftClasses.find(dc => dc.season === this.currentDraftSeason);
+      if (draftClass && draftClass.id) {
+        const classRef = doc(this.firestore, `draftClasses/${draftClass.id}`);
+        await updateDoc(classRef, {
+          status: 'completed',
+          endDate: new Date()
+        });
+      }
       
       // Move undrafted players to free agency
       const undraftedQuery = query(
@@ -622,8 +628,10 @@ export class DraftComponent implements OnInit {
     
     this.selectedDraftPick = pick;
     
-    // Load available players from the current draft class
+    // Load available players from the current draft class for the current season
     try {
+      console.log(`Loading players for draft season ${this.currentDraftSeason}`);
+      
       const playersQuery = query(
         collection(this.firestore, 'players'),
         where('draftClass', '==', this.currentDraftSeason),
@@ -632,6 +640,7 @@ export class DraftComponent implements OnInit {
       );
       
       const playersSnap = await getDocs(playersQuery);
+      console.log(`Found ${playersSnap.docs.length} available players for season ${this.currentDraftSeason}`);
       
       this.availablePlayers = await Promise.all(playersSnap.docs.map(async doc => {
         const data = doc.data();
@@ -665,6 +674,7 @@ export class DraftComponent implements OnInit {
       this.showMakePickModal = true;
     } catch (error) {
       console.error('Error loading available players:', error);
+      alert('Error loading available players. Please try again.');
     }
   }
   
@@ -881,7 +891,9 @@ export class DraftComponent implements OnInit {
     // Calculate the percentage from 50 to 99 (0% to 100%)
     const percentage = (clampedOverall - 50) / (99 - 50);
     
-    // Use a more vibrant red to green interpolation
+    // Use a more vibrant red to green interpolation avoiding brown tones
+    // Red: RGB(220, 38, 38) - Bright red
+    // Green: RGB(34, 197, 94) - Bright green
     const red = Math.round(220 - (220 - 34) * percentage);
     const green = Math.round(38 + (197 - 38) * percentage);
     const blue = Math.round(38 + (94 - 38) * percentage);
@@ -927,8 +939,5 @@ export class DraftComponent implements OnInit {
     return this.draftHistory.filter(p => p.season === season);
   }
 
-  // Error handling methods
-  getIndexUrl(): string {
-    return 'https://console.firebase.google.com/u/1/project/gohls-3033e/firestore/indexes';
-  }
+  // Error handling methods - removed getIndexUrl method
 }
