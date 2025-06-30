@@ -856,18 +856,27 @@ export class DraftComponent implements OnInit {
       }
       
       // Create new draft class
-      await addDoc(collection(this.firestore, 'draftClasses'), {
+      const docRef = await addDoc(collection(this.firestore, 'draftClasses'), {
         season: this.newDraftClassSeason,
         status: 'upcoming',
         league: this.newDraftClassLeague,
         createdAt: new Date()
       });
       
+      console.log(`Created draft class for season ${this.newDraftClassSeason} with ID: ${docRef.id}`);
+      
       // Close modal and reload
       this.showCreateClassModal = false;
       await this.loadDraftClasses();
+      
+      // Refresh available seasons
+      await this.loadAvailableSeasons();
+      
+      // Show success message
+      alert(`Draft class for Season ${this.newDraftClassSeason} created successfully!`);
     } catch (error) {
       console.error('Error creating draft class:', error);
+      alert('Failed to create draft class. Please try again.');
     }
   }
 
@@ -981,7 +990,7 @@ export class DraftComponent implements OnInit {
       case 'G': return '#dc3545'; // Red
       case 'D': return '#fd7e14'; // Orange
       case 'C': return '#28a745'; // Green
-      case 'LW': return '#17a2b8'; //  Teal
+      case 'LW': return '#17a2b8'; // Teal
       case 'RW': return '#007bff'; // Blue
       default: return '#6c757d'; // Gray
     }
