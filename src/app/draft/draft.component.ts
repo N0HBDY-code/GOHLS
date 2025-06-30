@@ -158,6 +158,8 @@ export class DraftComponent implements OnInit {
   // Error states
   indexError = false;
   indexErrorMessage = '';
+  draftClassError = false;
+  draftClassErrorMessage = '';
 
   constructor(
     private firestore: Firestore,
@@ -213,6 +215,7 @@ export class DraftComponent implements OnInit {
   async loadDraftClasses() {
     this.loadingClasses = true;
     this.indexError = false;
+    this.draftClassError = false;
     
     try {
       // Get current league season
@@ -665,6 +668,31 @@ export class DraftComponent implements OnInit {
       const currentUser = this.auth.currentUser;
       const userId = currentUser ? currentUser.uid : 'unknown';
       
+      // Check if draft class exists for this season
+      const classRef = collection(this.firestore, 'draftClasses');
+      const classQuery = query(classRef, where('season', '==', this.currentDraftSeason));
+      const classSnap = await getDocs(classQuery);
+      
+      if (classSnap.empty) {
+        // Create a draft class if it doesn't exist
+        await addDoc(collection(this.firestore, 'draftClasses'), {
+          season: this.currentDraftSeason,
+          status: 'active',
+          createdAt: new Date(),
+          startDate: new Date(),
+          league: 'major'
+        });
+      } else {
+        // Update existing draft class
+        const draftClassId = classSnap.docs[0].id;
+        const draftClassRef = doc(this.firestore, `draftClasses/${draftClassId}`);
+        
+        await updateDoc(draftClassRef, {
+          status: 'active',
+          startDate: new Date()
+        });
+      }
+      
       // Update draft status
       const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
@@ -673,17 +701,17 @@ export class DraftComponent implements OnInit {
         startedBy: userId
       });
       
-      // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
-      await updateDoc(classRef, {
-        status: 'active',
-        startDate: new Date()
-      });
-      
       this.draftInProgress = true;
     } catch (error: any) {
       console.error('Error starting draft:', error);
-      alert('Error starting draft: ' + error.message);
+      
+      if (error.message && error.message.includes('No document to update')) {
+        this.draftClassError = true;
+        this.draftClassErrorMessage = 'Could not find draft class to update. Please create a draft class first.';
+        alert('Error: ' + this.draftClassErrorMessage);
+      } else {
+        alert('Error starting draft: ' + error.message);
+      }
     }
   }
   
@@ -695,19 +723,28 @@ export class DraftComponent implements OnInit {
       const currentUser = this.auth.currentUser;
       const userId = currentUser ? currentUser.uid : 'unknown';
       
+      // Check if draft class exists for this season
+      const classRef = collection(this.firestore, 'draftClasses');
+      const classQuery = query(classRef, where('season', '==', this.currentDraftSeason));
+      const classSnap = await getDocs(classQuery);
+      
+      if (!classSnap.empty) {
+        // Update existing draft class
+        const draftClassId = classSnap.docs[0].id;
+        const draftClassRef = doc(this.firestore, `draftClasses/${draftClassId}`);
+        
+        await updateDoc(draftClassRef, {
+          status: 'completed',
+          endDate: new Date()
+        });
+      }
+      
       // Update draft status
       const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
       await setDoc(settingsRef, {
         inProgress: false,
         endedAt: new Date(),
         endedBy: userId
-      });
-      
-      // Update draft class status
-      const classRef = doc(this.firestore, `draftClasses/${this.currentDraftSeason}`);
-      await updateDoc(classRef, {
-        status: 'completed',
-        endDate: new Date()
       });
       
       // Move undrafted players to free agency - use simple query to avoid index issues
