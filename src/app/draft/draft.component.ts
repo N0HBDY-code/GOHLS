@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Firestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit, addDoc, setDoc, updateDoc, writeBatch, DocumentSnapshot } from '@angular/fire/firestore';
+import { Firestore, collection, getDocs, doc, getDoc, query, where, orderBy, limit, addDoc, setDoc, updateDoc, writeBatch, deleteDoc } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
 
 interface DraftClass {
@@ -12,8 +12,8 @@ interface DraftClass {
   startDate?: Date;
   endDate?: Date;
   league?: string;
-  draftOrder?: string[]; // Array of team IDs in draft order
   draftOrderSet?: boolean;
+  draftOrder?: string[]; // Array of team IDs in draft order
 }
 
 interface DraftPlayer {
@@ -35,6 +35,7 @@ interface DraftPlayer {
 
 interface DraftPick {
   id?: string;
+  draftClassId: string;
   season: number;
   round: number;
   pick: number;
@@ -74,8 +75,7 @@ export class DraftComponent implements OnInit {
   selectedDraftClass: DraftClass | null = null;
   
   // Current draft
-  currentDraftSeason = new Date().getFullYear();
-  draftOrder: Team[] = [];
+  selectedDraftClassForDraft: DraftClass | null = null;
   draftPicks: DraftPick[] = [];
   currentRound = 1;
   currentPick = 1;
@@ -101,11 +101,9 @@ export class DraftComponent implements OnInit {
   newDraftClassSeason = new Date().getFullYear();
   newDraftClassLeague = 'major';
   
-  // Draft creation
-  showCreateDraftModal = false;
-  newDraftSeason = new Date().getFullYear();
-  newDraftLeague = 'major';
-  newDraftRounds = 7;
+  // Draft order management
+  showSetOrderModal = false;
+  draftOrderTeams: Team[] = [];
   
   // Draft pick management
   showMakePickModal = false;
@@ -147,9 +145,6 @@ export class DraftComponent implements OnInit {
     // Load draft classes
     await this.loadDraftClasses();
     
-    // Load current draft
-    await this.loadCurrentDraft();
-    
     // Load draft history
     await this.loadDraftHistory();
   }
@@ -158,10 +153,10 @@ export class DraftComponent implements OnInit {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
     
-    this.teams = snapshot.docs.map(docSnapshot => {
-      const data = docSnapshot.data();
+    this.teams = snapshot.docs.map(docSnap => {
+      const data = docSnap.data();
       return {
-        id: docSnapshot.id,
+        id: docSnap.id,
         name: `${data['city']} ${data['mascot']}`,
         city: data['city'],
         mascot: data['mascot'],
@@ -178,25 +173,20 @@ export class DraftComponent implements OnInit {
     this.draftClassError = false;
     
     try {
-      // Get current league season
-      const seasonRef = doc(this.firestore, 'leagueSettings/season');
-      const seasonSnap = await getDoc(seasonRef);
-      const currentSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
-      
       // Load draft classes from Firestore
       const classesRef = collection(this.firestore, 'draftClasses');
       const snapshot = await getDocs(classesRef);
       
       if (snapshot.empty) {
         // Create initial draft class for current season if none exist
-        await this.createInitialDraftClass(currentSeason);
+        await this.createInitialDraftClass(new Date().getFullYear());
         await this.loadDraftClasses(); // Reload after creation
         return;
       }
       
       // Process draft classes
-      this.draftClasses = await Promise.all(snapshot.docs.map(async docSnapshot => {
-        const data = docSnapshot.data();
+      this.draftClasses = await Promise.all(snapshot.docs.map(async docSnap => {
+        const data = docSnap.data();
         
         // Load players for this draft class using draftClass field
         const playersQuery = query(
@@ -206,13 +196,13 @@ export class DraftComponent implements OnInit {
         );
         
         const playersSnapshot = await getDocs(playersQuery);
-        const players = await Promise.all(playersSnapshot.docs.map(async playerDoc => {
-          const playerData = playerDoc.data();
+        const players = await Promise.all(playersSnapshot.docs.map(async playerDocSnap => {
+          const playerData = playerDocSnap.data();
           
           // Get overall rating from attributes
           let overall = 50;
           try {
-            const attributesRef = doc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
+            const attributesRef = doc(this.firestore, `players/${playerDocSnap.id}/meta/attributes`);
             const attributesSnap = await getDoc(attributesRef);
             if (attributesSnap.exists()) {
               const attributesData = attributesSnap.data();
@@ -234,7 +224,7 @@ export class DraftComponent implements OnInit {
           }
           
           return {
-            id: playerDoc.id,
+            id: playerDocSnap.id,
             firstName: playerData['firstName'] || '',
             lastName: playerData['lastName'] || '',
             position: playerData['position'] || '',
@@ -252,15 +242,15 @@ export class DraftComponent implements OnInit {
         }));
         
         return {
-          id: docSnapshot.id,
+          id: docSnap.id,
           season: data['season'],
           players,
           status: data['status'] || 'upcoming',
           startDate: data['startDate'],
           endDate: data['endDate'],
           league: data['league'] || 'major',
-          draftOrder: data['draftOrder'] || [],
-          draftOrderSet: data['draftOrderSet'] || false
+          draftOrderSet: data['draftOrderSet'] || false,
+          draftOrder: data['draftOrder'] || []
         };
       }));
       
@@ -270,6 +260,7 @@ export class DraftComponent implements OnInit {
       // Set selected draft class to the most recent one
       if (this.draftClasses.length > 0) {
         this.selectedDraftClass = this.draftClasses[0];
+        this.selectedDraftClassForDraft = this.draftClasses[0];
       }
     } catch (error) {
       console.error('Error loading draft classes:', error);
@@ -289,8 +280,8 @@ export class DraftComponent implements OnInit {
         status: 'upcoming',
         league: 'major',
         createdAt: new Date(),
-        draftOrder: [],
-        draftOrderSet: false
+        draftOrderSet: false,
+        draftOrder: []
       });
       
       console.log(`Created initial draft class for season ${season}`);
@@ -303,110 +294,79 @@ export class DraftComponent implements OnInit {
     this.loadingDraft = true;
     
     try {
-      // Get current league season
-      const seasonRef = doc(this.firestore, 'leagueSettings/season');
-      const seasonSnap = await getDoc(seasonRef);
-      this.currentDraftSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
+      if (!this.selectedDraftClassForDraft?.id) {
+        this.draftPicks = [];
+        this.loadingDraft = false;
+        return;
+      }
+
+      // Load draft picks for this draft class
+      const picksRef = collection(this.firestore, 'draftPicks');
+      const picksQuery = query(
+        picksRef, 
+        where('draftClassId', '==', this.selectedDraftClassForDraft.id),
+        orderBy('round'), 
+        orderBy('pick')
+      );
+      const picksSnap = await getDocs(picksQuery);
       
-      // Find the current draft class
-      const currentDraftClass = this.draftClasses.find(dc => dc.season === this.currentDraftSeason);
-      
-      if (currentDraftClass && currentDraftClass.draftOrderSet && currentDraftClass.draftOrder) {
-        // Load teams in draft order
-        this.draftOrder = [];
-        for (const teamId of currentDraftClass.draftOrder) {
-          const team = this.teams.find(t => t.id === teamId);
-          if (team) {
-            this.draftOrder.push(team);
+      this.draftPicks = await Promise.all(picksSnap.docs.map(async docSnap => {
+        const data = docSnap.data();
+        
+        // Get team name
+        let teamName = 'Unknown Team';
+        const team = this.teams.find(t => t.id === data['teamId']);
+        if (team) {
+          teamName = team.name;
+        }
+        
+        // Get original team name if different
+        let originalTeamName = undefined;
+        if (data['originalTeamId'] && data['originalTeamId'] !== data['teamId']) {
+          const originalTeam = this.teams.find(t => t.id === data['originalTeamId']);
+          if (originalTeam) {
+            originalTeamName = originalTeam.name;
           }
         }
         
-        // Generate draft picks if they don't exist
-        await this.generateDraftPicks();
+        // Get player name if picked
+        let playerName = undefined;
+        if (data['playerId']) {
+          const playerRef = doc(this.firestore, `players/${data['playerId']}`);
+          const playerSnap = await getDoc(playerRef);
+          if (playerSnap.exists()) {
+            const playerData = playerSnap.data();
+            playerName = `${playerData['firstName']} ${playerData['lastName']}`;
+          }
+        }
         
-        // Load existing draft picks
-        await this.loadDraftPicks();
-      } else {
-        // No draft order set yet
-        this.draftOrder = [];
-        this.draftPicks = [];
-      }
+        return {
+          id: docSnap.id,
+          draftClassId: data['draftClassId'],
+          season: data['season'],
+          round: data['round'],
+          pick: data['pick'],
+          teamId: data['teamId'],
+          teamName,
+          originalTeamId: data['originalTeamId'],
+          originalTeamName,
+          playerId: data['playerId'],
+          playerName,
+          completed: !!data['playerId']
+        };
+      }));
       
       // Determine current round and pick
       this.updateCurrentDraftPosition();
       
       // Check if draft is in progress
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
-      const settingsSnap = await getDoc(settingsRef);
+      this.draftInProgress = this.selectedDraftClassForDraft.status === 'active';
       
-      if (settingsSnap.exists()) {
-        this.draftInProgress = settingsSnap.data()['inProgress'] || false;
-      }
     } catch (error) {
       console.error('Error loading current draft:', error);
     } finally {
       this.loadingDraft = false;
     }
-  }
-  
-  async loadDraftPicks() {
-    try {
-      const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
-      const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
-      const picksSnap = await getDocs(picksQuery);
-      
-      this.draftPicks = await this.processDraftPicks(picksSnap);
-    } catch (error) {
-      console.error('Error loading draft picks:', error);
-      this.draftPicks = [];
-    }
-  }
-  
-  async processDraftPicks(snapshot: any) {
-    return await Promise.all(snapshot.docs.map(async (docSnapshot: any) => {
-      const data = docSnapshot.data();
-      
-      // Get team name
-      let teamName = 'Unknown Team';
-      const team = this.teams.find(t => t.id === data['teamId']);
-      if (team) {
-        teamName = team.name;
-      }
-      
-      // Get original team name if different
-      let originalTeamName = undefined;
-      if (data['originalTeamId'] && data['originalTeamId'] !== data['teamId']) {
-        const originalTeam = this.teams.find(t => t.id === data['originalTeamId']);
-        if (originalTeam) {
-          originalTeamName = originalTeam.name;
-        }
-      }
-      
-      // Get player name if picked
-      let playerName = undefined;
-      if (data['playerId']) {
-        const playerRef = doc(this.firestore, `players/${data['playerId']}`);
-        const playerSnap = await getDoc(playerRef);
-        if (playerSnap.exists()) {
-          const playerData = playerSnap.data();
-          playerName = `${playerData['firstName']} ${playerData['lastName']}`;
-        }
-      }
-      
-      return {
-        id: docSnapshot.id,
-        season: data['season'],
-        round: data['round'],
-        pick: data['pick'],
-        teamId: data['teamId'],
-        teamName,
-        originalTeamId: data['originalTeamId'],
-        originalTeamName,
-        playerId: data['playerId'],
-        playerName,
-        completed: !!data['playerId']
-      };
-    }));
   }
   
   updateCurrentDraftPosition() {
@@ -425,28 +385,28 @@ export class DraftComponent implements OnInit {
   }
   
   async generateDraftPicks() {
+    if (!this.selectedDraftClassForDraft?.id || !this.selectedDraftClassForDraft.draftOrder) {
+      console.error('No draft class selected or draft order not set');
+      return;
+    }
+
     try {
-      // Check if picks already exist
-      const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
-      const existingPicks = await getDocs(picksRef);
-      
-      if (!existingPicks.empty) {
-        console.log('Draft picks already exist');
-        return;
-      }
-      
       const batch = writeBatch(this.firestore);
       
       // Generate picks for each round and team
       for (let round = 1; round <= this.draftRounds; round++) {
-        for (let pick = 1; pick <= this.draftOrder.length; pick++) {
+        for (let pick = 1; pick <= this.selectedDraftClassForDraft.draftOrder.length; pick++) {
           const teamIndex = pick - 1;
-          const team = this.draftOrder[teamIndex];
+          const teamId = this.selectedDraftClassForDraft.draftOrder[teamIndex];
+          const team = this.teams.find(t => t.id === teamId);
           
-          const pickRef = doc(collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`));
+          if (!team) continue;
+          
+          const pickRef = doc(collection(this.firestore, 'draftPicks'));
           
           batch.set(pickRef, {
-            season: this.currentDraftSeason,
+            draftClassId: this.selectedDraftClassForDraft.id,
+            season: this.selectedDraftClassForDraft.season,
             round,
             pick,
             teamId: team.id,
@@ -468,26 +428,64 @@ export class DraftComponent implements OnInit {
     this.loadingHistory = true;
     
     try {
-      // Load past drafts (excluding current season)
-      const historyQuery = query(
-        collection(this.firestore, 'draftHistory'),
+      // Load completed draft classes
+      const completedClassesQuery = query(
+        collection(this.firestore, 'draftClasses'),
+        where('status', '==', 'completed'),
         orderBy('season', 'desc'),
-        limit(5) // Limit to last 5 seasons
+        limit(5)
       );
       
-      const historySnap = await getDocs(historyQuery);
+      const completedClassesSnap = await getDocs(completedClassesQuery);
       
-      if (!historySnap.empty) {
-        const historyPromises = historySnap.docs.map(async docSnapshot => {
-          const data = docSnapshot.data();
-          const season = data['season'];
+      if (!completedClassesSnap.empty) {
+        const historyPromises = completedClassesSnap.docs.map(async docSnap => {
+          const draftClassId = docSnap.id;
           
-          // Load picks for this season
-          const picksRef = collection(this.firestore, `draftHistory/${season}/picks`);
-          const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
+          // Load picks for this draft class
+          const picksRef = collection(this.firestore, 'draftPicks');
+          const picksQuery = query(
+            picksRef, 
+            where('draftClassId', '==', draftClassId),
+            orderBy('round'), 
+            orderBy('pick')
+          );
           const picksSnap = await getDocs(picksQuery);
           
-          return this.processDraftPicks(picksSnap);
+          return Promise.all(picksSnap.docs.map(async pickDocSnap => {
+            const data = pickDocSnap.data();
+            
+            // Get team name
+            let teamName = 'Unknown Team';
+            const team = this.teams.find(t => t.id === data['teamId']);
+            if (team) {
+              teamName = team.name;
+            }
+            
+            // Get player name if picked
+            let playerName = undefined;
+            if (data['playerId']) {
+              const playerRef = doc(this.firestore, `players/${data['playerId']}`);
+              const playerSnap = await getDoc(playerRef);
+              if (playerSnap.exists()) {
+                const playerData = playerSnap.data();
+                playerName = `${playerData['firstName']} ${playerData['lastName']}`;
+              }
+            }
+            
+            return {
+              id: pickDocSnap.id,
+              draftClassId: data['draftClassId'],
+              season: data['season'],
+              round: data['round'],
+              pick: data['pick'],
+              teamId: data['teamId'],
+              teamName,
+              playerId: data['playerId'],
+              playerName,
+              completed: !!data['playerId']
+            };
+          }));
         });
         
         const historyResults = await Promise.all(historyPromises);
@@ -501,32 +499,17 @@ export class DraftComponent implements OnInit {
   }
   
   async startDraft() {
-    if (!this.canManageDraft) return;
+    if (!this.canManageDraft || !this.selectedDraftClassForDraft?.id) return;
     
     try {
-      // Get current user
-      const currentUser = await new Promise((resolve) => {
-        this.authService.currentUser.subscribe(user => resolve(user));
-      });
-      
-      // Update draft status
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
-      await setDoc(settingsRef, {
-        inProgress: true,
-        startedAt: new Date(),
-        startedBy: (currentUser as any)?.uid || 'unknown'
-      });
-      
       // Update draft class status
-      const currentDraftClass = this.draftClasses.find(dc => dc.season === this.currentDraftSeason);
-      if (currentDraftClass?.id) {
-        const classRef = doc(this.firestore, `draftClasses/${currentDraftClass.id}`);
-        await updateDoc(classRef, {
-          status: 'active',
-          startDate: new Date()
-        });
-      }
+      const classRef = doc(this.firestore, `draftClasses/${this.selectedDraftClassForDraft.id}`);
+      await updateDoc(classRef, {
+        status: 'active',
+        startDate: new Date()
+      });
       
+      this.selectedDraftClassForDraft.status = 'active';
       this.draftInProgress = true;
     } catch (error) {
       console.error('Error starting draft:', error);
@@ -534,44 +517,31 @@ export class DraftComponent implements OnInit {
   }
   
   async endDraft() {
-    if (!this.canManageDraft) return;
+    if (!this.canManageDraft || !this.selectedDraftClassForDraft?.id) return;
     
     try {
-      // Get current user
-      const currentUser = await new Promise((resolve) => {
-        this.authService.currentUser.subscribe(user => resolve(user));
-      });
-      
-      // Update draft status
-      const settingsRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/settings/status`);
-      await setDoc(settingsRef, {
-        inProgress: false,
-        endedAt: new Date(),
-        endedBy: (currentUser as any)?.uid || 'unknown'
-      });
-      
       // Update draft class status
-      const currentDraftClass = this.draftClasses.find(dc => dc.season === this.currentDraftSeason);
-      if (currentDraftClass?.id) {
-        const classRef = doc(this.firestore, `draftClasses/${currentDraftClass.id}`);
-        await updateDoc(classRef, {
-          status: 'completed',
-          endDate: new Date()
-        });
-      }
+      const classRef = doc(this.firestore, `draftClasses/${this.selectedDraftClassForDraft.id}`);
+      await updateDoc(classRef, {
+        status: 'completed',
+        endDate: new Date()
+      });
+      
+      this.selectedDraftClassForDraft.status = 'completed';
+      this.draftInProgress = false;
       
       // Move undrafted players to free agency
       const undraftedQuery = query(
         collection(this.firestore, 'players'),
-        where('draftClass', '==', this.currentDraftSeason),
+        where('draftClass', '==', this.selectedDraftClassForDraft.season),
         where('teamId', '==', 'none')
       );
       
       const undraftedSnap = await getDocs(undraftedQuery);
       
       const batch = writeBatch(this.firestore);
-      undraftedSnap.docs.forEach(docSnapshot => {
-        batch.update(docSnapshot.ref, {
+      undraftedSnap.docs.forEach(docSnap => {
+        batch.update(docSnap.ref, {
           draftStatus: 'undrafted',
           freeAgent: true
         });
@@ -579,42 +549,8 @@ export class DraftComponent implements OnInit {
       
       await batch.commit();
       
-      // Archive draft to history
-      await this.archiveDraftToHistory();
-      
-      this.draftInProgress = false;
     } catch (error) {
       console.error('Error ending draft:', error);
-    }
-  }
-  
-  async archiveDraftToHistory() {
-    try {
-      // Create history document
-      const historyRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}`);
-      await setDoc(historyRef, {
-        season: this.currentDraftSeason,
-        completedAt: new Date()
-      });
-      
-      // Copy all picks to history
-      const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
-      const picksSnap = await getDocs(picksRef);
-      
-      const batch = writeBatch(this.firestore);
-      
-      picksSnap.docs.forEach(docSnapshot => {
-        const data = docSnapshot.data();
-        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${docSnapshot.id}`);
-        batch.set(historyPickRef, {
-          ...data,
-          archivedAt: new Date()
-        });
-      });
-      
-      await batch.commit();
-    } catch (error) {
-      console.error('Error archiving draft to history:', error);
     }
   }
   
@@ -625,22 +561,24 @@ export class DraftComponent implements OnInit {
     
     // Load available players from the current draft class
     try {
+      if (!this.selectedDraftClassForDraft) return;
+      
       const playersQuery = query(
         collection(this.firestore, 'players'),
-        where('draftClass', '==', this.currentDraftSeason),
+        where('draftClass', '==', this.selectedDraftClassForDraft.season),
         where('teamId', '==', 'none'),
         where('status', '==', 'active')
       );
       
       const playersSnap = await getDocs(playersQuery);
       
-      this.availablePlayers = await Promise.all(playersSnap.docs.map(async docSnapshot => {
-        const data = docSnapshot.data();
+      this.availablePlayers = await Promise.all(playersSnap.docs.map(async docSnap => {
+        const data = docSnap.data();
         
         // Get overall rating
         let overall = 50;
         try {
-          const attributesRef = doc(this.firestore, `players/${docSnapshot.id}/meta/attributes`);
+          const attributesRef = doc(this.firestore, `players/${docSnap.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
             const attributesData = attributesSnap.data();
@@ -651,7 +589,7 @@ export class DraftComponent implements OnInit {
         }
         
         return {
-          id: docSnapshot.id,
+          id: docSnap.id,
           firstName: data['firstName'] || '',
           lastName: data['lastName'] || '',
           position: data['position'] || '',
@@ -678,7 +616,7 @@ export class DraftComponent implements OnInit {
       if (!player) return;
       
       // Update draft pick
-      const pickRef = doc(this.firestore, `drafts/${this.currentDraftSeason}/picks/${this.selectedDraftPick.id}`);
+      const pickRef = doc(this.firestore, `draftPicks/${this.selectedDraftPick.id}`);
       await updateDoc(pickRef, {
         playerId: player.id,
         completed: true,
@@ -692,7 +630,7 @@ export class DraftComponent implements OnInit {
         draftedBy: this.selectedDraftPick.teamId,
         draftRound: this.selectedDraftPick.round,
         draftPick: this.selectedDraftPick.pick,
-        draftSeason: this.currentDraftSeason,
+        draftSeason: this.selectedDraftPick.season,
         draftStatus: 'drafted'
       });
       
@@ -708,7 +646,7 @@ export class DraftComponent implements OnInit {
         teamId: this.selectedDraftPick.teamId,
         draftRound: this.selectedDraftPick.round,
         draftPick: this.selectedDraftPick.pick,
-        draftSeason: this.currentDraftSeason
+        draftSeason: this.selectedDraftPick.season
       });
       
       // Add to player history
@@ -750,8 +688,8 @@ export class DraftComponent implements OnInit {
         status: 'upcoming',
         league: this.newDraftClassLeague,
         createdAt: new Date(),
-        draftOrder: [],
-        draftOrderSet: false
+        draftOrderSet: false,
+        draftOrder: []
       });
       
       // Close modal and reload
@@ -762,61 +700,68 @@ export class DraftComponent implements OnInit {
     }
   }
 
-  async createNewDraft() {
-    if (!this.canManageDraft) return;
+  async setDraftOrder() {
+    if (!this.canManageDraft || !this.selectedDraftClassForDraft?.id) return;
+    
+    // Get teams for the selected league
+    const leagueTeams = this.teams.filter(t => (t.league || 'major') === this.selectedDraftClassForDraft!.league);
+    
+    if (leagueTeams.length === 0) {
+      alert(`No teams found for ${this.selectedDraftClassForDraft.league} league.`);
+      return;
+    }
+    
+    // Set up teams for ordering (you could implement standings-based ordering here)
+    this.draftOrderTeams = [...leagueTeams];
+    this.showSetOrderModal = true;
+  }
+
+  async saveDraftOrder() {
+    if (!this.selectedDraftClassForDraft?.id) return;
     
     try {
-      // Get teams for the selected league
-      const leagueTeams = this.teams.filter(t => (t.league || 'major') === this.newDraftLeague);
+      const draftOrder = this.draftOrderTeams.map(t => t.id);
       
-      if (leagueTeams.length === 0) {
-        alert(`No teams found for ${this.newDraftLeague} league.`);
-        return;
-      }
-      
-      // Create draft order (for now, just use team order - in real implementation, this would be based on standings)
-      const orderRef = doc(this.firestore, `drafts/${this.newDraftSeason}/settings/order`);
-      await setDoc(orderRef, {
-        teams: leagueTeams.map(t => t.id),
-        league: this.newDraftLeague,
-        createdAt: new Date()
+      // Update draft class with order
+      const classRef = doc(this.firestore, `draftClasses/${this.selectedDraftClassForDraft.id}`);
+      await updateDoc(classRef, {
+        draftOrder,
+        draftOrderSet: true
       });
       
+      // Update local state
+      this.selectedDraftClassForDraft.draftOrder = draftOrder;
+      this.selectedDraftClassForDraft.draftOrderSet = true;
+      
       // Generate draft picks
-      const batch = writeBatch(this.firestore);
+      await this.generateDraftPicks();
       
-      for (let round = 1; round <= this.newDraftRounds; round++) {
-        for (let pick = 1; pick <= leagueTeams.length; pick++) {
-          const teamIndex = pick - 1;
-          const team = leagueTeams[teamIndex];
-          
-          const pickRef = doc(collection(this.firestore, `drafts/${this.newDraftSeason}/picks`));
-          
-          batch.set(pickRef, {
-            season: this.newDraftSeason,
-            round,
-            pick,
-            teamId: team.id,
-            originalTeamId: team.id,
-            completed: false,
-            createdAt: new Date()
-          });
-        }
-      }
-      
-      await batch.commit();
-      
-      // Update current draft season
-      this.currentDraftSeason = this.newDraftSeason;
-      
-      // Close modal and reload
-      this.showCreateDraftModal = false;
+      // Load the draft
       await this.loadCurrentDraft();
       
-      alert(`Draft created successfully for Season ${this.newDraftSeason}!`);
+      this.showSetOrderModal = false;
+      alert('Draft order set successfully!');
     } catch (error) {
-      console.error('Error creating new draft:', error);
-      alert('Failed to create draft. Please try again.');
+      console.error('Error saving draft order:', error);
+      alert('Failed to save draft order. Please try again.');
+    }
+  }
+
+  // Move team up in draft order
+  moveTeamUp(index: number) {
+    if (index > 0) {
+      const temp = this.draftOrderTeams[index];
+      this.draftOrderTeams[index] = this.draftOrderTeams[index - 1];
+      this.draftOrderTeams[index - 1] = temp;
+    }
+  }
+
+  // Move team down in draft order
+  moveTeamDown(index: number) {
+    if (index < this.draftOrderTeams.length - 1) {
+      const temp = this.draftOrderTeams[index];
+      this.draftOrderTeams[index] = this.draftOrderTeams[index + 1];
+      this.draftOrderTeams[index + 1] = temp;
     }
   }
   
@@ -915,6 +860,11 @@ export class DraftComponent implements OnInit {
   selectDraftClass(draftClass: DraftClass) {
     this.selectedDraftClass = draftClass;
   }
+
+  selectDraftClassForDraft(draftClass: DraftClass) {
+    this.selectedDraftClassForDraft = draftClass;
+    this.loadCurrentDraft();
+  }
   
   // Draft navigation
   goToRound(round: number) {
@@ -934,39 +884,5 @@ export class DraftComponent implements OnInit {
   // Error handling methods
   getIndexUrl(): string {
     return 'https://console.firebase.google.com/u/1/project/gohls-3033e/firestore/indexes';
-  }
-
-  // Draft order management methods
-  async setDraftOrder() {
-    if (!this.selectedDraftClass?.id) return;
-    
-    try {
-      // Get teams for the selected league
-      const leagueTeams = this.teams.filter(t => (t.league || 'major') === this.selectedDraftClass!.league);
-      
-      if (leagueTeams.length === 0) {
-        alert(`No teams found for ${this.selectedDraftClass.league} league.`);
-        return;
-      }
-      
-      // For now, use reverse standings order (worst team picks first)
-      // In a real implementation, you'd calculate this based on actual standings
-      const draftOrder = leagueTeams.map(t => t.id);
-      
-      // Update the draft class with the order
-      const classRef = doc(this.firestore, `draftClasses/${this.selectedDraftClass.id}`);
-      await updateDoc(classRef, {
-        draftOrder: draftOrder,
-        draftOrderSet: true
-      });
-      
-      // Reload draft classes
-      await this.loadDraftClasses();
-      
-      alert('Draft order has been set!');
-    } catch (error) {
-      console.error('Error setting draft order:', error);
-      alert('Failed to set draft order. Please try again.');
-    }
   }
 }

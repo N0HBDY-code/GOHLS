@@ -18,7 +18,7 @@
         <a class="nav-link" 
            [class.active]="currentView === 'current'"
            (click)="currentView = 'current'">
-          <i class="fas fa-hockey-puck me-1"></i> Draft Management
+          <i class="fas fa-hockey-puck me-1"></i> Current Draft
         </a>
       </li>
       <li class="nav-item">
@@ -35,7 +35,7 @@
   <div *ngIf="indexError" class="alert alert-warning mb-4">
     <h5><i class="fas fa-exclamation-triangle me-2"></i>Firestore Index Required</h5>
     <p>Some features require a Firestore index that hasn't been created yet. Please click the link below to create the required index:</p>
-    <a [href]="indexUrl" target="_blank" class="btn btn-primary">
+    <a [href]="getIndexUrl()" target="_blank" class="btn btn-primary">
       <i class="fas fa-external-link-alt me-1"></i>Create Required Index
     </a>
     <p class="mt-2 mb-0"><small>After creating the index, it may take a few minutes to become active. Refresh the page after the index is created.</small></p>
@@ -90,6 +90,9 @@
                 </div>
                 <small class="d-block text-muted mt-1">
                   {{ draftClass.players.length }} players • {{ draftClass.league | titlecase }} League
+                </small>
+                <small class="d-block text-muted">
+                  Draft Order: {{ draftClass.draftOrderSet ? 'Set' : 'Not Set' }}
                 </small>
               </button>
             </div>
@@ -211,238 +214,204 @@
     </div>
   </div>
 
-  <!-- Draft Management View -->
+  <!-- Current Draft View -->
   <div *ngIf="currentView === 'current'">
+    <!-- Draft Class Selection -->
     <div class="card mb-4">
-      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Draft Management</h5>
-        <button *ngIf="canManageDraft" 
-                class="btn btn-light btn-sm"
-                (click)="showCreateDraftModal = true">
-          <i class="fas fa-plus me-1"></i>Create New Draft
-        </button>
+      <div class="card-header">
+        <h5 class="mb-0">Select Draft Class</h5>
       </div>
       <div class="card-body">
-        <div *ngIf="loadingDraft" class="text-center py-4">
-          <div class="spinner-border text-primary"></div>
-          <p class="mt-2 text-muted">Loading draft data...</p>
-        </div>
-
-        <div *ngIf="!loadingDraft && drafts.length === 0" class="text-center py-4">
-          <i class="fas fa-hockey-puck fa-3x text-muted mb-3"></i>
-          <h5 class="text-muted">No Drafts Available</h5>
-          <p class="text-muted">No drafts have been created yet.</p>
-          <button *ngIf="canManageDraft" 
-                  class="btn btn-primary"
-                  (click)="showCreateDraftModal = true">
-            <i class="fas fa-plus me-1"></i>Create New Draft
-          </button>
-        </div>
-
-        <div *ngIf="!loadingDraft && drafts.length > 0">
-          <!-- Draft Selection -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <label class="form-label">Select Draft</label>
-              <select class="form-select" 
-                      [(ngModel)]="selectedDraft" 
-                      (ngModelChange)="selectDraft($event)">
-                <option [ngValue]="null">-- Select a Draft --</option>
-                <option *ngFor="let draft of drafts" [ngValue]="draft">
-                  Season {{ draft.season }} {{ draft.league | titlecase }} League Draft
-                  <span *ngIf="draft.status !== 'not_started'"> - {{ getDraftStatusText(draft.status) }}</span>
-                </option>
-              </select>
-            </div>
-            <div class="col-md-6 d-flex align-items-end">
-              <div *ngIf="selectedDraft" class="d-flex gap-2">
-                <button *ngIf="canManageDraft && selectedDraft.status === 'not_started'" 
-                        class="btn btn-success"
-                        (click)="startDraft()">
-                  <i class="fas fa-play me-1"></i>Start Draft
-                </button>
-                <button *ngIf="canManageDraft && selectedDraft.status === 'in_progress'" 
-                        class="btn btn-danger"
-                        (click)="endDraft()">
-                  <i class="fas fa-stop me-1"></i>End Draft
-                </button>
-                <button *ngIf="canManageDraft && draftOrder.length === 0" 
-                        class="btn btn-primary"
-                        (click)="openManageDraftOrderModal()">
-                  <i class="fas fa-sort-amount-down me-1"></i>Set Draft Order
-                </button>
-                <button *ngIf="isDeveloper" 
-                        class="btn btn-outline-danger"
-                        (click)="deleteDraft(selectedDraft)">
-                  <i class="fas fa-trash me-1"></i>Delete Draft
-                </button>
-              </div>
-            </div>
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <select class="form-select" [(ngModel)]="selectedDraftClassForDraft" (change)="loadCurrentDraft()">
+              <option [ngValue]="null">-- Select a Draft Class --</option>
+              <option *ngFor="let draftClass of draftClasses" [ngValue]="draftClass">
+                Season {{ draftClass.season }} - {{ draftClass.status | titlecase }} 
+                ({{ draftClass.players.length }} players)
+              </option>
+            </select>
           </div>
-
-          <!-- Draft Status -->
-          <div *ngIf="selectedDraft" class="alert" 
-               [class.alert-warning]="selectedDraft.status === 'not_started'"
-               [class.alert-info]="selectedDraft.status === 'in_progress'"
-               [class.alert-success]="selectedDraft.status === 'completed'">
-            <div class="d-flex justify-content-between align-items-center">
-              <div>
-                <h5 class="mb-1">
-                  <i class="fas" 
-                     [class.fa-clock]="selectedDraft.status === 'not_started'"
-                     [class.fa-play]="selectedDraft.status === 'in_progress'"
-                     [class.fa-check-circle]="selectedDraft.status === 'completed'"></i>
-                  {{ getDraftStatusText(selectedDraft.status) }}
-                </h5>
-                <p class="mb-0">
-                  {{ selectedDraft.status === 'not_started' ? 
-                     'The draft has not started yet. Set the draft order and start the draft when ready.' : 
-                     (selectedDraft.status === 'in_progress' ? 
-                      'The draft is currently in progress. Make your selections below.' : 
-                      'The draft has been completed.') }}
-                </p>
-              </div>
-              <span class="badge" 
-                    [ngClass]="getDraftStatusBadgeClass(selectedDraft.status)">
-                {{ getDraftStatusText(selectedDraft.status) }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Current Pick -->
-          <div *ngIf="selectedDraft && selectedDraft.status === 'in_progress'" class="card mb-4 border-primary">
-            <div class="card-header bg-primary text-white">
-              <h5 class="mb-0">Current Selection</h5>
-            </div>
-            <div class="card-body">
-              <div class="row align-items-center">
-                <div class="col-md-2 text-center">
-                  <div class="draft-pick-badge">
-                    <div class="round">Round {{ currentRound }}</div>
-                    <div class="pick">Pick {{ currentPick }}</div>
-                  </div>
-                </div>
-                <div class="col-md-4">
-                  <div *ngIf="getCurrentDraftPick() as pick" class="d-flex align-items-center">
-                    <img *ngIf="getTeamLogo(pick.teamId)" 
-                         [src]="getTeamLogo(pick.teamId)" 
-                         alt="Team Logo"
-                         class="team-logo-small me-2">
-                    <div>
-                      <h5 class="mb-1">{{ pick.teamName }}</h5>
-                      <p class="mb-0 text-muted" *ngIf="pick.originalTeamId !== pick.teamId">
-                        <small>From: {{ pick.originalTeamName }}</small>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-                <div class="col-md-6 text-end">
-                  <button *ngIf="canManageDraft && getCurrentDraftPick() && !getCurrentDraftPick()?.completed" 
-                          class="btn btn-primary"
-                          (click)="openMakePickModal(getCurrentDraftPick()!)">
-                    <i class="fas fa-user-plus me-1"></i>Make Selection
-                  </button>
-                  <div *ngIf="getCurrentDraftPick()?.completed" class="alert alert-success mb-0">
-                    <i class="fas fa-check-circle me-1"></i>
-                    <strong>{{ getCurrentDraftPick()?.playerName }}</strong> has been selected
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Draft Board -->
-          <div *ngIf="selectedDraft && draftPicks.length > 0" class="card">
-            <div class="card-header">
-              <h5 class="mb-0">Draft Board - Season {{ selectedDraft.season }}</h5>
-            </div>
-            <div class="card-body p-0">
-              <!-- Round Navigation -->
-              <div class="draft-round-nav">
-                <div class="btn-group">
-                  <button *ngFor="let round of [1, 2, 3, 4, 5, 6, 7]"
-                          class="btn"
-                          [class.btn-primary]="currentRound === round"
-                          [class.btn-outline-primary]="currentRound !== round"
-                          (click)="goToRound(round)">
-                    Round {{ round }}
-                  </button>
-                </div>
-              </div>
-
-              <!-- Round Picks -->
-              <div class="draft-round-picks">
-                <div class="table-responsive">
-                  <table class="table table-hover mb-0">
-                    <thead>
-                      <tr>
-                        <th>Pick</th>
-                        <th>Team</th>
-                        <th>Player</th>
-                        <th>Position</th>
-                        <th>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr *ngFor="let pick of getDraftPicksForRound(currentRound)"
-                          [class.table-success]="pick.completed"
-                          [class.table-active]="pick.round === currentRound && pick.pick === currentPick && !pick.completed">
-                        <td>{{ pick.pick }}</td>
-                        <td>
-                          <div class="d-flex align-items-center">
-                            <img *ngIf="getTeamLogo(pick.teamId)" 
-                                [src]="getTeamLogo(pick.teamId)" 
-                                alt="Team Logo"
-                                class="team-logo-small me-2">
-                            <span>{{ pick.teamName }}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span *ngIf="pick.playerName">{{ pick.playerName }}</span>
-                          <span *ngIf="!pick.playerName" class="text-muted">Not selected</span>
-                        </td>
-                        <td>
-                          <span *ngIf="pick.playerId" class="badge bg-primary">Position</span>
-                          <span *ngIf="!pick.playerId">-</span>
-                        </td>
-                        <td>
-                          <button *ngIf="canManageDraft && selectedDraft.status === 'in_progress' && !pick.completed" 
-                                  class="btn btn-sm btn-outline-primary"
-                                  (click)="openMakePickModal(pick)">
-                            <i class="fas fa-user-plus me-1"></i>Select
-                          </button>
-                          <span *ngIf="pick.completed" class="badge bg-success">
-                            <i class="fas fa-check me-1"></i>Completed
-                          </span>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              
-              <!-- No Draft Order Message -->
-              <div *ngIf="draftOrder.length === 0" class="text-center py-4">
-                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
-                <h5 class="text-muted">No Draft Order Set</h5>
-                <p class="text-muted">The draft order has not been set for this draft.</p>
-                <button *ngIf="canManageDraft" 
-                        class="btn btn-primary"
-                        (click)="openManageDraftOrderModal()">
-                  <i class="fas fa-sort-amount-down me-1"></i>Set Draft Order
-                </button>
-              </div>
-            </div>
-          </div>
-          
-          <!-- No Draft Selected Message -->
-          <div *ngIf="!selectedDraft" class="text-center py-4">
-            <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
-            <h5 class="text-muted">Select a Draft</h5>
-            <p class="text-muted">Choose a draft from the dropdown above to view details.</p>
+          <div class="col-md-4 text-end">
+            <button *ngIf="canManageDraft && selectedDraftClassForDraft && !selectedDraftClassForDraft.draftOrderSet" 
+                    class="btn btn-warning me-2"
+                    (click)="setDraftOrder()">
+              <i class="fas fa-sort me-1"></i>Set Draft Order
+            </button>
+            <button *ngIf="canManageDraft && selectedDraftClassForDraft?.draftOrderSet && !draftInProgress" 
+                    class="btn btn-success"
+                    (click)="startDraft()">
+              <i class="fas fa-play me-1"></i>Start Draft
+            </button>
+            <button *ngIf="canManageDraft && draftInProgress" 
+                    class="btn btn-danger"
+                    (click)="endDraft()">
+              <i class="fas fa-stop me-1"></i>End Draft
+            </button>
           </div>
         </div>
       </div>
+    </div>
+
+    <div *ngIf="selectedDraftClassForDraft">
+      <!-- Draft Status -->
+      <div class="alert" 
+           [class.alert-warning]="!selectedDraftClassForDraft.draftOrderSet"
+           [class.alert-info]="selectedDraftClassForDraft.draftOrderSet && !draftInProgress"
+           [class.alert-success]="draftInProgress">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h5 class="mb-1">
+              <i class="fas" 
+                 [class.fa-exclamation-triangle]="!selectedDraftClassForDraft.draftOrderSet"
+                 [class.fa-clock]="selectedDraftClassForDraft.draftOrderSet && !draftInProgress"
+                 [class.fa-play]="draftInProgress"></i>
+              <span *ngIf="!selectedDraftClassForDraft.draftOrderSet">Draft Order Not Set</span>
+              <span *ngIf="selectedDraftClassForDraft.draftOrderSet && !draftInProgress">Draft Ready</span>
+              <span *ngIf="draftInProgress">Draft In Progress</span>
+            </h5>
+            <p class="mb-0">
+              <span *ngIf="!selectedDraftClassForDraft.draftOrderSet">
+                Set the draft order before starting the draft.
+              </span>
+              <span *ngIf="selectedDraftClassForDraft.draftOrderSet && !draftInProgress">
+                Draft order is set. Ready to begin drafting.
+              </span>
+              <span *ngIf="draftInProgress">
+                The draft is currently in progress. Make your selections below.
+              </span>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Current Pick -->
+      <div *ngIf="draftInProgress" class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0">Current Selection</h5>
+        </div>
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-md-2 text-center">
+              <div class="draft-pick-badge">
+                <div class="round">Round {{ currentRound }}</div>
+                <div class="pick">Pick {{ currentPick }}</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div *ngIf="getCurrentDraftPick() as pick" class="d-flex align-items-center">
+                <img *ngIf="getTeamLogo(pick.teamId)" 
+                     [src]="getTeamLogo(pick.teamId)" 
+                     alt="Team Logo"
+                     class="team-logo-small me-2">
+                <div>
+                  <h5 class="mb-1">{{ pick.teamName }}</h5>
+                  <p class="mb-0 text-muted" *ngIf="pick.originalTeamId !== pick.teamId">
+                    <small>From: {{ pick.originalTeamName }}</small>
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 text-end">
+              <button *ngIf="canManageDraft && getCurrentDraftPick() && !getCurrentDraftPick()?.completed" 
+                      class="btn btn-primary"
+                      (click)="openMakePickModal(getCurrentDraftPick()!)">
+                <i class="fas fa-user-plus me-1"></i>Make Selection
+              </button>
+              <div *ngIf="getCurrentDraftPick()?.completed" class="alert alert-success mb-0">
+                <i class="fas fa-check-circle me-1"></i>
+                <strong>{{ getCurrentDraftPick()?.playerName }}</strong> has been selected
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Draft Board -->
+      <div class="card" *ngIf="selectedDraftClassForDraft.draftOrderSet">
+        <div class="card-header">
+          <h5 class="mb-0">Draft Board</h5>
+        </div>
+        <div class="card-body p-0">
+          <!-- Round Navigation -->
+          <div class="draft-round-nav">
+            <div class="btn-group">
+              <button *ngFor="let round of [1, 2, 3, 4, 5, 6, 7]"
+                      class="btn"
+                      [class.btn-primary]="currentRound === round"
+                      [class.btn-outline-primary]="currentRound !== round"
+                      (click)="goToRound(round)">
+                Round {{ round }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Round Picks -->
+          <div class="draft-round-picks">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Pick</th>
+                    <th>Team</th>
+                    <th>Player</th>
+                    <th>Position</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let pick of getDraftPicksForRound(currentRound)"
+                      [class.table-success]="pick.completed"
+                      [class.table-active]="pick.round === currentRound && pick.pick === currentPick && !pick.completed">
+                    <td>{{ pick.pick }}</td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <img *ngIf="getTeamLogo(pick.teamId)" 
+                            [src]="getTeamLogo(pick.teamId)" 
+                            alt="Team Logo"
+                            class="team-logo-small me-2">
+                        <span>{{ pick.teamName }}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span *ngIf="pick.playerName">{{ pick.playerName }}</span>
+                      <span *ngIf="!pick.playerName" class="text-muted">Not selected</span>
+                    </td>
+                    <td>
+                      <span *ngIf="pick.playerId" class="badge bg-primary">Position</span>
+                      <span *ngIf="!pick.playerId">-</span>
+                    </td>
+                    <td>
+                      <button *ngIf="canManageDraft && draftInProgress && !pick.completed" 
+                              class="btn btn-sm btn-outline-primary"
+                              (click)="openMakePickModal(pick)">
+                        <i class="fas fa-user-plus me-1"></i>Select
+                      </button>
+                      <span *ngIf="pick.completed" class="badge bg-success">
+                        <i class="fas fa-check me-1"></i>Completed
+                      </span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- No Draft Order Message -->
+      <div *ngIf="!selectedDraftClassForDraft.draftOrderSet" class="text-center py-4">
+        <i class="fas fa-sort fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">Draft Order Not Set</h5>
+        <p class="text-muted">Set the draft order to begin the draft process.</p>
+      </div>
+    </div>
+
+    <!-- No Draft Class Selected -->
+    <div *ngIf="!selectedDraftClassForDraft" class="text-center py-4">
+      <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">Select a Draft Class</h5>
+      <p class="text-muted">Choose a draft class to manage the draft.</p>
     </div>
   </div>
 
@@ -561,68 +530,73 @@
   </div>
 </div>
 
-<!-- Create Draft Modal -->
+<!-- Set Draft Order Modal -->
 <div class="modal fade show" 
-     *ngIf="showCreateDraftModal" 
+     *ngIf="showSetOrderModal" 
      tabindex="-1" 
      style="display: block; background: rgba(0,0,0,0.5);">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">
-          <i class="fas fa-plus me-2"></i>Create New Draft
+          <i class="fas fa-sort me-2"></i>Set Draft Order
         </h5>
-        <button type="button" class="btn-close" (click)="showCreateDraftModal = false"></button>
+        <button type="button" class="btn-close" (click)="showSetOrderModal = false"></button>
       </div>
       <div class="modal-body">
-        <div class="mb-3">
-          <label for="draftSeason" class="form-label">Season</label>
-          <input type="number" 
-                 id="draftSeason"
-                 class="form-control" 
-                 [(ngModel)]="newDraftSeason"
-                 min="1">
-          <div class="form-text">
-            Enter the season number for this draft.
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label for="draftLeague" class="form-label">League</label>
-          <select id="draftLeague" class="form-select" [(ngModel)]="newDraftLeague">
-            <option value="major">Major League</option>
-            <option value="minor">Minor League</option>
-          </select>
-          <div class="form-text">
-            Select which league this draft is for.
-          </div>
-        </div>
-
-        <div class="mb-3">
-          <label for="draftRounds" class="form-label">Number of Rounds</label>
-          <input type="number" 
-                 id="draftRounds"
-                 class="form-control" 
-                 [(ngModel)]="newDraftRounds"
-                 min="1"
-                 max="10">
-          <div class="form-text">
-            Enter the number of rounds for this draft.
-          </div>
-        </div>
-
         <div class="alert alert-info">
           <i class="fas fa-info-circle me-2"></i>
-          <strong>Note:</strong> After creating the draft, you'll need to set the draft order. 
-          Each team in the selected league will get one pick per round.
+          <strong>Draft Order:</strong> Arrange teams in the order they will pick. The team at the top picks first.
+        </div>
+
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Pick Order</th>
+                <th>Team</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let team of draftOrderTeams; let i = index">
+                <td>{{ i + 1 }}</td>
+                <td>
+                  <div class="d-flex align-items-center">
+                    <img *ngIf="team.logoUrl" 
+                         [src]="team.logoUrl" 
+                         alt="Team Logo"
+                         class="team-logo-small me-2">
+                    <span>{{ team.name }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary"
+                            [disabled]="i === 0"
+                            (click)="moveTeamUp(i)"
+                            title="Move up">
+                      <i class="fas fa-arrow-up"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            [disabled]="i === draftOrderTeams.length - 1"
+                            (click)="moveTeamDown(i)"
+                            title="Move down">
+                      <i class="fas fa-arrow-down"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="showCreateDraftModal = false">Cancel</button>
+        <button type="button" class="btn btn-secondary" (click)="showSetOrderModal = false">Cancel</button>
         <button type="button" 
                 class="btn btn-primary" 
-                (click)="createNewDraft()">
-          <i class="fas fa-plus me-1"></i>Create Draft
+                (click)="saveDraftOrder()">
+          <i class="fas fa-save me-1"></i>Save Draft Order
         </button>
       </div>
     </div>
@@ -749,8 +723,7 @@
         <!-- Empty State -->
         <div *ngIf="availablePlayers.length === 0" class="text-center py-4">
           <i class="fas fa-search fa-2x text-muted mb-2"></i>
-          <p class="text-muted">No available players found for this draft class.</p>
-          <p class="text-muted small">Make sure players have been assigned to the correct draft class.</p>
+          <p class="text-muted">No available players found.</p>
         </div>
       </div>
       <div class="modal-footer">
@@ -760,108 +733,6 @@
                 [disabled]="!selectedPlayerId"
                 (click)="makeDraftPick()">
           <i class="fas fa-check me-1"></i>Confirm Selection
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Manage Draft Order Modal -->
-<div class="modal fade show" 
-     *ngIf="showManageDraftOrderModal" 
-     tabindex="-1" 
-     style="display: block; background: rgba(0,0,0,0.5);">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">
-          <i class="fas fa-sort-amount-down me-2"></i>Manage Draft Order
-        </h5>
-        <button type="button" class="btn-close" (click)="showManageDraftOrderModal = false"></button>
-      </div>
-      <div class="modal-body">
-        <div class="alert alert-info">
-          <i class="fas fa-info-circle me-2"></i>
-          <strong>Note:</strong> Set the draft order by adding teams from the available list. 
-          The order of teams determines the draft pick order for each round.
-        </div>
-        
-        <div class="row">
-          <!-- Available Teams -->
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header">
-                <h6 class="mb-0">Available Teams</h6>
-              </div>
-              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                <div *ngFor="let team of availableTeams" class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
-                  <div class="d-flex align-items-center">
-                    <img *ngIf="team.logoUrl" 
-                         [src]="team.logoUrl" 
-                         alt="Team Logo"
-                         class="team-logo-small me-2"
-                         style="width: 30px; height: 30px;">
-                    <span>{{ team.name }}</span>
-                  </div>
-                  <button class="btn btn-sm btn-primary" (click)="addTeamToDraftOrder(team)">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </div>
-                <div *ngIf="availableTeams.length === 0" class="text-center py-3 text-muted">
-                  All teams have been added to the draft order.
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Draft Order -->
-          <div class="col-md-6">
-            <div class="card">
-              <div class="card-header">
-                <h6 class="mb-0">Draft Order</h6>
-              </div>
-              <div class="card-body" style="max-height: 400px; overflow-y: auto;">
-                <div *ngFor="let team of draftOrderTeams; let i = index" class="d-flex align-items-center justify-content-between mb-2 p-2 border rounded">
-                  <div class="d-flex align-items-center">
-                    <span class="badge bg-primary me-2">{{ i + 1 }}</span>
-                    <img *ngIf="team.logoUrl" 
-                         [src]="team.logoUrl" 
-                         alt="Team Logo"
-                         class="team-logo-small me-2"
-                         style="width: 30px; height: 30px;">
-                    <span>{{ team.name }}</span>
-                  </div>
-                  <div class="d-flex gap-1">
-                    <button class="btn btn-sm btn-outline-secondary" 
-                            [disabled]="i === 0"
-                            (click)="moveTeamUp(i)">
-                      <i class="fas fa-arrow-up"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary" 
-                            [disabled]="i === draftOrderTeams.length - 1"
-                            (click)="moveTeamDown(i)">
-                      <i class="fas fa-arrow-down"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" (click)="removeTeamFromDraftOrder(team)">
-                      <i class="fas fa-times"></i>
-                    </button>
-                  </div>
-                </div>
-                <div *ngIf="draftOrderTeams.length === 0" class="text-center py-3 text-muted">
-                  Add teams from the available list to set the draft order.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" (click)="showManageDraftOrderModal = false">Cancel</button>
-        <button type="button" 
-                class="btn btn-primary" 
-                [disabled]="draftOrderTeams.length === 0"
-                (click)="saveDraftOrder()">
-          <i class="fas fa-save me-1"></i>Save Draft Order
         </button>
       </div>
     </div>
