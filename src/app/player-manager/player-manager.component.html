@@ -114,14 +114,13 @@
       </div>
       <div class="col-md-4">
         <div class="stat-grid">
-          <!-- Overall Rating with Dynamic Color Circular Progress -->
+          <!-- Overall Rating with Standard Blue Circle -->
           <div class="stat-item overall-rating">
             <div class="stat-label">Overall</div>
             <div class="overall-container">
               <div class="circular-progress" 
-                   [style.background]="'conic-gradient(' + getOverallColor(playerAttributes['OVERALL'] || 50) + ' 0deg ' + (getOverallProgress(playerAttributes['OVERALL'] || 50) * 3.6) + 'deg, #e9ecef ' + (getOverallProgress(playerAttributes['OVERALL'] || 50) * 3.6) + 'deg 360deg)'">
-                <div class="overall-value" 
-                     [style.color]="getOverallColor(playerAttributes['OVERALL'] || 50)">
+                   [style.background]="'conic-gradient(#0d6efd 0deg ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg, #e9ecef ' + ((playerAttributes['OVERALL'] || 50) * 3.6) + 'deg 360deg)'">
+                <div class="overall-value" style="color: #0d6efd">
                   {{ playerAttributes['OVERALL'] || 50 }}
                 </div>
               </div>
@@ -148,41 +147,7 @@
     </div>
   </div>
 
-  <!-- Navigation Tabs -->
-  <div class="mb-4">
-    <ul class="nav nav-tabs">
-      <li class="nav-item">
-        <a class="nav-link" 
-           [class.active]="currentView === 'overview'"
-           (click)="onTabChange('overview')">
-          <i class="fas fa-user me-1"></i> Overview
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" 
-           [class.active]="currentView === 'history'"
-           (click)="onTabChange('history')">
-          <i class="fas fa-history me-1"></i> Career History
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" 
-           [class.active]="currentView === 'stats'"
-           (click)="onTabChange('stats')">
-          <i class="fas fa-chart-line me-1"></i> Game Stats
-        </a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" 
-           [class.active]="currentView === 'trainings'"
-           (click)="onTabChange('trainings')">
-          <i class="fas fa-dumbbell me-1"></i> Training History
-        </a>
-      </li>
-    </ul>
-  </div>
-
-  <!-- Player Attributes Section - Full Width Below Tabs -->
+  <!-- Player Attributes Section - Full Width Below Header -->
   <div class="attributes-section-full">
     <h5 class="attributes-title">
       Player Attributes
@@ -252,6 +217,40 @@
         <strong>{{ trainingType }}</strong> has been processed and applied to your player's attributes.
       </small>
     </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="mb-4">
+    <ul class="nav nav-tabs">
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'overview'"
+           (click)="onTabChange('overview')">
+          <i class="fas fa-user me-1"></i> Overview
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'history'"
+           (click)="onTabChange('history')">
+          <i class="fas fa-history me-1"></i> Career History
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'stats'"
+           (click)="onTabChange('stats')">
+          <i class="fas fa-chart-line me-1"></i> Game Stats
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" 
+           [class.active]="currentView === 'trainings'"
+           (click)="onTabChange('trainings')">
+          <i class="fas fa-dumbbell me-1"></i> Training History
+        </a>
+      </li>
+    </ul>
   </div>
 
   <!-- Overview Tab -->

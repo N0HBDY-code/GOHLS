@@ -3,7 +3,6 @@ import { Firestore, collection, getDocs, addDoc, query, where, doc, setDoc, getD
 import { Auth } from '@angular/fire/auth';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { serverTimestamp } from '@angular/fire/firestore';
 import { Router } from '@angular/router';
 
 @Component({
@@ -494,21 +493,6 @@ export class PlayerManagerComponent implements OnInit, OnDestroy {
         }
         break;
     }
-  }
-
-  // Method to get overall rating color
-  getOverallColor(overall: number): string {
-    const clampedOverall = Math.max(50, Math.min(99, overall));
-    const percentage = (clampedOverall - 50) / (99 - 50);
-    const red = Math.round(220 - (220 - 34) * percentage);
-    const green = Math.round(38 + (197 - 38) * percentage);
-    const blue = Math.round(38 + (94 - 38) * percentage);
-    return `rgb(${red}, ${green}, ${blue})`;
-  }
-
-  getOverallProgress(overall: number): number {
-    const clampedOverall = Math.max(50, Math.min(99, overall));
-    return ((clampedOverall - 50) / (99 - 50)) * 100;
   }
 
   async loadProgressionSettings() {
