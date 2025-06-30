@@ -387,6 +387,7 @@ export class DraftComponent implements OnInit {
   
   async loadCurrentDraft() {
     this.loadingDraft = true;
+    this.indexError = false;
     
     try {
       // Get current league season
@@ -436,20 +437,43 @@ export class DraftComponent implements OnInit {
         }
       }
       
-      // Load draft picks
-      const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
-      const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
-      const picksSnap = await getDocs(picksQuery);
-      
-      if (picksSnap.empty && this.canManageDraft) {
-        // Generate draft picks if none exist
-        await this.generateDraftPicks();
+      try {
+        // Load draft picks
+        const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
+        const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
+        const picksSnap = await getDocs(picksQuery);
         
-        // Reload picks
-        const newPicksSnap = await getDocs(picksQuery);
-        this.draftPicks = await this.processDraftPicks(newPicksSnap);
-      } else {
-        this.draftPicks = await this.processDraftPicks(picksSnap);
+        if (picksSnap.empty && this.canManageDraft) {
+          // Generate draft picks if none exist
+          await this.generateDraftPicks();
+          
+          // Reload picks
+          const newPicksSnap = await getDocs(picksQuery);
+          this.draftPicks = await this.processDraftPicks(newPicksSnap);
+        } else {
+          this.draftPicks = await this.processDraftPicks(picksSnap);
+        }
+      } catch (error: any) {
+        console.error('Error loading draft picks:', error);
+        
+        // Check if it's an index error
+        if (error.message && error.message.includes('requires an index')) {
+          this.indexError = true;
+          this.indexErrorMessage = error.message;
+          
+          // Try to load picks without ordering
+          const picksRef = collection(this.firestore, `drafts/${this.currentDraftSeason}/picks`);
+          const picksSnap = await getDocs(picksRef);
+          
+          if (!picksSnap.empty) {
+            // Process picks and sort manually
+            const picks = await this.processDraftPicks(picksSnap);
+            this.draftPicks = picks.sort((a, b) => {
+              if (a.round !== b.round) return a.round - b.round;
+              return a.pick - b.pick;
+            });
+          }
+        }
       }
       
       // Determine current round and pick
@@ -462,8 +486,14 @@ export class DraftComponent implements OnInit {
       if (settingsSnap.exists()) {
         this.draftInProgress = (settingsSnap.data() as any)['inProgress'] || false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading current draft:', error);
+      
+      // Check if it's an index error
+      if (error.message && error.message.includes('requires an index')) {
+        this.indexError = true;
+        this.indexErrorMessage = error.message;
+      }
     } finally {
       this.loadingDraft = false;
     }
@@ -564,6 +594,7 @@ export class DraftComponent implements OnInit {
   
   async loadDraftHistory() {
     this.loadingHistory = true;
+    this.indexError = false;
     
     try {
       // Load past drafts (excluding current season)
@@ -580,19 +611,47 @@ export class DraftComponent implements OnInit {
           const data = docSnapshot.data() as any;
           const season = data['season'];
           
-          // Load picks for this season
-          const picksRef = collection(this.firestore, `draftHistory/${season}/picks`);
-          const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
-          const picksSnap = await getDocs(picksQuery);
-          
-          return this.processDraftPicks(picksSnap);
+          try {
+            // Load picks for this season
+            const picksRef = collection(this.firestore, `draftHistory/${season}/picks`);
+            const picksQuery = query(picksRef, orderBy('round'), orderBy('pick'));
+            const picksSnap = await getDocs(picksQuery);
+            
+            return this.processDraftPicks(picksSnap);
+          } catch (error: any) {
+            console.error(`Error loading picks for season ${season}:`, error);
+            
+            // Check if it's an index error
+            if (error.message && error.message.includes('requires an index')) {
+              this.indexError = true;
+              this.indexErrorMessage = error.message;
+              
+              // Try to load picks without ordering
+              const picksRef = collection(this.firestore, `draftHistory/${season}/picks`);
+              const picksSnap = await getDocs(picksRef);
+              
+              const picks = await this.processDraftPicks(picksSnap);
+              return picks.sort((a, b) => {
+                if (a.round !== b.round) return a.round - b.round;
+                return a.pick - b.pick;
+              });
+            }
+            
+            return [];
+          }
         });
         
         const historyResults = await Promise.all(historyPromises);
         this.draftHistory = historyResults.flat();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading draft history:', error);
+      
+      // Check if it's an index error
+      if (error.message && error.message.includes('requires an index')) {
+        this.indexError = true;
+        this.indexErrorMessage = error.message;
+      }
     } finally {
       this.loadingHistory = false;
     }
@@ -622,9 +681,9 @@ export class DraftComponent implements OnInit {
       });
       
       this.draftInProgress = true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting draft:', error);
-      alert('Error starting draft: ' + (error as Error).message);
+      alert('Error starting draft: ' + error.message);
     }
   }
   
@@ -680,9 +739,9 @@ export class DraftComponent implements OnInit {
       await this.archiveDraftToHistory();
       
       this.draftInProgress = false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error ending draft:', error);
-      alert('Error ending draft: ' + (error as Error).message);
+      alert('Error ending draft: ' + error.message);
     }
   }
   
