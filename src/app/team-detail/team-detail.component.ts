@@ -168,14 +168,14 @@ export class TeamDetailComponent implements OnInit {
 
       // Only query if there are player IDs to look up
       if (playerIds.size > 0) {
-        const playersRef = collection(this.firestore, 'players');
-        const q = query(playersRef, where('__name__', 'in', Array.from(playerIds)));
-        const playersSnap = await getDocs(q);
-        
-        playersSnap.docs.forEach(doc => {
-          const data = doc.data();
-          this.playerCache.set(doc.id, `${data['firstName']} ${data['lastName']}`);
-        });
+        for (const playerId of playerIds) {
+          const playerRef = doc(this.firestore, `players/${playerId}`);
+          const playerSnap = await getDoc(playerRef);
+          if (playerSnap.exists()) {
+            const data = playerSnap.data() as any;
+            this.playerCache.set(playerId, `${data['firstName']} ${data['lastName']}`);
+          }
+        }
       }
     } finally {
       this.loadingTrades = false;
