@@ -24,6 +24,7 @@ interface DraftClass {
   status: 'upcoming' | 'active' | 'completed';
   startDate?: Date;
   endDate?: Date;
+  league?: 'major' | 'minor';
 }
 
 interface DraftPlayer {
@@ -68,6 +69,28 @@ interface Team {
   logoUrl?: string;
   conference: string;
   division: string;
+  league?: string;
+  points?: number;
+  wins?: number;
+  losses?: number;
+}
+
+interface StandingsTeam {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  conference?: string;
+  division?: string;
+  gamesPlayed: number;
+  wins: number;
+  losses: number;
+  overtimeLosses: number;
+  points: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifferential: number;
+  pointPercentage: number;
+  playoffStatus?: 'league' | 'conference' | 'division' | 'playoff' | 'eliminated' | null;
 }
 
 @Component({
@@ -111,15 +134,19 @@ export class DraftComponent implements OnInit {
   // Draft class management
   showCreateClassModal = false;
   newDraftClassSeason = new Date().getFullYear();
+  newDraftClassLeague: 'major' | 'minor' = 'major';
+  
+  // Draft creation
+  showCreateDraftModal = false;
+  newDraftSeason = new Date().getFullYear();
+  newDraftLeague: 'major' | 'minor' = 'major';
+  newDraftRounds = 7;
   
   // Draft pick management
   showMakePickModal = false;
   selectedDraftPick: DraftPick | null = null;
   availablePlayers: DraftPlayer[] = [];
   selectedPlayerId = '';
-  
-  // Draft settings
-  draftRounds = 7;
   
   // Filters
   positionFilter: string = 'all';
@@ -172,7 +199,8 @@ export class DraftComponent implements OnInit {
           mascot: data['mascot'],
           logoUrl: data['logoUrl'],
           conference: data['conference'],
-          division: data['division']
+          division: data['division'],
+          league: data['league'] || 'major'
         };
       });
     } catch (error) {
@@ -295,7 +323,8 @@ export class DraftComponent implements OnInit {
             players,
             status: data['status'] || 'upcoming',
             startDate: data['startDate'],
-            endDate: data['endDate']
+            endDate: data['endDate'],
+            league: data['league'] || 'major'
           });
         } catch (error: any) {
           console.error(`Error loading players for draft class ${data['season']}:`, error);
@@ -311,7 +340,8 @@ export class DraftComponent implements OnInit {
               players: [],
               status: data['status'] || 'upcoming',
               startDate: data['startDate'],
-              endDate: data['endDate']
+              endDate: data['endDate'],
+              league: data['league'] || 'major'
             });
           }
         }
@@ -343,7 +373,8 @@ export class DraftComponent implements OnInit {
       await addDoc(collection(this.firestore, 'draftClasses'), {
         season,
         status: 'upcoming',
-        createdAt: new Date()
+        createdAt: new Date(),
+        league: 'major'
       });
       
       console.log(`Created initial draft class for season ${season}`);
@@ -383,7 +414,8 @@ export class DraftComponent implements OnInit {
               mascot: data['mascot'],
               logoUrl: data['logoUrl'],
               conference: data['conference'],
-              division: data['division']
+              division: data['division'],
+              league: data['league'] || 'major'
             };
           }
           
@@ -811,7 +843,8 @@ export class DraftComponent implements OnInit {
       await addDoc(collection(this.firestore, 'draftClasses'), {
         season: this.newDraftClassSeason,
         status: 'upcoming',
-        createdAt: new Date()
+        createdAt: new Date(),
+        league: this.newDraftClassLeague
       });
       
       // Close modal and reload
@@ -819,6 +852,161 @@ export class DraftComponent implements OnInit {
       await this.loadDraftClasses();
     } catch (error) {
       console.error('Error creating draft class:', error);
+    }
+  }
+  
+  async createNewDraft() {
+    if (!this.canManageDraft) return;
+    
+    try {
+      // Get teams for the selected league
+      const leagueTeams = this.teams.filter(team => (team.league || 'major') === this.newDraftLeague);
+      
+      if (leagueTeams.length === 0) {
+        alert(`No teams found for ${this.newDraftLeague} league.`);
+        return;
+      }
+      
+      // Get standings to determine draft order
+      const standings = await this.getStandingsForLeague(this.newDraftLeague);
+      
+      // Sort teams by points (worst to best)
+      const sortedTeams = [...standings].sort((a, b) => {
+        // First by points
+        if (a.points !== b.points) return a.points - b.points;
+        // Then by point percentage
+        if (a.pointPercentage !== b.pointPercentage) return a.pointPercentage - b.pointPercentage;
+        // Then by goal differential
+        return a.goalDifferential - b.goalDifferential;
+      });
+      
+      // Map standings teams to actual team objects
+      const draftOrder = sortedTeams.map(standingsTeam => {
+        return this.teams.find(team => team.id === standingsTeam.id) as Team;
+      }).filter(team => team !== undefined);
+      
+      // Create draft settings
+      const settingsRef = firestoreDoc(this.firestore, `drafts/${this.newDraftSeason}/settings/order`);
+      await setDoc(settingsRef, {
+        teams: draftOrder.map(t => t.id),
+        league: this.newDraftLeague,
+        rounds: this.newDraftRounds,
+        createdAt: new Date()
+      });
+      
+      // Generate draft picks
+      const batch = writeBatch(this.firestore);
+      
+      for (let round = 1; round <= this.newDraftRounds; round++) {
+        for (let pick = 1; pick <= draftOrder.length; pick++) {
+          const teamIndex = pick - 1;
+          const team = draftOrder[teamIndex];
+          
+          const pickRef = firestoreDoc(collection(this.firestore, `drafts/${this.newDraftSeason}/picks`));
+          
+          batch.set(pickRef, {
+            season: this.newDraftSeason,
+            round,
+            pick,
+            teamId: team.id,
+            originalTeamId: team.id,
+            completed: false,
+            createdAt: new Date()
+          });
+        }
+      }
+      
+      await batch.commit();
+      
+      // Create draft status
+      const statusRef = firestoreDoc(this.firestore, `drafts/${this.newDraftSeason}/settings/status`);
+      await setDoc(statusRef, {
+        inProgress: false,
+        league: this.newDraftLeague,
+        createdAt: new Date()
+      });
+      
+      // Close modal and reload
+      this.showCreateDraftModal = false;
+      this.currentDraftSeason = this.newDraftSeason;
+      await this.loadCurrentDraft();
+      
+      alert(`Draft created successfully for ${this.newDraftLeague} league with ${this.newDraftRounds} rounds.`);
+    } catch (error) {
+      console.error('Error creating draft:', error);
+      alert('Error creating draft. See console for details.');
+    }
+  }
+  
+  async getStandingsForLeague(league: string): Promise<StandingsTeam[]> {
+    try {
+      // Get all teams for this league
+      const leagueTeams = this.teams.filter(team => (team.league || 'major') === league);
+      
+      // For each team, get their games and calculate standings
+      const standingsPromises = leagueTeams.map(async (team) => {
+        const gamesRef = collection(this.firestore, `teams/${team.id}/games`);
+        const gamesSnapshot = await getDocs(gamesRef);
+        const games = gamesSnapshot.docs.map(doc => doc.data());
+        
+        let wins = 0;
+        let losses = 0;
+        let overtimeLosses = 0;
+        let goalsFor = 0;
+        let goalsAgainst = 0;
+        let gamesPlayed = 0;
+        
+        // Process games for this team
+        games.forEach((gameData: any) => {
+          // Only count games with scores
+          if (gameData.homeScore !== undefined || gameData.awayScore !== undefined) {
+            gamesPlayed++;
+            
+            const isHome = gameData.isHome || false;
+            const teamScore = isHome ? (gameData.homeScore || 0) : (gameData.awayScore || 0);
+            const opponentScore = isHome ? (gameData.awayScore || 0) : (gameData.homeScore || 0);
+            
+            goalsFor += teamScore;
+            goalsAgainst += opponentScore;
+            
+            if (teamScore > opponentScore) {
+              wins++;
+            } else if (teamScore < opponentScore) {
+              // Check if it was an overtime/shootout loss
+              if (gameData.period === 'OT' || gameData.period === 'SO') {
+                overtimeLosses++;
+              } else {
+                losses++;
+              }
+            }
+          }
+        });
+        
+        const points = (wins * 2) + overtimeLosses;
+        const pointPercentage = gamesPlayed > 0 ? points / (gamesPlayed * 2) : 0;
+        
+        return {
+          id: team.id,
+          name: team.name,
+          logoUrl: team.logoUrl,
+          conference: team.conference,
+          division: team.division,
+          gamesPlayed,
+          wins,
+          losses,
+          overtimeLosses,
+          points,
+          goalsFor,
+          goalsAgainst,
+          goalDifferential: goalsFor - goalsAgainst,
+          pointPercentage
+        };
+      });
+      
+      return await Promise.all(standingsPromises);
+    } catch (error) {
+      console.error('Error getting standings for league:', error);
+      return [];
     }
   }
   

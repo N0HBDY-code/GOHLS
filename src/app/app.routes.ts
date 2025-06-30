@@ -48,7 +48,7 @@ export const routes: Routes = [
     {
         path:'analytics',
         component: AnalyticsComponent,
-        title: 'Analytics & Reports'
+        title: 'Stats and Standings'
     },
     {
         path:'games',

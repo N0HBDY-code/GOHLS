@@ -2,7 +2,6 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RosterComponent } from '../roster/roster.component';
 import { Firestore, doc, getDoc, collection, getDocs, query, where } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
 import { ContractService } from '../services/contract.service';
@@ -23,6 +22,11 @@ interface Player {
   capHit?: number;
   signingBonus?: number;
   performanceBonus?: number;
+  archetype?: string;
+  age?: number;
+  height?: number;
+  weight?: number;
+  handedness?: string;
 }
 
 interface Team {
@@ -35,7 +39,7 @@ interface Team {
 @Component({
   selector: 'app-team-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RosterComponent],
+  imports: [CommonModule, FormsModule],
   templateUrl: './team-detail.component.html',
   styleUrls: ['./team-detail.component.css']
 })
@@ -47,6 +51,7 @@ export class TeamDetailComponent implements OnInit {
   showManageModal = false;
   currentTab: 'trades' | 'contracts' | 'freeagents' = 'trades';
   isLoading = false;
+  roster: Player[] = [];
 
   // Trade-related properties
   selectedTradePartner: string = '';
@@ -82,16 +87,57 @@ export class TeamDetailComponent implements OnInit {
         const teamRef = doc(this.firestore, `teams/${this.teamId}`);
         const teamSnap = await getDoc(teamRef);
         if (teamSnap.exists()) {
-          const data = teamSnap.data();
+          const data = teamSnap.data() as any;
           this.teamName = `${data['city']} ${data['mascot']}`;
           this.teamLogo = data['logoUrl'] || '';
         }
 
+        await this.loadRoster();
         await this.loadTradePartners();
         await this.loadIncomingTradeOffers();
       }
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async loadRoster() {
+    try {
+      const rosterRef = collection(this.firestore, `teams/${this.teamId}/roster`);
+      const rosterSnap = await getDocs(rosterRef);
+      
+      this.roster = await Promise.all(rosterSnap.docs.map(async doc => {
+        const data = doc.data() as any;
+        
+        // Get overall rating from attributes
+        let overall = 50;
+        try {
+          const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
+          const attributesSnap = await getDoc(attributesRef);
+          if (attributesSnap.exists()) {
+            overall = (attributesSnap.data() as any)['OVERALL'] || 50;
+          }
+        } catch (error) {
+          console.error('Error loading player attributes:', error);
+        }
+        
+        return {
+          id: doc.id,
+          firstName: data['firstName'] || '',
+          lastName: data['lastName'] || '',
+          position: data['position'] || '',
+          number: data['jerseyNumber'] || 0,
+          archetype: data['archetype'] || '',
+          age: data['age'] || 19,
+          height: data['height'] || '',
+          weight: data['weight'] || '',
+          handedness: data['handedness'] || '',
+          teamId: this.teamId,
+          overall
+        };
+      }));
+    } catch (error) {
+      console.error('Error loading roster:', error);
     }
   }
 
@@ -244,5 +290,32 @@ export class TeamDetailComponent implements OnInit {
     } finally {
       this.isLoading = false;
     }
+  }
+
+  // Helper methods for UI
+  getPositionColor(position: string): string {
+    switch (position) {
+      case 'G': return '#dc3545'; // Red
+      case 'D': return '#fd7e14'; // Orange
+      case 'C': return '#28a745'; // Green
+      case 'LW': return '#17a2b8'; // Teal
+      case 'RW': return '#007bff'; // Blue
+      default: return '#6c757d'; // Gray
+    }
+  }
+  
+  getOverallColor(overall: number): string {
+    // Clamp the value between 50 and 99
+    const clampedOverall = Math.max(50, Math.min(99, overall));
+    
+    // Calculate the percentage from 50 to 99 (0% to 100%)
+    const percentage = (clampedOverall - 50) / (99 - 50);
+    
+    // Use a more vibrant red to green interpolation
+    const red = Math.round(220 - (220 - 34) * percentage);
+    const green = Math.round(38 + (197 - 38) * percentage);
+    const blue = Math.round(38 + (94 - 38) * percentage);
+    
+    return `rgb(${red}, ${green}, ${blue})`;
   }
 }

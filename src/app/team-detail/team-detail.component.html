@@ -202,5 +202,58 @@
     </div>
   </div>
 
-  <app-roster [teamId]="teamId"></app-roster>
+  <!-- Team Roster -->
+  <div class="card">
+    <div class="card-header">
+      <h5 class="mb-0">Team Roster</h5>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-striped table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Position</th>
+              <th>Archetype</th>
+              <th>Age</th>
+              <th>Overall</th>
+              <th>Height</th>
+              <th>Weight</th>
+              <th>Hand</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of roster">
+              <td>{{ player.number }}</td>
+              <td>{{ player.firstName }} {{ player.lastName }}</td>
+              <td>
+                <span class="badge" 
+                      [style.background-color]="getPositionColor(player.position)">
+                  {{ player.position }}
+                </span>
+              </td>
+              <td>{{ player.archetype }}</td>
+              <td>{{ player.age }}</td>
+              <td>
+                <span class="badge" 
+                      [style.background-color]="getOverallColor(player.overall)"
+                      [style.color]="player.overall >= 75 ? 'white' : 'black'">
+                  {{ player.overall }}
+                </span>
+              </td>
+              <td>{{ player.height || '-' }}"</td>
+              <td>{{ player.weight || '-' }} lbs</td>
+              <td>{{ player.handedness || '-' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div *ngIf="roster.length === 0" class="text-center py-4 text-muted">
+        <i class="fas fa-users fa-3x mb-3"></i>
+        <h5>No Players on Roster</h5>
+        <p>This team doesn't have any players yet.</p>
+      </div>
+    </div>
+  </div>
 </div>

@@ -82,7 +82,7 @@
                   </span>
                 </div>
                 <small class="d-block text-muted mt-1">
-                  {{ draftClass.players.length }} players
+                  {{ draftClass.players.length }} players • {{ draftClass.league | titlecase }} League
                 </small>
               </button>
             </div>
@@ -207,8 +207,13 @@
   <!-- Current Draft View -->
   <div *ngIf="currentView === 'current'">
     <div class="card mb-4">
-      <div class="card-header bg-primary text-white">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Season {{ currentDraftSeason }} Draft</h5>
+        <button *ngIf="canManageDraft && draftPicks.length === 0" 
+                class="btn btn-light btn-sm"
+                (click)="showCreateDraftModal = true">
+          <i class="fas fa-plus me-1"></i>Create New Draft
+        </button>
       </div>
       <div class="card-body">
         <div *ngIf="loadingDraft" class="text-center py-4">
@@ -454,6 +459,17 @@
           </div>
         </div>
 
+        <div class="mb-3">
+          <label for="draftClassLeague" class="form-label">League</label>
+          <select id="draftClassLeague" class="form-select" [(ngModel)]="newDraftClassLeague">
+            <option value="major">Major League</option>
+            <option value="minor">Minor League</option>
+          </select>
+          <div class="form-text">
+            Select which league this draft class is for.
+          </div>
+        </div>
+
         <div class="alert alert-info">
           <i class="fas fa-info-circle me-2"></i>
           <strong>Note:</strong> Creating a draft class will allow players to be assigned to this class. 
@@ -466,6 +482,74 @@
                 class="btn btn-primary" 
                 (click)="createDraftClass()">
           <i class="fas fa-plus me-1"></i>Create Draft Class
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Draft Modal -->
+<div class="modal fade show" 
+     *ngIf="showCreateDraftModal" 
+     tabindex="-1" 
+     style="display: block; background: rgba(0,0,0,0.5);">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">
+          <i class="fas fa-plus me-2"></i>Create New Draft
+        </h5>
+        <button type="button" class="btn-close" (click)="showCreateDraftModal = false"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label for="draftSeason" class="form-label">Season</label>
+          <input type="number" 
+                 id="draftSeason"
+                 class="form-control" 
+                 [(ngModel)]="newDraftSeason"
+                 min="1">
+          <div class="form-text">
+            Enter the season number for this draft.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="draftLeague" class="form-label">League</label>
+          <select id="draftLeague" class="form-select" [(ngModel)]="newDraftLeague">
+            <option value="major">Major League</option>
+            <option value="minor">Minor League</option>
+          </select>
+          <div class="form-text">
+            Select which league this draft is for.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label for="draftRounds" class="form-label">Number of Rounds</label>
+          <input type="number" 
+                 id="draftRounds"
+                 class="form-control" 
+                 [(ngModel)]="newDraftRounds"
+                 min="1"
+                 max="10">
+          <div class="form-text">
+            Enter the number of rounds for this draft.
+          </div>
+        </div>
+
+        <div class="alert alert-info">
+          <i class="fas fa-info-circle me-2"></i>
+          <strong>Note:</strong> The draft order will be determined by the standings, with the worst team picking first.
+          Each team in the selected league will get one pick per round.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="showCreateDraftModal = false">Cancel</button>
+        <button type="button" 
+                class="btn btn-primary" 
+                (click)="createNewDraft()">
+          <i class="fas fa-plus me-1"></i>Create Draft
         </button>
       </div>
     </div>

@@ -1,3 +1,15 @@
+/* Loading Animation */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+}
+
+.spinner-border {
+  color: #0d6efd;
+}
+
 .player-header {
   background: white;
   border-radius: 8px;
@@ -506,18 +518,6 @@
   .overall-value {
     font-size: 1rem;
   }
-}
-
-/* Loading Animation */
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 300px;
-}
-
-.spinner-border {
-  color: #0d6efd;
 }
 
 /* Table Enhancements */
