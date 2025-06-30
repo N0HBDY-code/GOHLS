@@ -123,7 +123,7 @@ export class DraftComponent implements OnInit {
 
   // Error handling
   indexError = false;
-  indexUrl = '';
+  indexUrl = 'https://console.firebase.google.com/u/1/project/gohls-3033e/firestore/indexes';
   draftClassError = false;
   draftClassErrorMessage = '';
 
@@ -159,24 +159,29 @@ export class DraftComponent implements OnInit {
   
   async loadTeams() {
     console.log('🏒 Loading teams...');
-    const teamsRef = collection(this.firestore, 'teams');
-    const snapshot = await getDocs(teamsRef);
-    
-    this.teams = snapshot.docs.map(docSnapshot => {
-      const data = docSnapshot.data();
-      return {
-        id: docSnapshot.id,
-        name: `${data['city']} ${data['mascot']}`,
-        city: data['city'],
-        mascot: data['mascot'],
-        logoUrl: data['logoUrl'],
-        conference: data['conference'],
-        division: data['division'],
-        league: data['league'] || 'major'
-      };
-    });
-    
-    console.log(`✅ Loaded ${this.teams.length} teams`);
+    try {
+      const teamsRef = collection(this.firestore, 'teams');
+      const snapshot = await getDocs(teamsRef);
+      
+      this.teams = snapshot.docs.map(docSnapshot => {
+        const data = docSnapshot.data();
+        return {
+          id: docSnapshot.id,
+          name: `${data['city']} ${data['mascot']}`,
+          city: data['city'],
+          mascot: data['mascot'],
+          logoUrl: data['logoUrl'],
+          conference: data['conference'],
+          division: data['division'],
+          league: data['league'] || 'major'
+        };
+      });
+      
+      console.log(`✅ Loaded ${this.teams.length} teams`);
+    } catch (error) {
+      console.error('Error loading teams:', error);
+      this.teams = [];
+    }
   }
 
   async loadAvailableSeasons() {
@@ -299,7 +304,6 @@ export class DraftComponent implements OnInit {
           // Check if this is an index error
           if (error instanceof Error && error.toString().includes('requires an index')) {
             this.indexError = true;
-            this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
           }
           
           // Return draft class with empty players array
@@ -330,7 +334,6 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
-        this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
       }
     } finally {
       this.loadingClasses = false;
@@ -340,14 +343,14 @@ export class DraftComponent implements OnInit {
   async createInitialDraftClass(season: number) {
     try {
       // Create draft class document
-      await addDoc(collection(this.firestore, 'draftClasses'), {
+      const docRef = await addDoc(collection(this.firestore, 'draftClasses'), {
         season,
         status: 'upcoming',
         league: 'major',
         createdAt: new Date()
       });
       
-      console.log(`Created initial draft class for season ${season}`);
+      console.log(`Created initial draft class for season ${season} with ID: ${docRef.id}`);
     } catch (error) {
       console.error('Error creating initial draft class:', error);
     }
@@ -355,6 +358,8 @@ export class DraftComponent implements OnInit {
   
   async loadCurrentDraft() {
     this.loadingDraft = true;
+    this.draftOrder = [];
+    this.draftPicks = [];
     
     try {
       console.log(`🎯 Loading draft for season ${this.currentDraftSeason}`);
@@ -423,7 +428,6 @@ export class DraftComponent implements OnInit {
         // Check if this is an index error
         if (error instanceof Error && error.toString().includes('requires an index')) {
           this.indexError = true;
-          this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
           this.draftPicks = []; // Reset picks to empty array
         }
       }
@@ -437,6 +441,8 @@ export class DraftComponent implements OnInit {
       
       if (settingsSnap.exists()) {
         this.draftInProgress = settingsSnap.data()['inProgress'] || false;
+      } else {
+        this.draftInProgress = false;
       }
       
       console.log(`🏒 Draft status: ${this.draftInProgress ? 'In Progress' : 'Not Started'}`);
@@ -446,7 +452,6 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
-        this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
       }
     } finally {
       this.loadingDraft = false;
@@ -587,7 +592,6 @@ export class DraftComponent implements OnInit {
       // Check if this is an index error
       if (error instanceof Error && error.toString().includes('requires an index')) {
         this.indexError = true;
-        this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
       }
     } finally {
       this.loadingHistory = false;
@@ -766,7 +770,6 @@ export class DraftComponent implements OnInit {
         // Check if this is an index error
         if (error instanceof Error && error.toString().includes('requires an index')) {
           this.indexError = true;
-          this.indexUrl = 'https://console.firebase.google.com/project/gohls-3033e/firestore/indexes';
           this.availablePlayers = []; // Reset to empty array
         }
       }
@@ -891,6 +894,8 @@ export class DraftComponent implements OnInit {
         alert(`No teams found for ${this.newDraftLeague} league.`);
         return;
       }
+      
+      console.log(`Creating draft for season ${this.newDraftSeason} with ${leagueTeams.length} teams`);
       
       // Create draft order (for now, just use team order - in real implementation, this would be based on standings)
       const orderRef = doc(this.firestore, `drafts/${this.newDraftSeason}/settings/order`);
