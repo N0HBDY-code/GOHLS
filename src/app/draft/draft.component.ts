@@ -618,6 +618,7 @@ export class DraftComponent implements OnInit {
       this.draftInProgress = true;
     } catch (error) {
       console.error('Error starting draft:', error);
+      alert('Error starting draft: ' + (error as Error).message);
     }
   }
   
@@ -671,6 +672,7 @@ export class DraftComponent implements OnInit {
       this.draftInProgress = false;
     } catch (error) {
       console.error('Error ending draft:', error);
+      alert('Error ending draft: ' + (error as Error).message);
     }
   }
   
