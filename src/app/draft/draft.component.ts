@@ -155,10 +155,10 @@ export class DraftComponent implements OnInit {
     const teamsRef = collection(this.firestore, 'teams');
     const snapshot = await getDocs(teamsRef);
     
-    this.teams = snapshot.docs.map(doc => {
-      const data = doc.data();
+    this.teams = snapshot.docs.map(docSnapshot => {
+      const data = docSnapshot.data();
       return {
-        id: doc.id,
+        id: docSnapshot.id,
         name: `${data['city']} ${data['mascot']}`,
         city: data['city'],
         mascot: data['mascot'],
@@ -192,8 +192,8 @@ export class DraftComponent implements OnInit {
       }
       
       // Process draft classes
-      this.draftClasses = await Promise.all(snapshot.docs.map(async doc => {
-        const data = doc.data();
+      this.draftClasses = await Promise.all(snapshot.docs.map(async docSnapshot => {
+        const data = docSnapshot.data();
         
         // Load players for this draft class using draftClass field
         const playersQuery = query(
@@ -212,7 +212,8 @@ export class DraftComponent implements OnInit {
             const attributesRef = doc(this.firestore, `players/${playerDoc.id}/meta/attributes`);
             const attributesSnap = await getDoc(attributesRef);
             if (attributesSnap.exists()) {
-              overall = attributesSnap.data()['OVERALL'] || 50;
+              const attributesData = attributesSnap.data();
+              overall = attributesData['OVERALL'] || 50;
             }
           } catch (error) {
             console.error('Error loading player attributes:', error);
@@ -248,7 +249,7 @@ export class DraftComponent implements OnInit {
         }));
         
         return {
-          id: doc.id,
+          id: docSnapshot.id,
           season: data['season'],
           players,
           status: data['status'] || 'upcoming',
@@ -375,8 +376,8 @@ export class DraftComponent implements OnInit {
   }
   
   async processDraftPicks(snapshot: any) {
-    return await Promise.all(snapshot.docs.map(async (doc: any) => {
-      const data = doc.data();
+    return await Promise.all(snapshot.docs.map(async (docSnapshot: any) => {
+      const data = docSnapshot.data();
       
       // Get team name
       let teamName = 'Unknown Team';
@@ -406,7 +407,7 @@ export class DraftComponent implements OnInit {
       }
       
       return {
-        id: doc.id,
+        id: docSnapshot.id,
         season: data['season'],
         round: data['round'],
         pick: data['pick'],
@@ -481,8 +482,8 @@ export class DraftComponent implements OnInit {
       const historySnap = await getDocs(historyQuery);
       
       if (!historySnap.empty) {
-        const historyPromises = historySnap.docs.map(async doc => {
-          const data = doc.data();
+        const historyPromises = historySnap.docs.map(async docSnapshot => {
+          const data = docSnapshot.data();
           const season = data['season'];
           
           // Load picks for this season
@@ -575,8 +576,8 @@ export class DraftComponent implements OnInit {
       const undraftedSnap = await getDocs(undraftedQuery);
       
       const batch = writeBatch(this.firestore);
-      undraftedSnap.docs.forEach(doc => {
-        batch.update(doc.ref, {
+      undraftedSnap.docs.forEach(docSnapshot => {
+        batch.update(docSnapshot.ref, {
           draftStatus: 'undrafted',
           freeAgent: true
         });
@@ -608,9 +609,9 @@ export class DraftComponent implements OnInit {
       
       const batch = writeBatch(this.firestore);
       
-      picksSnap.docs.forEach(doc => {
-        const data = doc.data();
-        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${doc.id}`);
+      picksSnap.docs.forEach(docSnapshot => {
+        const data = docSnapshot.data();
+        const historyPickRef = doc(this.firestore, `draftHistory/${this.currentDraftSeason}/picks/${docSnapshot.id}`);
         batch.set(historyPickRef, {
           ...data,
           archivedAt: new Date()
@@ -642,23 +643,24 @@ export class DraftComponent implements OnInit {
       const playersSnap = await getDocs(playersQuery);
       console.log(`Found ${playersSnap.docs.length} available players for season ${this.currentDraftSeason}`);
       
-      this.availablePlayers = await Promise.all(playersSnap.docs.map(async doc => {
-        const data = doc.data();
+      this.availablePlayers = await Promise.all(playersSnap.docs.map(async docSnapshot => {
+        const data = docSnapshot.data();
         
         // Get overall rating
         let overall = 50;
         try {
-          const attributesRef = doc(this.firestore, `players/${doc.id}/meta/attributes`);
+          const attributesRef = doc(this.firestore, `players/${docSnapshot.id}/meta/attributes`);
           const attributesSnap = await getDoc(attributesRef);
           if (attributesSnap.exists()) {
-            overall = attributesSnap.data()['OVERALL'] || 50;
+            const attributesData = attributesSnap.data();
+            overall = attributesData['OVERALL'] || 50;
           }
         } catch (error) {
           console.error('Error loading player attributes:', error);
         }
         
         return {
-          id: doc.id,
+          id: docSnapshot.id,
           firstName: data['firstName'] || '',
           lastName: data['lastName'] || '',
           position: data['position'] || '',
