@@ -17,6 +17,7 @@ import {
   setDoc
 } from '@angular/fire/firestore';
 import { AuthService } from '../auth.service';
+import { Auth } from '@angular/fire/auth';
 
 interface DraftClass {
   season: number;
@@ -160,7 +161,8 @@ export class DraftComponent implements OnInit {
 
   constructor(
     private firestore: Firestore,
-    private authService: AuthService
+    private authService: AuthService,
+    private auth: Auth
   ) {}
 
   async ngOnInit() {
