@@ -205,12 +205,28 @@
   <div *ngIf="currentView === 'current'">
     <div class="card mb-4">
       <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Season {{ currentDraftSeason }} Draft</h5>
-        <button *ngIf="canManageDraft && draftPicks.length === 0" 
-                class="btn btn-light btn-sm"
-                (click)="showCreateDraftModal = true">
-          <i class="fas fa-plus me-1"></i>Create New Draft
-        </button>
+        <h5 class="mb-0">Draft Management</h5>
+        <div class="d-flex gap-2">
+          <!-- Season Selector -->
+          <div class="d-flex align-items-center gap-2">
+            <label class="mb-0 text-white">Season:</label>
+            <select class="form-select form-select-sm" 
+                    [(ngModel)]="currentDraftSeason" 
+                    (change)="onDraftSeasonChange()"
+                    style="min-width: 120px;">
+              <option *ngFor="let season of availableSeasons" [value]="season">
+                Season {{ season }}
+              </option>
+            </select>
+          </div>
+          
+          <!-- Create New Draft Button -->
+          <button *ngIf="canManageDraft && draftPicks.length === 0" 
+                  class="btn btn-light btn-sm"
+                  (click)="showCreateDraftModal = true">
+            <i class="fas fa-plus me-1"></i>Create New Draft
+          </button>
+        </div>
       </div>
       <div class="card-body">
         <div *ngIf="loadingDraft" class="text-center py-4">
@@ -297,7 +313,7 @@
           <!-- Draft Board -->
           <div class="card">
             <div class="card-header">
-              <h5 class="mb-0">Draft Board</h5>
+              <h5 class="mb-0">Draft Board - Season {{ currentDraftSeason }}</h5>
             </div>
             <div class="card-body p-0">
               <!-- Round Navigation -->
@@ -362,6 +378,18 @@
                     </tbody>
                   </table>
                 </div>
+              </div>
+              
+              <!-- No Draft Order Message -->
+              <div *ngIf="draftPicks.length === 0 && !loadingDraft" class="text-center py-4">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h5 class="text-muted">No Draft Order Found</h5>
+                <p class="text-muted">No draft has been created for Season {{ currentDraftSeason }}.</p>
+                <button *ngIf="canManageDraft" 
+                        class="btn btn-primary"
+                        (click)="showCreateDraftModal = true">
+                  <i class="fas fa-plus me-1"></i>Create Draft for Season {{ currentDraftSeason }}
+                </button>
               </div>
             </div>
           </div>

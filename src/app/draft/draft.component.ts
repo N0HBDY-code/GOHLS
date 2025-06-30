@@ -73,6 +73,7 @@ export class DraftComponent implements OnInit {
   
   // Current draft
   currentDraftSeason = new Date().getFullYear();
+  availableSeasons: number[] = [];
   draftOrder: Team[] = [];
   draftPicks: DraftPick[] = [];
   currentRound = 1;
@@ -141,6 +142,9 @@ export class DraftComponent implements OnInit {
     // Load teams first
     await this.loadTeams();
     
+    // Load available seasons
+    await this.loadAvailableSeasons();
+    
     // Load draft classes
     await this.loadDraftClasses();
     
@@ -172,24 +176,50 @@ export class DraftComponent implements OnInit {
     
     console.log(`✅ Loaded ${this.teams.length} teams`);
   }
-  
-  async loadDraftClasses() {
-    this.loadingClasses = true;
-    this.draftClassError = false;
-    
+
+  async loadAvailableSeasons() {
     try {
       // Get current league season
       const seasonRef = doc(this.firestore, 'leagueSettings/season');
       const seasonSnap = await getDoc(seasonRef);
       const currentSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
       
+      // Create array of available seasons (current and previous)
+      this.availableSeasons = [];
+      for (let i = 1; i <= currentSeason; i++) {
+        this.availableSeasons.push(i);
+      }
+      
+      // Set current draft season to the current league season
+      this.currentDraftSeason = currentSeason;
+      this.newDraftSeason = currentSeason;
+      this.newDraftClassSeason = currentSeason;
+      
+      console.log(`📅 Available seasons: ${this.availableSeasons.join(', ')}`);
+    } catch (error) {
+      console.error('Error loading available seasons:', error);
+      this.availableSeasons = [1];
+      this.currentDraftSeason = 1;
+    }
+  }
+
+  async onDraftSeasonChange() {
+    console.log(`🔄 Draft season changed to: ${this.currentDraftSeason}`);
+    await this.loadCurrentDraft();
+  }
+  
+  async loadDraftClasses() {
+    this.loadingClasses = true;
+    this.draftClassError = false;
+    
+    try {
       // Load draft classes from Firestore
       const classesRef = collection(this.firestore, 'draftClasses');
       const snapshot = await getDocs(classesRef);
       
       if (snapshot.empty) {
         // Create initial draft class for current season if none exist
-        await this.createInitialDraftClass(currentSeason);
+        await this.createInitialDraftClass(this.currentDraftSeason);
         await this.loadDraftClasses(); // Reload after creation
         return;
       }
@@ -298,11 +328,6 @@ export class DraftComponent implements OnInit {
     this.loadingDraft = true;
     
     try {
-      // Get current league season
-      const seasonRef = doc(this.firestore, 'leagueSettings/season');
-      const seasonSnap = await getDoc(seasonRef);
-      this.currentDraftSeason = seasonSnap.exists() ? seasonSnap.data()['currentSeason'] : 1;
-      
       console.log(`🎯 Loading draft for season ${this.currentDraftSeason}`);
       
       // Load draft order
@@ -889,7 +914,7 @@ export class DraftComponent implements OnInit {
       case 'G': return '#dc3545'; // Red
       case 'D': return '#fd7e14'; // Orange
       case 'C': return '#28a745'; // Green
-      case 'LW': return '#17a2b8'; // Teal
+      case 'LW': return '#17a2b8'; //  Teal
       case 'RW': return '#007bff'; // Blue
       default: return '#6c757d'; // Gray
     }
