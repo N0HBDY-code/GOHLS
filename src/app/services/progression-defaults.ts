@@ -22,7 +22,8 @@ export function getDefaultAttributes(position: string): Record<string, number> {
         'PK PL FRQ': 50,
         'AGGRE': 50,
         'DRBLTY': 50,
-        'VISION': 50
+        'VISION': 50,
+        'OVERALL': 50
       };
     } else {
       return {
@@ -53,8 +54,8 @@ export function getDefaultAttributes(position: string): Record<string, number> {
         'FIGHTING': 50,
         'STK CHK': 50,
         'SAVED': 0,
-        'MISSED': 0
+        'MISSED': 0,
+        'OVERALL': 50
       };
     }
   }
-  
