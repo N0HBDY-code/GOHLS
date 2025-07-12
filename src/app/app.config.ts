@@ -7,7 +7,7 @@ import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage'; // ✅ Import this
 
-import { environment } from '../environments/environment';
+import { environment } from '../../environment';
 
 const firebaseConfig = environment.firebase;
 
