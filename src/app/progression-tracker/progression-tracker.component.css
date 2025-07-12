@@ -1,4 +1,4 @@
-/* Subdued theme styling for progression tracker */
+/* Optimized progression tracker styling - reduced file size */
 .container {
   max-width: 1200px;
   background-color: #ffffff;
@@ -6,7 +6,6 @@
   padding: 2rem 0;
 }
 
-/* Page title */
 .page-title {
   color: #495057;
   font-weight: 600;
@@ -14,7 +13,6 @@
   font-size: 1.75rem;
 }
 
-/* All cards use minimal styling */
 .card {
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -36,8 +34,7 @@
   padding: 1rem 1.5rem;
 }
 
-.card-header h4,
-.card-header h5 {
+.card-header h4, .card-header h5 {
   margin-bottom: 0;
   font-weight: 600;
   color: #495057;
@@ -48,7 +45,6 @@
   background-color: #ffffff;
 }
 
-/* Settings card - current progression */
 .settings-card {
   background-color: #f8f9fa;
   border: 1px solid #dee2e6;
@@ -74,7 +70,6 @@
   gap: 0.75rem;
 }
 
-/* Management card - viewing settings */
 .management-card {
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -97,7 +92,6 @@
   color: #6c757d;
 }
 
-/* Week display styling */
 .week-display {
   display: flex;
   align-items: center;
@@ -110,7 +104,6 @@
   border-radius: 6px;
 }
 
-/* Form controls */
 .form-label {
   font-weight: 500;
   color: #495057;
@@ -118,8 +111,7 @@
   font-size: 0.9rem;
 }
 
-.form-control,
-.form-select {
+.form-control, .form-select {
   border-radius: 6px;
   border: 1px solid #ced4da;
   padding: 0.5rem 0.75rem;
@@ -129,8 +121,7 @@
   color: #495057;
 }
 
-.form-control:focus,
-.form-select:focus {
+.form-control:focus, .form-select:focus {
   border-color: #80bdff;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
   outline: none;
@@ -153,15 +144,13 @@
   color: #495057;
 }
 
-.settings-card .form-control,
-.settings-card .form-select {
+.settings-card .form-control, .settings-card .form-select {
   background-color: #ffffff;
   border: 1px solid #ced4da;
   color: #495057;
 }
 
-.settings-card .form-control:focus,
-.settings-card .form-select:focus {
+.settings-card .form-control:focus, .settings-card .form-select:focus {
   background-color: #ffffff;
   border-color: #80bdff;
   box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
@@ -174,7 +163,6 @@
   padding: 0.5rem;
 }
 
-/* Switch styling - more subdued */
 .form-check-input {
   width: 2.5rem;
   height: 1.25rem;
@@ -199,7 +187,6 @@
   color: #495057;
 }
 
-/* Team selection card */
 .team-selection-card {
   background-color: #ffffff;
   border: 1px solid #dee2e6;
@@ -210,7 +197,6 @@
   color: #495057;
 }
 
-/* Team info display */
 .team-info {
   background: #f8f9fa;
   padding: 1.25rem;
@@ -231,7 +217,6 @@
   font-size: 1.25rem;
 }
 
-/* Table styling */
 .table {
   margin-bottom: 0;
   font-size: 0.9rem;
@@ -270,7 +255,6 @@
   background-color: #f8f9fa !important;
 }
 
-/* Status badges - more subdued */
 .badge {
   font-size: 0.75rem;
   padding: 0.35rem 0.6rem;
@@ -311,7 +295,6 @@
   color: white !important;
 }
 
-/* Overall rating badge styling */
 .badge.overall-rating {
   font-size: 0.9rem;
   padding: 0.5rem 0.75rem;
@@ -321,7 +304,6 @@
   text-align: center;
 }
 
-/* Action buttons - simplified */
 .btn {
   border-radius: 4px;
   font-weight: 500;
@@ -399,7 +381,6 @@
   cursor: not-allowed;
 }
 
-/* Loading spinner */
 .spinner-border {
   width: 1.5rem;
   height: 1.5rem;
@@ -411,16 +392,9 @@
   height: 1rem;
 }
 
-/* Text colors */
-.text-muted {
-  color: #6c757d !important;
-}
+.text-muted { color: #6c757d !important; }
+.text-success { color: #28a745 !important; }
 
-.text-success {
-  color: #28a745 !important;
-}
-
-/* Status indicator improvements */
 .status-indicator {
   display: inline-flex;
   align-items: center;
@@ -434,19 +408,10 @@
   display: inline-block;
 }
 
-.status-dot.processed {
-  background-color: #28a745;
-}
+.status-dot.processed { background-color: #28a745; }
+.status-dot.pending { background-color: #ffc107; }
+.status-dot.na { background-color: #6c757d; }
 
-.status-dot.pending {
-  background-color: #ffc107;
-}
-
-.status-dot.na {
-  background-color: #6c757d;
-}
-
-/* Table row highlighting - very subtle */
 .table tbody tr.status-processed {
   background-color: rgba(40, 167, 69, 0.05) !important;
 }
@@ -459,7 +424,6 @@
   background-color: rgba(108, 117, 125, 0.05) !important;
 }
 
-/* Section divider - simplified */
 .section-divider {
   height: 1px;
   background-color: #dee2e6;
@@ -467,7 +431,6 @@
   margin: 2rem 0;
 }
 
-/* Card hover effects - minimal */
 .roster-card {
   transition: box-shadow 0.2s ease;
 }
@@ -476,7 +439,6 @@
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-/* Empty state styling */
 .card-body.text-center {
   color: #6c757d;
 }
@@ -485,7 +447,6 @@
   color: #6c757d;
 }
 
-/* Alert styling - simplified */
 .alert {
   border: none;
   border-radius: 6px;
@@ -516,7 +477,6 @@
   border-left: 3px solid #28a745;
 }
 
-/* Week management specific styles */
 .week-management-controls {
   display: flex;
   align-items: center;
@@ -535,7 +495,6 @@
   margin-top: 1rem;
 }
 
-/* Modal styling */
 .modal-content {
   border-radius: 8px;
   border: none;
@@ -574,7 +533,6 @@
   opacity: 0.75;
 }
 
-/* Overall rating specific styling */
 .overall-rating-display {
   display: flex;
   align-items: center;
@@ -590,7 +548,6 @@
   text-align: center;
 }
 
-/* Form text styling */
 .form-text {
   color: #6c757d;
   font-size: 0.875rem;
@@ -599,69 +556,22 @@
 
 /* Responsive design */
 @media (max-width: 768px) {
-  .card-body {
-    padding: 1rem;
-  }
-  
-  .settings-card .card-body {
-    padding: 1.5rem;
-  }
-  
-  .team-info {
-    padding: 1rem;
-  }
-  
-  .team-name {
-    font-size: 1.1rem;
-  }
-  
-  .table {
-    font-size: 0.8rem;
-  }
-  
-  .table thead th,
-  .table tbody td {
-    padding: 0.5rem 0.25rem;
-  }
-  
-  .btn-group {
-    flex-direction: column;
-    gap: 0.25rem;
-  }
-  
-  .btn-group .btn {
-    width: 100%;
-  }
-
-  .week-display {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-
-  .week-management-controls {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .overall-rating-display {
-    flex-direction: column;
-    align-items: center;
-    gap: 0.25rem;
-  }
-
-  .modal-body {
-    padding: 1rem;
-  }
+  .card-body { padding: 1rem; }
+  .settings-card .card-body { padding: 1.5rem; }
+  .team-info { padding: 1rem; }
+  .team-name { font-size: 1.1rem; }
+  .table { font-size: 0.8rem; }
+  .table thead th, .table tbody td { padding: 0.5rem 0.25rem; }
+  .btn-group { flex-direction: column; gap: 0.25rem; }
+  .btn-group .btn { width: 100%; }
+  .week-display { flex-direction: column; align-items: flex-start; gap: 0.25rem; }
+  .week-management-controls { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .overall-rating-display { flex-direction: column; align-items: center; gap: 0.25rem; }
+  .modal-body { padding: 1rem; }
 }
 
-/* Icon styling - minimal */
-.fas {
-  margin-right: 0.25rem;
-}
+.fas { margin-right: 0.25rem; }
 
-/* Card footer styling */
 .card-footer {
   background-color: #f8f9fa !important;
   border-top: 1px solid #dee2e6;
@@ -669,16 +579,6 @@
   padding: 0.75rem 1.5rem;
 }
 
-/* Remove excessive animations and effects */
-.badge {
-  transition: none;
-}
-
-.badge:hover {
-  transform: none;
-}
-
-/* Simplified progress indicators */
 .progress {
   height: 6px;
   border-radius: 3px;
