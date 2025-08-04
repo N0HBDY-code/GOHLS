@@ -164,16 +164,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadingPlayers = true;
     try {
       const playersRef = collection(this.firestore, 'players');
+      // Query without composite index requirement - filter in memory instead
       const q = query(
         playersRef, 
-        where('status', '==', 'active'),
         orderBy('createdDate', 'desc'), 
-        limit(5) // Limit to 5 most recent
+        limit(20) // Get more to filter active ones
       );
       const snapshot = await getDocs(q);
       
+      // Filter for active players and limit to 5
+      const activePlayers = snapshot.docs.filter(doc => {
+        const data = doc.data();
+        return data['status'] === 'active';
+      }).slice(0, 5);
+      
       this.newestPlayers = await Promise.all(
-        snapshot.docs.map(async (playerDoc) => {
+        activePlayers.map(async (playerDoc) => {
           const data = playerDoc.data();
           let teamName = 'Free Agent';
           
