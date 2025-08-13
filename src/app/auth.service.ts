@@ -122,35 +122,6 @@ export class AuthService {
   getCurrentUser(): User | null {
     return this.userSubject.value;
   }
-    
-    onAuthStateChanged(this.auth, async (user) => {
-      this.userSubject.next(user);
-
-      if (user) {
-        const snapshot = await getDoc(doc(this.firestore, 'users', user.uid));
-        const data = snapshot.data();
-        const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
-        this.rolesSubject.next(roles);
-      } else {
-        this.rolesSubject.next([]);
-      }
-      
-      // Mark auth as initialized after first state change
-      this.authInitialized.next(true);
-    });
-  }
-
-  // Method to wait for auth initialization
-  async waitForAuthInit(): Promise<void> {
-    return firstValueFrom(this.authInitialized$.pipe(
-      map(initialized => {
-        if (initialized) return;
-        throw new Error('Auth not initialized');
-      })
-    )).catch(() => {
-      // If auth doesn't initialize within reasonable time, continue anyway
-    });
-  }
 
   setViewAsRole(role: string | null) {
     this.viewAsRoleSubject.next(role);
