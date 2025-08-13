@@ -4,6 +4,7 @@ import { CommonModule } from '@angular/common';
 import { NavbarComponent } from './navbar/navbar.component';
 import { Router, NavigationEnd } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { AuthService } from './auth.service';
 
 @Component({
   selector: 'app-root',
@@ -15,8 +16,13 @@ import { filter } from 'rxjs/operators';
 export class AppComponent {
   showNavbar = true;
   private router = inject(Router);
+  private authService = inject(AuthService);
   title = 'GOHLS';
+  
   constructor() {
+    // Wait for auth to initialize before allowing navigation
+    this.authService.waitForAuthInit();
+    
     this.router.events.pipe(
       filter(event => event instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {

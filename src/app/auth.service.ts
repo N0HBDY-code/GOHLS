@@ -7,10 +7,12 @@ import {
   updateProfile,
   onAuthStateChanged,
   sendPasswordResetEmail,
-  User
+  User,
+  setPersistence,
+  browserLocalPersistence
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, getDoc } from '@angular/fire/firestore';
-import { BehaviorSubject, combineLatest } from 'rxjs';
+import { BehaviorSubject, combineLatest, firstValueFrom } from 'rxjs';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { map } from 'rxjs/operators';
 
@@ -27,6 +29,9 @@ export class AuthService {
   private userSubject = new BehaviorSubject<User | null>(null);
   public currentUser = this.userSubject.asObservable();
 
+  private authInitialized = new BehaviorSubject<boolean>(false);
+  public authInitialized$ = this.authInitialized.asObservable();
+
   private rolesSubject = new BehaviorSubject<string[]>([]);
   public currentRoles = this.rolesSubject.asObservable();
 
@@ -41,6 +46,9 @@ export class AuthService {
   );
 
   constructor(private auth: Auth, private firestore: Firestore) {
+    // Set persistence to local storage
+    setPersistence(this.auth, browserLocalPersistence);
+    
     onAuthStateChanged(this.auth, async (user) => {
       this.userSubject.next(user);
 
@@ -52,6 +60,21 @@ export class AuthService {
       } else {
         this.rolesSubject.next([]);
       }
+      
+      // Mark auth as initialized after first state change
+      this.authInitialized.next(true);
+    });
+  }
+
+  // Method to wait for auth initialization
+  async waitForAuthInit(): Promise<void> {
+    return firstValueFrom(this.authInitialized$.pipe(
+      map(initialized => {
+        if (initialized) return;
+        throw new Error('Auth not initialized');
+      })
+    )).catch(() => {
+      // If auth doesn't initialize within reasonable time, continue anyway
     });
   }
 
