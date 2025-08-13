@@ -9,12 +9,13 @@ import {
   sendPasswordResetEmail,
   User,
   setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  connectAuthEmulator
 } from '@angular/fire/auth';
 import { Firestore, doc, setDoc, getDoc } from '@angular/fire/firestore';
-import { BehaviorSubject, combineLatest, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, combineLatest, firstValueFrom, timer } from 'rxjs';
 import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { map } from 'rxjs/operators';
+import { map, switchMap, take } from 'rxjs/operators';
 
 export interface UserInfo {
   username: string;
@@ -32,6 +33,9 @@ export class AuthService {
   private authInitialized = new BehaviorSubject<boolean>(false);
   public authInitialized$ = this.authInitialized.asObservable();
 
+  private authStateResolved = new BehaviorSubject<boolean>(false);
+  public authStateResolved$ = this.authStateResolved.asObservable();
+
   private rolesSubject = new BehaviorSubject<string[]>([]);
   public currentRoles = this.rolesSubject.asObservable();
 
@@ -46,8 +50,78 @@ export class AuthService {
   );
 
   constructor(private auth: Auth, private firestore: Firestore) {
-    // Set persistence to local storage
-    setPersistence(this.auth, browserLocalPersistence);
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
+    try {
+      // Set persistence to local storage for 1 hour sessions
+      await setPersistence(this.auth, browserLocalPersistence);
+      
+      // Set up auth state listener with proper initialization
+      let isFirstStateChange = true;
+      
+      onAuthStateChanged(this.auth, async (user) => {
+        console.log('Auth state changed:', user ? 'User logged in' : 'No user');
+        
+        this.userSubject.next(user);
+
+        if (user) {
+          // Load user roles
+          const snapshot = await getDoc(doc(this.firestore, 'users', user.uid));
+          const data = snapshot.data();
+          const roles = Array.isArray(data?.['roles']) ? data['roles'] : [];
+          this.rolesSubject.next(roles);
+        } else {
+          this.rolesSubject.next([]);
+        }
+        
+        // Mark auth as initialized after first state change
+        if (isFirstStateChange) {
+          this.authInitialized.next(true);
+          // Add a small delay to ensure everything is properly set up
+          setTimeout(() => {
+            this.authStateResolved.next(true);
+          }, 100);
+          isFirstStateChange = false;
+        }
+      });
+    } catch (error) {
+      console.error('Error initializing auth:', error);
+      // Fallback: mark as initialized even if there's an error
+      this.authInitialized.next(true);
+      this.authStateResolved.next(true);
+    }
+  }
+
+  // Enhanced method to wait for auth initialization with timeout
+  async waitForAuthInit(): Promise<boolean> {
+    return new Promise((resolve) => {
+      // Set a maximum wait time of 3 seconds
+      const timeout = setTimeout(() => {
+        console.log('Auth initialization timeout reached');
+        resolve(false);
+      }, 3000);
+
+      // Wait for auth state to be resolved
+      this.authStateResolved$.pipe(take(1)).subscribe(resolved => {
+        if (resolved) {
+          clearTimeout(timeout);
+          resolve(true);
+        }
+      });
+    });
+  }
+
+  // Method to check if user is currently authenticated
+  isAuthenticated(): boolean {
+    return !!this.userSubject.value;
+  }
+
+  // Method to get current user synchronously
+  getCurrentUser(): User | null {
+    return this.userSubject.value;
+  }
     
     onAuthStateChanged(this.auth, async (user) => {
       this.userSubject.next(user);

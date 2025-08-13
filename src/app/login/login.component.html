@@ -1,12 +1,11 @@
 <div class="container-fluid">
-  <div class="row mt-5">
-    <div class="col"></div>
-    <div class="col-4">
+  <div class="row justify-content-center mt-3 mt-md-5">
+    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
       <div class="card shadow">
         <div class="card-body">
           <form>
             <div class="mb-3">
-              <h4 class="text-dark text-muted">Login</h4>
+              <h4 class="text-dark text-muted text-center">Login</h4>
             </div>
             <div class="mb-3">
               <label for="username" class="form-label">Username</label>
@@ -15,6 +14,7 @@
                 class="form-control"
                 name="username"
                 [(ngModel)]="username"
+                autocomplete="username"
               />
             </div>
             <div class="mb-3">
@@ -24,37 +24,39 @@
                 class="form-control"
                 name="password"
                 [(ngModel)]="password"
+                autocomplete="current-password"
               />
             </div>
-            <button type="button" class="btn btn-info" (click)="login()">
+            <button type="button" class="btn btn-info w-100 mb-3" (click)="login()">
               Login
             </button>
-            <div class="row">
-              <div class="col-md-6">
+            <div class="row g-2 mb-3">
+              <div class="col-6">
                 <a href="/register" style="text-decoration: none"
-                  >Need Account? <span class="text-danger">Register</span>
+                  ><small>Need Account? <span class="text-danger">Register</span></small>
                 </a>
               </div>
-              <div class="col-md-6">
+              <div class="col-6 text-end">
                 <a
                   href="/forgot-password"
                   class="text-dark"
                   style="text-decoration: none"
-                  >Forgot Password?
+                  ><small>Forgot Password?</small>
                 </a>
               </div>
             </div>
-            <div class="row mt-2">
+            <div class="mt-2">
               <a
                 (click)="signInWithGoogle()"
                 style="text-decoration: none; cursor: pointer"
               >
-                <div class="card shadow text-center">
+                <div class="card shadow text-center border-primary">
                   <div class="card-body">
                     <img
                       src="/images/icons8-google-48.png"
-                      style="width: 24px"
+                      style="width: 20px"
                       alt=""
+                      class="me-2"
                     />
                     Sign in with Google
                   </div>
@@ -65,6 +67,5 @@
         </div>
       </div>
     </div>
-    <div class="col"></div>
   </div>
 </div>

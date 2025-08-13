@@ -1,12 +1,11 @@
 <div class="container-fluid">
-  <div class="row mt-5">
-    <div class="col"></div>
-    <div class="col-4">
+  <div class="row justify-content-center mt-3 mt-md-5">
+    <div class="col-12 col-sm-8 col-md-6 col-lg-4">
       <div class="card shadow">
         <div class="card-body">
           <form>
             <div class="mb-3">
-              <h4 class="text-dark text-muted">Register</h4>
+              <h4 class="text-dark text-muted text-center">Register</h4>
             </div>
             <div class="mb-3">
               <label for="username" class="form-label">Username</label>
@@ -15,6 +14,7 @@
                 class="form-control"
                 name="username"
                 [(ngModel)]="user.username"
+                autocomplete="username"
               />
             </div>
             <div class="mb-3">
@@ -24,6 +24,7 @@
                 class="form-control"
                 name="email"
                 [(ngModel)]="user.email"
+                autocomplete="email"
               />
             </div>
             <div class="mb-3">
@@ -33,22 +34,20 @@
                 class="form-control"
                 name="password"
                 [(ngModel)]="user.password"
+                autocomplete="new-password"
               />
             </div>
-            <button type="button" class="btn btn-info" (click)="register()">
+            <button type="button" class="btn btn-info w-100 mb-3" (click)="register()">
               Register
             </button>
-            <div class="row">
-              <div class="col-md-6">
+            <div class="text-center">
                 <a href="/login" style="text-decoration: none"
-                  >Have an Account? <span class="text-danger">Login</span>
+                  ><small>Have an Account? <span class="text-danger">Login</span></small>
                 </a>
-              </div>
             </div>
           </form>
         </div>
       </div>
     </div>
-    <div class="col"></div>
   </div>
 </div>
